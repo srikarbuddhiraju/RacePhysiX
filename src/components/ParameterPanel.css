@@ -117,3 +117,33 @@ input[type='range']::-webkit-slider-thumb:hover {
   margin-top: auto;
   padding-top: 16px;
 }
+
+/* ── Drivetrain selector ─────────────────────────────────────────────────── */
+
+.dt-selector {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.dt-btn {
+  padding: 6px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  background: #0c0c14;
+  border: 1px solid #2a2a3a;
+  border-radius: 5px;
+  color: #4a4a6a;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.dt-btn:hover { background: #141420; color: #8080b0; }
+
+.dt-btn--active {
+  background: #1a1a30;
+  border-color: #6060d0;
+  color: #c0c0ff;
+}

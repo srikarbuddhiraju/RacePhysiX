@@ -1,9 +1,10 @@
-import type { PhysicsResult } from '../physics/types';
+import type { PhysicsResult, PacejkaResult } from '../physics/types';
 import { InfoTooltip } from './InfoTooltip';
 import './ResultsPanel.css';
 
 interface Props {
-  result: PhysicsResult;
+  result:   PhysicsResult;
+  pacejka?: PacejkaResult;
 }
 
 const BALANCE_CONFIG = {
@@ -33,7 +34,7 @@ function Metric({ label, value, sub, highlight, tip }: MetricProps) {
   );
 }
 
-export function ResultsPanel({ result }: Props) {
+export function ResultsPanel({ result, pacejka }: Props) {
   const bc    = BALANCE_CONFIG[result.balance];
   const kSign = result.underSteerGradientDegPerG >= 0 ? '+' : '';
 
@@ -132,6 +133,100 @@ export function ResultsPanel({ result }: Props) {
         </div>
       </div>
 
+      {/* ── Stage 3: Load transfer + drivetrain ────────────────────────── */}
+      {pacejka && <Stage3Panel p={pacejka} />}
+
+    </div>
+  );
+}
+
+// ── Stage 3 panel ─────────────────────────────────────────────────────────────
+
+function UtilBar({ label, pct, color }: { label: string; pct: number; color: string }) {
+  return (
+    <div style={{ flex: 1 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, marginBottom: 3 }}>
+        <span style={{ color: '#5a5a7a' }}>{label}</span>
+        <span style={{ color, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{(pct * 100).toFixed(0)}%</span>
+      </div>
+      <div style={{ height: 4, background: '#1e1e2e', borderRadius: 2, overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${Math.min(pct * 100, 100)}%`, background: color, borderRadius: 2, transition: 'width 0.1s' }} />
+      </div>
+    </div>
+  );
+}
+
+function CornerLoad({ label, fz }: { label: string; fz: number }) {
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <div style={{ fontSize: 9, color: '#4a4a6a', marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 11, fontWeight: 600, color: '#c0c0e0', fontVariantNumeric: 'tabular-nums' }}>
+        {(fz / 1000).toFixed(2)}
+      </div>
+      <div style={{ fontSize: 8, color: '#3a3a5a' }}>kN</div>
+    </div>
+  );
+}
+
+function Stage3Panel({ p }: { p: PacejkaResult }) {
+  const hasFx = p.FxFront > 1 || p.FxRear > 1;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ fontSize: 10, fontWeight: 600, color: '#4a4a6a', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+        Stage 3 — Load Transfer &amp; Drivetrain
+      </div>
+      <div>
+        <div style={{ fontSize: 9, color: '#4a4a6a', marginBottom: 6 }}>
+          Per-corner loads
+          <InfoTooltip text="Normal force Fz on each tyre after lateral + longitudinal load transfer. Outside tyres gain load in cornering. Unequal Fz changes the Pacejka curve per tyre → real grip loss captured." />
+        </div>
+        <div style={{ background: '#0c0c14', border: '1px solid #1e1e2e', borderRadius: 6, padding: '8px 12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px' }}>
+            <CornerLoad label="FL (inside)"  fz={p.FzFL} />
+            <CornerLoad label="FR (outside)" fz={p.FzFR} />
+            <CornerLoad label="RL (inside)"  fz={p.FzRL} />
+            <CornerLoad label="RR (outside)" fz={p.FzRR} />
+          </div>
+          <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid #1e1e2e', display: 'flex', gap: 12, fontSize: 9, color: '#4a4a6a', flexWrap: 'wrap' }}>
+            <span>Lat ΔFz F: <b style={{ color: '#c0c0e0' }}>{(p.latTransferFront / 1000).toFixed(2)} kN</b></span>
+            <span>Lat ΔFz R: <b style={{ color: '#c0c0e0' }}>{(p.latTransferRear / 1000).toFixed(2)} kN</b></span>
+            {p.longTransfer > 10 && <span>Long ΔFz: <b style={{ color: '#c0c0e0' }}>{(p.longTransfer / 1000).toFixed(2)} kN</b></span>}
+          </div>
+        </div>
+      </div>
+      <div>
+        <div style={{ fontSize: 9, color: '#4a4a6a', marginBottom: 6 }}>
+          Friction circle utilisation
+          <InfoTooltip text="Front/rear tyre grip usage. Lateral: Fy/(μ·Fz). Combined: √(Fy²+Fx²)/(μ·Fz) — shows how throttle on driven wheels eats into cornering grip." />
+        </div>
+        <div style={{ background: '#0c0c14', border: '1px solid #1e1e2e', borderRadius: 6, padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <UtilBar label="Front lateral" pct={p.frontUtilisation} color="#60a5fa" />
+          <UtilBar label="Rear  lateral" pct={p.rearUtilisation}  color="#f87171" />
+          {hasFx && <>
+            <UtilBar label="Front combined" pct={p.frontCombinedUtil} color="#a78bfa" />
+            <UtilBar label="Rear  combined" pct={p.rearCombinedUtil}  color="#f97316" />
+          </>}
+        </div>
+      </div>
+      {hasFx && (
+        <div style={{ background: '#0c0c14', border: '1px solid #1e1e2e', borderRadius: 6, padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ fontSize: 9, color: '#4a4a6a', marginBottom: 2, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Drivetrain</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
+            <span style={{ color: '#4a4a6a' }}>Drive force</span>
+            <span style={{ color: '#c0c0e0', fontVariantNumeric: 'tabular-nums' }}>{(p.driveForceN / 1000).toFixed(2)} kN</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
+            <span style={{ color: '#4a4a6a' }}>Fx front / rear</span>
+            <span style={{ color: '#c0c0e0', fontVariantNumeric: 'tabular-nums' }}>{(p.FxFront / 1000).toFixed(2)} / {(p.FxRear / 1000).toFixed(2)} kN</span>
+          </div>
+          {p.tvYawMoment !== 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, borderTop: '1px solid #1e1e2e', paddingTop: 4, marginTop: 2 }}>
+              <span style={{ color: '#4a4a6a' }}>TV yaw moment <InfoTooltip text="Torque-vectoring yaw moment = FxRear × tvBias × TW/2. Positive = helps car rotate = reduces understeer. Control law: tvBias ∝ (αf−αr)." /></span>
+              <span style={{ color: p.tvYawMoment > 0 ? '#4ade80' : '#f43f5e', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{p.tvYawMoment.toFixed(0)} Nm</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

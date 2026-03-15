@@ -45,6 +45,10 @@ const BASE: VehicleParams = {
   turnRadius: 200,
   speedKph: 80,
   vehicleClass: 'road',
+  drivetrainType: 'RWD',
+  throttlePercent: 0,
+  enginePowerKW: 150,
+  awdFrontBias: 0.40,
 };
 
 let allPassed = true;

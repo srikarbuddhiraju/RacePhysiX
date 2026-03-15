@@ -2,7 +2,8 @@
 // Sign conventions: SAE J670 — see docs/physics-reference/mechanics-fundamentals.md
 // Reference: docs/physics-reference/tyre-pacejka.md
 
-export type VehicleClass = 'road' | 'track' | 'motorsport';
+export type VehicleClass    = 'road' | 'track' | 'motorsport';
+export type DrivetrainType  = 'FWD' | 'RWD' | 'AWD' | 'AWD_TV';
 
 export interface VehicleParams {
   mass: number;                      // kg
@@ -10,11 +11,16 @@ export interface VehicleParams {
   frontWeightFraction: number;       // 0–1, e.g. 0.55 = 55% on front axle
   corneringStiffnessNPerDeg: number; // N/deg, same front and rear (v0.1 simplification)
   cgHeight: number;                  // m — CG height above ground
-  trackWidth: number;                // m — lateral distance L/R tyres (used in Stage 3 load transfer)
+  trackWidth: number;                // m — lateral distance L/R tyres
   tyreSectionWidth: number;          // m — physical tyre section width (e.g. 0.205 for 205mm), drives visual
   turnRadius: number;                // m (constant radius corner scenario)
   speedKph: number;                  // km/h
   vehicleClass: VehicleClass;        // drives car silhouette in visualisation
+  // ── Stage 3 ──────────────────────────────────────────────────────────────
+  drivetrainType:  DrivetrainType;   // FWD / RWD / AWD / AWD_TV
+  throttlePercent: number;           // 0–100  — fraction of full throttle applied
+  enginePowerKW:   number;           // kW     — peak wheel power
+  awdFrontBias:    number;           // 0–1    — fraction of torque to front (AWD modes only)
 }
 
 export type Balance = 'understeer' | 'neutral' | 'oversteer';
@@ -78,42 +84,56 @@ export interface HandlingPoint {
 
 // Full output of computePacejkaModel()
 export interface PacejkaResult {
-  // Geometry (same derivation as PhysicsResult)
+  // Geometry
   a: number;                      // m, CG to front axle
   b: number;                      // m, CG to rear axle
 
-  // Per-axle normal loads (static — no load transfer in v0.1)
-  FzFrontN: number;               // N
-  FzRearN:  number;               // N
+  // ── Per-axle normal loads ────────────────────────────────────────────────
+  FzFrontN: number;               // N — effective front axle load (after long. transfer)
+  FzRearN:  number;               // N — effective rear axle load
 
-  // Operating-point slip angles (solved numerically from Pacejka curve inversion)
+  // ── Per-corner loads (Stage 3a/3b) ───────────────────────────────────────
+  FzFL: number;                   // N — front-left  (inside in left-hand corner)
+  FzFR: number;                   // N — front-right (outside)
+  FzRL: number;                   // N — rear-left   (inside)
+  FzRR: number;                   // N — rear-right  (outside)
+  latTransferFront: number;       // N — lateral ΔFz on front axle (outer − static/2)
+  latTransferRear:  number;       // N — lateral ΔFz on rear axle
+  longTransfer:     number;       // N — longitudinal ΔFz (positive = rear gains)
+
+  // ── Drivetrain (Stage 3c/3d) ─────────────────────────────────────────────
+  driveForceN:  number;           // N — total wheel drive force
+  ax_ms2:       number;           // m/s² — longitudinal acceleration
+  FxFront:      number;           // N — drive force on front axle
+  FxRear:       number;           // N — drive force on rear axle
+  tvYawMoment:  number;           // Nm — torque-vectoring yaw moment (0 if not AWD_TV)
+
+  // ── Operating-point slip angles ──────────────────────────────────────────
   frontSlipAngleDeg: number;      // deg
   rearSlipAngleDeg:  number;      // deg
   slipAngleDiffDeg:  number;      // αf − αr: +ve = understeer, −ve = oversteer
 
-  // Lateral forces at operating point
-  frontLateralForceN: number;     // N (required, equals Pacejka output at solved α)
+  // ── Lateral forces ───────────────────────────────────────────────────────
+  frontLateralForceN: number;     // N
   rearLateralForceN:  number;     // N
-
-  // Lateral acceleration
   lateralAccelerationG: number;   // g
 
-  // Balance
+  // ── Balance ──────────────────────────────────────────────────────────────
   balance: Balance;
 
-  // Pre-computed chart data (generated inside computePacejkaModel, used by chart components)
-  curveData:     TyreCurvePoint[];   // tyre Fy vs α sweep, −15→+15 deg, 0.2 deg step
-  handlingCurve: HandlingPoint[];    // δ−L/R vs ay, 0→ay_limit, ~100 steps
+  // ── Tyre utilisation ─────────────────────────────────────────────────────
+  frontUtilisation:        number;  // lateral Fy / peak Fy available
+  rearUtilisation:         number;
+  frontCombinedUtil:       number;  // combined √(Fx²+Fy²) / (μ×Fz) — friction circle usage
+  rearCombinedUtil:        number;
 
-  // Operating-point overlays for the tyre curve chart
+  // ── Chart data ───────────────────────────────────────────────────────────
+  curveData:     TyreCurvePoint[];
+  handlingCurve: HandlingPoint[];
   frontOpAlphaDeg: number;
   frontOpFyKN:     number;
   rearOpAlphaDeg:  number;
   rearOpFyKN:      number;
 
-  // Tyre utilisation (0→1 fraction of peak grip used)
-  frontUtilisation: number;
-  rearUtilisation:  number;
-
-  speedMs: number;                // m/s
+  speedMs: number;
 }

@@ -15,10 +15,14 @@ const DEFAULT_PARAMS: VehicleParams = {
   corneringStiffnessNPerDeg: 500,
   cgHeight: 0.55,
   trackWidth: 1.5,
-  tyreSectionWidth: 0.205,       // m — 205/55R16, typical road car
-  turnRadius: 200,               // m — 0.25g at 80 km/h, within linear model range
+  tyreSectionWidth: 0.205,
+  turnRadius: 200,
   speedKph: 80,
   vehicleClass: 'road',
+  drivetrainType: 'RWD',
+  throttlePercent: 0,
+  enginePowerKW: 150,
+  awdFrontBias: 0.40,
 };
 
 export function App() {
@@ -36,7 +40,7 @@ export function App() {
         <div className="canvas-area">
           <TopDownView params={params} result={bicycle} />
         </div>
-        <ResultsPanel result={bicycle} />
+        <ResultsPanel result={bicycle} pacejka={pacejka} />
       </div>
 
       {/* Bottom row: dynamic charts (tyre curve + handling diagram + Pacejka sliders) */}

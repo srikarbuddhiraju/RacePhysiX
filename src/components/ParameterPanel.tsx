@@ -1,4 +1,4 @@
-import type { VehicleParams } from '../physics/types';
+import type { VehicleParams, DrivetrainType } from '../physics/types';
 import { InfoTooltip } from './InfoTooltip';
 import './ParameterPanel.css';
 
@@ -126,9 +126,58 @@ export function ParameterPanel({ params, onChange }: Props) {
         <DerivedRow label="Rear load Wr"  value={`${(params.mass * 9.81 * a / L / 1000).toFixed(2)} kN`} tip="Static rear axle load = mass × g × a/L." />
       </div>
 
+      {/* ── Drivetrain (Stage 3) ──────────────────────────────────────────── */}
+      <div className="param-section-label">Drivetrain</div>
+
+      <DrivetrainSelector
+        value={params.drivetrainType}
+        onChange={dt => onChange({ ...params, drivetrainType: dt })}
+      />
+
+      <SliderRow
+        cfg={{
+          label: 'Engine power', key: 'enginePowerKW', min: 50, max: 600, step: 10, unit: 'kW',
+          format: v => v.toFixed(0),
+          tip: 'Peak power delivered to the driven wheels. Combined with throttle and speed to compute the drive force F = P·throttle/(V). Higher power = more traction load on driven tyres.',
+        }}
+        params={params} set={set}
+      />
+      <SliderRow
+        cfg={{
+          label: 'Throttle', key: 'throttlePercent', min: 0, max: 100, step: 5, unit: '%',
+          format: v => v.toFixed(0),
+          tip: 'Fraction of maximum engine power applied. At 0% = coast (pure lateral model). Increasing throttle loads the driven axle longitudinally → combined slip → reduces available lateral grip on that axle.',
+        }}
+        params={params} set={set}
+      />
+
+      {(params.drivetrainType === 'AWD' || params.drivetrainType === 'AWD_TV') && (
+        <SliderRow
+          cfg={{
+            label: 'AWD front torque split', key: 'awdFrontBias', min: 0, max: 1, step: 0.05, unit: '%',
+            format: v => `${(v * 100).toFixed(0)}F / ${((1 - v) * 100).toFixed(0)}R`,
+            tip: 'Fraction of total drive torque sent to the front axle. 0.40 = 40F/60R (typical AWD). Biasing toward front → more FWD-like understeer. Toward rear → more RWD-like oversteer under power.',
+          }}
+          params={params} set={set}
+        />
+      )}
+
+      {/* Derived — drive force at current settings */}
+      <div className="param-derived">
+        <DerivedRow
+          label="Drive force"
+          value={(() => {
+            const vSafe = Math.max(params.speedKph / 3.6, 2);
+            const F = (params.enginePowerKW * 1000 * params.throttlePercent / 100) / vSafe;
+            return `${(F / 1000).toFixed(2)} kN`;
+          })()}
+          tip="F = P × throttle / V. Actual wheel force; capped at tyre traction limit per axle."
+        />
+      </div>
+
       <div className="param-note">
         Bicycle model — steady-state constant radius.<br />
-        Equal Cα front &amp; rear · no load transfer (v0.1)
+        Stage 3: lateral + longitudinal load transfer · combined slip · drivetrain
       </div>
     </div>
   );
@@ -166,6 +215,30 @@ function SliderRow({
         value={raw}
         onChange={e => set(key, Number(e.target.value))}
       />
+    </div>
+  );
+}
+
+const DT_OPTIONS: { id: DrivetrainType; label: string; tip: string }[] = [
+  { id: 'FWD',    label: 'FWD',   tip: 'Front-wheel drive. Drive force on front axle only. Under throttle the front tyres carry both traction and cornering load → combined slip → understeer increases with throttle.' },
+  { id: 'RWD',    label: 'RWD',   tip: 'Rear-wheel drive. Under throttle the rear tyres carry both traction and cornering load → oversteer tendency increases with throttle.' },
+  { id: 'AWD',    label: 'AWD',   tip: 'All-wheel drive. Torque split front/rear via the AWD bias slider. Both axles share traction load → more balanced, higher traction limit.' },
+  { id: 'AWD_TV', label: 'AWD+TV', tip: 'AWD with active torque vectoring. Biases rear torque left/right to create a yaw moment. Reduces understeer under power — the TV yaw moment shows the active correction.' },
+];
+
+function DrivetrainSelector({ value, onChange }: { value: DrivetrainType; onChange: (dt: DrivetrainType) => void }) {
+  return (
+    <div className="dt-selector">
+      {DT_OPTIONS.map(opt => (
+        <button
+          key={opt.id}
+          className={`dt-btn ${value === opt.id ? 'dt-btn--active' : ''}`}
+          onClick={() => onChange(opt.id)}
+          title={opt.tip}
+        >
+          {opt.label}
+        </button>
+      ))}
     </div>
   );
 }
