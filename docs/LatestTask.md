@@ -6,61 +6,34 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ## Session 3 — 2026-03-15  |  branch: `feature/stage4-suspension`
 
-### Status: IN PROGRESS
+### Status: IN PROGRESS — UX polish pass remaining
 
-### Planned sequence this session
-1. Stage 4 — Suspension (roll stiffness model, roll angle, corrected load transfer)
-2. Stage 5 — Braking (brake bias, longitudinal decel + cornering combined slip)
-3. Stage 6 — Aero (CL/CD downforce + drag, speed-dependent grip)
-4. Stage 7 — Lap time estimator (corner + straight segments, min-time solve)
-5. UX polish throughout
+### Completed this session
+- [x] Stage 4: Suspension roll stiffness (suspension.ts, KΦ model, roll angle)
+- [x] Stage 5: Braking (braking.ts, ABS clip, combined braking+cornering)
+- [x] Stage 6: Aero (aero.ts, F_down + F_drag, speed-dependent grip)
+- [x] Stage 7: Lap time estimator (laptime.ts, 4 track presets, LapTimePanel)
+- [x] ParameterPanel: 3-tab layout (Vehicle / Susp. / Aero & Brake)
+- [x] ResultsPanel: Stage 4/5/6 outputs (suspension, braking, aero sections)
+- [x] ChartsPanel: "Lap Time" tab
+- [x] validate.ts: all 4 Gillespie checks pass
 
-### Stage 4 checklist
-- [ ] 4a Physics: roll stiffness model — KΦ_front/rear from spring rate + ARB
-- [ ] 4b Replace simple load transfer split with roll stiffness ratio
-- [ ] 4c Compute roll angle: Φ = m·ay·hCG / (KΦ_total)
-- [ ] 4d New params: frontSpringRate, rearSpringRate, frontARB, rearARB, unsprungMass
-- [ ] 4e Outputs: rollAngle, rollStiffnessRatio, updated FzFL/FR/RL/RR
-- [ ] 4f ParameterPanel: suspension section sliders
-- [ ] 4g ResultsPanel: roll angle + stiffness ratio display
-- [ ] 4h validate.ts: roll stiffness check
-- [ ] 4i tsc clean
-
-### Stage 5 checklist
-- [ ] 5a Brake bias slider (front %)
-- [ ] 5b Braking g slider (0 → 1.5g)
-- [ ] 5c Longitudinal load transfer under braking (front gains, rear loses)
-- [ ] 5d Combined braking + cornering on friction ellipse (extend existing)
-- [ ] 5e ABS clip: cap brake force at peak μ×Fz per axle
-- [ ] 5f ResultsPanel: braking outputs
-
-### Stage 6 checklist
-- [ ] 6a Aero params: CL (downforce coeff), CD (drag coeff), frontal area A
-- [ ] 6b Downforce: ΔFz = ½ρV²A·CL split front/rear by aero balance
-- [ ] 6c Drag: F_drag = ½ρV²A·CD added to longitudinal model
-- [ ] 6d Aero presets (clean road car, moderate wing, full downforce)
-- [ ] 6e ResultsPanel + ParameterPanel aero section
-
-### Stage 7 checklist
-- [ ] 7a Track model: sequence of corners + straights (JSON config)
-- [ ] 7b Corner max speed: V_max = √(μ_eff × g × R) accounting for aero grip
-- [ ] 7c Straight: acceleration integration from V1 to V2 under power - drag
-- [ ] 7d Braking: decel from V2 to corner entry speed
-- [ ] 7e Lap time sum + per-segment breakdown
-- [ ] 7f LapTimePanel component
+### Remaining UX polish
+- [ ] Responsive layout (min-width handling, mobile/tablet)
+- [ ] Export: PNG chart download, CSV data export
+- [ ] URL-serialised parameters (shareable links)
+- [ ] Lap time: visual track map SVG per preset
+- [ ] Lap time: add ABS flag to braking capability calculation
+- [ ] Merge to main when polish is done
 
 ---
 
-## Session 2 — 2026-03-15  |  Status: MERGED to main
+## Session 2 — 2026-03-15  |  Status: MERGED to main (4c57091)
 
-Stage 3 (load transfer + combined slip + FWD/RWD/AWD/AWD_TV),
-power unit toggle (kW/BHP/PS), dark/light theme, Stage 3 display fixes.
-Commits: fa0b2dc → ae6c2e6, merged 4c57091.
+Stage 3, power units, dark/light theme, display fixes.
 
 ---
 
-## Session 1 — 2026-03-15  |  Status: MERGED to main
+## Session 1 — 2026-03-15  |  Status: MERGED to main (c6549a9)
 
-Scaffold, bicycle model (Gillespie-validated), Pacejka Stage 2, tyre presets,
-charts (TyreCurve + HandlingDiagram), TopDownView multi-view + silhouettes.
-Commit: c6549a9.
+Scaffold, bicycle model (Gillespie-validated), Pacejka, charts, TopDownView.
