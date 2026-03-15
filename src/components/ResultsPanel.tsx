@@ -165,7 +165,7 @@ function DataRow({ label, value, tip }: { label: string; value: string; tip?: st
   );
 }
 
-function CornerLoad( fz, highlight }: { fz: number; highlight?: boolean }) {
+function CornerLoad({ fz, highlight }: { fz: number; highlight?: boolean }) {
   return (
     <div style={{
       textAlign: 'center', padding: '5px 4px',
