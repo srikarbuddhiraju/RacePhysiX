@@ -1,6 +1,17 @@
+import { useState } from 'react';
 import type { VehicleParams, DrivetrainType } from '../physics/types';
 import { InfoTooltip } from './InfoTooltip';
 import './ParameterPanel.css';
+
+// ── Power unit helpers ────────────────────────────────────────────────────────
+type PowerUnit = 'kW' | 'BHP' | 'PS';
+const toKW   = (v: number, u: PowerUnit) => u === 'BHP' ? v / 1.34102 : u === 'PS' ? v / 1.35962 : v;
+const fromKW = (v: number, u: PowerUnit) => u === 'BHP' ? v * 1.34102 : u === 'PS' ? v * 1.35962 : v;
+const POWER_RANGE: Record<PowerUnit, { min: number; max: number; step: number }> = {
+  kW:  { min: 50,  max: 600, step: 5  },
+  BHP: { min: 67,  max: 805, step: 5  },
+  PS:  { min: 68,  max: 816, step: 5  },
+};
 
 interface Props {
   params: VehicleParams;
@@ -86,6 +97,8 @@ const SLIDERS: SliderConfig[] = [
 ];
 
 export function ParameterPanel({ params, onChange }: Props) {
+  const [powerUnit, setPowerUnit] = useState<PowerUnit>('kW');
+
   const set = (key: keyof VehicleParams, value: number) => {
     onChange({ ...params, [key]: value });
   };
@@ -134,13 +147,11 @@ export function ParameterPanel({ params, onChange }: Props) {
         onChange={dt => onChange({ ...params, drivetrainType: dt })}
       />
 
-      <SliderRow
-        cfg={{
-          label: 'Engine power', key: 'enginePowerKW', min: 50, max: 600, step: 10, unit: 'kW',
-          format: v => v.toFixed(0),
-          tip: 'Peak power delivered to the driven wheels. Combined with throttle and speed to compute the drive force F = P·throttle/(V). Higher power = more traction load on driven tyres.',
-        }}
-        params={params} set={set}
+      <PowerSliderRow
+        powerKW={params.enginePowerKW}
+        unit={powerUnit}
+        onUnitChange={setPowerUnit}
+        onKWChange={kw => onChange({ ...params, enginePowerKW: kw })}
       />
       <SliderRow
         cfg={{
@@ -214,6 +225,47 @@ function SliderRow({
         step={step}
         value={raw}
         onChange={e => set(key, Number(e.target.value))}
+      />
+    </div>
+  );
+}
+
+// ── Power slider with unit toggle ────────────────────────────────────────────
+
+function PowerSliderRow({ powerKW, unit, onUnitChange, onKWChange }: {
+  powerKW: number;
+  unit: PowerUnit;
+  onUnitChange: (u: PowerUnit) => void;
+  onKWChange: (kw: number) => void;
+}) {
+  const range = POWER_RANGE[unit];
+  const displayVal = Math.round(fromKW(powerKW, unit));
+
+  return (
+    <div className="slider-row">
+      <div className="slider-header">
+        <span className="slider-label">
+          Engine power
+          <InfoTooltip text="Peak power at the wheels. F = P × throttle / V. Higher power means more traction load on driven tyres at any given speed and throttle." />
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span className="slider-value">{displayVal} {unit}</span>
+          <span className="unit-toggle">
+            {(['kW', 'BHP', 'PS'] as PowerUnit[]).map(u => (
+              <button
+                key={u}
+                className={`unit-btn ${unit === u ? 'unit-btn--active' : ''}`}
+                onClick={() => onUnitChange(u)}
+              >{u}</button>
+            ))}
+          </span>
+        </span>
+      </div>
+      <input
+        type="range"
+        min={range.min} max={range.max} step={range.step}
+        value={displayVal}
+        onChange={e => onKWChange(toKW(Number(e.target.value), unit))}
       />
     </div>
   );

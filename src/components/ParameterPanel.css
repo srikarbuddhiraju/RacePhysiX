@@ -118,6 +118,34 @@ input[type='range']::-webkit-slider-thumb:hover {
   padding-top: 16px;
 }
 
+/* ── Unit toggle (kW / BHP / PS) ────────────────────────────────────────── */
+
+.unit-toggle {
+  display: flex;
+  gap: 2px;
+}
+
+.unit-btn {
+  padding: 2px 5px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  background: #0c0c14;
+  border: 1px solid #2a2a3a;
+  border-radius: 3px;
+  color: #4a4a6a;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+
+.unit-btn:hover { color: #8080b0; }
+
+.unit-btn--active {
+  background: #1a1a30;
+  border-color: #6060d0;
+  color: #c0c0ff;
+}
+
 /* ── Drivetrain selector ─────────────────────────────────────────────────── */
 
 .dt-selector {
