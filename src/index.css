@@ -4,9 +4,67 @@
   padding: 0;
 }
 
+/* ── Design tokens — dark (default) ─────────────────────────────────────── */
+
+:root {
+  --bg-page:       #0a0a12;
+  --bg-panel:      #13131c;
+  --bg-card:       #0c0c14;
+  --bg-tooltip:    #1a1a2e;
+  --bg-active:     #1a1a30;
+
+  --border-subtle: #1e1e2e;
+  --border:        #2a2a3a;
+  --border-mid:    #3a3a5a;
+
+  --text-primary:  #c0c0e0;
+  --text-secondary:#a0a0c0;
+  --text-muted:    #5a5a7a;
+  --text-faint:    #4a4a6a;
+  --text-dim:      #3a3a5a;
+
+  --accent:        #6060d0;
+  --accent-hover:  #8080ff;
+  --accent-text:   #c0c0ff;
+  --text-hover:    #8080b0;
+
+  --slider-track:  #2a2a3a;
+
+  --scene-bg:      #0a0a12;
+}
+
+/* ── Design tokens — light ───────────────────────────────────────────────── */
+
+[data-theme="light"] {
+  --bg-page:       #f2f2fa;
+  --bg-panel:      #ffffff;
+  --bg-card:       #ececf6;
+  --bg-tooltip:    #ffffff;
+  --bg-active:     #e4e4f8;
+
+  --border-subtle: #e0e0ec;
+  --border:        #d0d0e0;
+  --border-mid:    #b8b8d0;
+
+  --text-primary:  #1a1a30;
+  --text-secondary:#3a3a60;
+  --text-muted:    #6060a0;
+  --text-faint:    #8080b0;
+  --text-dim:      #9090c0;
+
+  --accent:        #5050c8;
+  --accent-hover:  #4040b0;
+  --accent-text:   #3030a0;
+  --text-hover:    #4040a0;
+
+  --slider-track:  #d8d8e8;
+
+  --scene-bg:      #f2f2fa;
+}
+
 body {
-  background: #0a0a12;
-  color: #c0c0e0;
+  background: var(--bg-page);
+  color: var(--text-primary);
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }

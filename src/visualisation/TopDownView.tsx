@@ -40,6 +40,7 @@ import type { VehicleParams, PhysicsResult, Balance, VehicleClass } from '../phy
 interface Props {
   params: VehicleParams;
   result: PhysicsResult;
+  darkMode?: boolean;
 }
 
 const DEG_TO_RAD  = Math.PI / 180;
@@ -559,7 +560,7 @@ function computeViewports(w: number, h: number) {
 
 // ── React component ───────────────────────────────────────────────────────────
 
-export function TopDownView({ params, result }: Props) {
+export function TopDownView({ params, result, darkMode = true }: Props) {
   const mountRef    = useRef<HTMLDivElement>(null);
   const stateRef    = useRef<{
     scene:    Scene;
@@ -574,7 +575,7 @@ export function TopDownView({ params, result }: Props) {
     if (!mount) return;
 
     const scene    = new Scene();
-    scene.background = new Color(0x0a0a12);
+    scene.background = new Color(darkMode ? 0x0a0a12 : 0xf2f2fa);
 
     const w = mount.clientWidth, h = mount.clientHeight;
     const vp = computeViewports(w, h);
@@ -649,6 +650,14 @@ export function TopDownView({ params, result }: Props) {
     (st as any)._render?.(st);
   }, [params, result]);
 
+  // Update scene background on theme change
+  useEffect(() => {
+    const st = stateRef.current;
+    if (!st) return;
+    st.scene.background = new Color(darkMode ? 0x0a0a12 : 0xf2f2fa);
+    (st as any)._render?.(st);
+  }, [darkMode]);
+
   const fyFrontColor = result.balance === 'understeer' ? '#f97316' : '#4ade80';
   const fyRearColor  = result.balance === 'oversteer'  ? '#f43f5e' : '#4ade80';
 
@@ -664,11 +673,11 @@ export function TopDownView({ params, result }: Props) {
       {/* Vertical divider */}
       <div style={{
         position: 'absolute', top: 0, left: '60%', width: 1,
-        height: '100%', background: '#1e1e2e', pointerEvents: 'none',
+        height: '100%', background: 'var(--border-subtle)', pointerEvents: 'none',
       }} />
 
       {/* Legend — bottom of the top-down panel, horizontal strip */}
-      <ViewLegend fyFrontColor={fyFrontColor} fyRearColor={fyRearColor} balance={result.balance} />
+      <ViewLegend fyFrontColor={fyFrontColor} fyRearColor={fyRearColor} balance={result.balance} darkMode={darkMode} />
     </div>
   );
 }
@@ -680,7 +689,7 @@ function ViewLabel({ text, left, top }: { text: string; left: string; top: strin
     <div style={{
       position: 'absolute', left, top, pointerEvents: 'none',
       fontSize: 9, fontWeight: 700, letterSpacing: '0.10em',
-      textTransform: 'uppercase', color: '#2a2a4a',
+      textTransform: 'uppercase', color: 'var(--text-dim)',
     }}>
       {text}
     </div>
@@ -704,8 +713,8 @@ function DotSvg({ color }: { color: string }) {
   );
 }
 
-function ViewLegend({ fyFrontColor, fyRearColor, balance }: {
-  fyFrontColor: string; fyRearColor: string; balance: Balance;
+function ViewLegend({ fyFrontColor, fyRearColor, balance, darkMode = true }: {
+  fyFrontColor: string; fyRearColor: string; balance: Balance; darkMode?: boolean;
 }) {
   const balanceNote =
     balance === 'understeer' ? 'front harder' :
@@ -715,14 +724,14 @@ function ViewLegend({ fyFrontColor, fyRearColor, balance }: {
   return (
     <div style={{
       position: 'absolute', bottom: 0, left: 0, width: '60%',
-      background: 'rgba(10,10,18,0.75)',
-      borderTop: '1px solid #1e1e2e',
+      background: darkMode ? 'rgba(10,10,18,0.85)' : 'rgba(242,242,250,0.90)',
+      borderTop: '1px solid var(--border-subtle)',
       padding: '5px 12px',
       display: 'flex', flexDirection: 'row', alignItems: 'center',
       gap: 16, flexWrap: 'wrap',
       pointerEvents: 'none',
     }}>
-      <span style={{ fontSize: 9, color: '#2a2a4a', textTransform: 'uppercase', letterSpacing: '0.08em', flexShrink: 0 }}>
+      <span style={{ fontSize: 9, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.08em', flexShrink: 0 }}>
         Legend
       </span>
       <LegendItem icon={<ArrowSvg color="#22d3ee" />} label="Wheel heading" />
@@ -740,7 +749,7 @@ function LegendItem({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
       {icon}
-      <span style={{ fontSize: 9, color: '#7070a0' }}>{label}</span>
+      <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>{label}</span>
     </div>
   );
 }

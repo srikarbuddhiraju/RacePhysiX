@@ -11,8 +11,8 @@
 .results-panel {
   width: 280px;
   min-width: 280px;
-  background: #13131c;
-  border-left: 1px solid #2a2a3a;
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border);
   padding: 20px 16px;
   display: flex;
   flex-direction: column;
@@ -48,33 +48,33 @@
 }
 
 .metric {
-  background: #0c0c14;
+  background: var(--bg-card);
   border-radius: 6px;
   padding: 8px 10px;
-  border: 1px solid #1e1e2e;
+  border: 1px solid var(--border-subtle);
 }
 
 .metric--highlight {
-  border-color: #3a3a5a;
+  border-color: var(--border-mid);
 }
 
 .metric-value {
   font-size: 16px;
   font-weight: 600;
-  color: #c0c0e0;
+  color: var(--text-primary);
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
 }
 
 .metric-sub {
   font-size: 10px;
-  color: #5a5a7a;
+  color: var(--text-muted);
   margin-bottom: 2px;
 }
 
 .metric-label {
   font-size: 10px;
-  color: #4a4a6a;
+  color: var(--text-faint);
   margin-top: 2px;
   line-height: 1.3;
 }
@@ -86,8 +86,8 @@
 
 .force-item {
   flex: 1;
-  background: #0c0c14;
-  border: 1px solid #1e1e2e;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
   border-radius: 6px;
   padding: 8px 10px;
   display: flex;
@@ -97,12 +97,12 @@
 
 .force-label {
   font-size: 10px;
-  color: #4a4a6a;
+  color: var(--text-faint);
 }
 
 .force-value {
   font-size: 14px;
   font-weight: 600;
-  color: #c0c0e0;
+  color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
