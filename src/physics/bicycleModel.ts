@@ -37,9 +37,11 @@ export function computeBicycleModel(params: VehicleParams): PhysicsResult {
   const a = L - b;                     // m, CG to front axle
 
   // ── Understeer gradient ───────────────────────────────────────────────────
-  // K = (m / L²) × (b/Cαf − a/Cαr),  Cαf = Cαr = Cα
+  // Derived from δ = L/R + αf − αr, substituting αf = m·ay·b/(L·Cα), αr = m·ay·a/(L·Cα)
+  // → K = (m / L) × (b − a) / Cα   [rad/(m/s²)]
+  // Gillespie eq.6.15: K [deg/g] = Wf/Cαf − Wr/Cαr  — equivalent form.
   // K > 0: understeer, K < 0: oversteer, K = 0: neutral
-  const K = (mass / (L * L)) * ((b - a) / Cα); // rad/(m/s²)
+  const K = (mass / L) * ((b - a) / Cα); // rad/(m/s²)
   const underSteerGradientDegPerG = K * G * RAD_TO_DEG;
 
   // ── Lateral acceleration (circular motion) ────────────────────────────────

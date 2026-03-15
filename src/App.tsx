@@ -12,7 +12,7 @@ const DEFAULT_PARAMS: VehicleParams = {
   frontWeightFraction: 0.55,    // 55% front
   corneringStiffnessNPerDeg: 500, // N/deg per axle
   cgHeight: 0.55,               // m
-  turnRadius: 50,               // m
+  turnRadius: 200,              // m — 0.25g at 80 km/h, within linear model range
   speedKph: 80,                 // km/h
 };
 

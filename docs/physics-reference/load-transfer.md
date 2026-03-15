@@ -109,7 +109,7 @@ minimising load transfer (low CG, wide track) directly improves the lateral acce
 
 Balance depends on front vs rear effective cornering stiffness:
 ```
-K = (m/L²) × (b/Cαf - a/Cαr)     [understeer gradient]
+K = (m/L) × (b/Cαf - a/Cαr)      [understeer gradient, rad/(m/s²)]
 ```
 
 As speed rises → ay rises → lateral load transfer increases → due to Pacejka saturation:

@@ -118,11 +118,20 @@ The `L/R` term is the Ackermann (kinematic) steer; `K · a_y` is the dynamic cor
 
 ## 7. Understeer Gradient
 
+Derived from substituting αf = m·ay·b/(L·Cα) and αr = m·ay·a/(L·Cα) into δ = L/R + αf − αr:
+
 ```
-K = (m / L²) · (b/Cαf - a/Cαr)          [rad / (m/s²)]
+K = (m / L) · (b/Cαf - a/Cαr)          [rad / (m/s²)]
 ```
 
-Equivalently per g: `K_g = K · g   [rad/g]`
+Equivalently per g: `K [deg/g] = K · g · RAD_TO_DEG`
+
+**Gillespie eq.6.15 form** (identical, different units):
+```
+K [deg/g] = Wf/Cαf - Wr/Cαr   where Wf,Wr in N and Cα in N/deg
+```
+Note: Gillespie uses b = CG to FRONT axle, c = CG to REAR axle (opposite to ApexSim convention).
+ApexSim: b = CG to rear (= frontWeightFraction × L), a = CG to front. See vehicle-geometry.md §2.
 
 | Condition | K value | Behaviour |
 |-----------|---------|-----------|
