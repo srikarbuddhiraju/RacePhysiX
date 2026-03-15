@@ -15,7 +15,9 @@ import { computeBicycleModel } from './bicycleModel';
 import { computeSuspension, computeRollAngle } from './suspension';
 import { computeAero } from './aero';
 import { computeBraking } from './braking';
-import type { VehicleParams } from './types';
+import { runSimulation } from './dynamics14dof';
+import { SCENARIOS } from './scenarios';
+import type { VehicleParams, PacejkaCoeffs } from './types';
 
 const PASS = '\x1b[32mPASS\x1b[0m';
 const FAIL = '\x1b[31mFAIL\x1b[0m';
@@ -273,12 +275,81 @@ console.log('\nCheck 7 — Stage 5 Braking (bias distribution, no-ABS regime)');
   console.log(`  ABS activation test: front=${brkABS.absActiveFront}, rear=${brkABS.absActiveRear}`);
 }
 
+// ─── Default Pacejka coefficients (road-performance preset) ──────────────────
+const COEFFS: PacejkaCoeffs = { B: 11.5, C: 1.28, peakMu: 1.20, E: -1.5 };
+
+// ─── Check 8: Step steer — steady-state circular motion (ψ̇ ≈ Vx / R) ─────────
+// Use a neutral-steer vehicle (50/50 weight).  Throttle causes Vx to evolve,
+// so compare ψ̇_final against Vx_final/R (not the initial Vx/R) — this tests
+// that the integrator reaches coherent circular motion, not a specific speed.
+// Tolerance 10% accounts for sideslip angle and Pacejka nonlinearity.
+console.log('\nCheck 8 — Stage 8: Step steer — steady circular motion ψ̇ ≈ Vx_final/R');
+{
+  const neutralParams = { ...BASE, frontWeightFraction: 0.50 };
+  const stepScenario  = SCENARIOS.find(s => s.id === 'step_steer')!;
+  const results       = runSimulation(neutralParams, COEFFS, stepScenario);
+
+  const tail      = results.slice(-20);
+  const avgPsiDot = tail.reduce((sum, r) => sum + r.state.psiDot, 0) / tail.length;
+  const avgVx     = tail.reduce((sum, r) => sum + r.state.Vx,     0) / tail.length;
+  const psiSS_dyn = avgVx / neutralParams.turnRadius;   // ψ̇_expected from current speed
+  const relErr    = Math.abs(avgPsiDot - psiSS_dyn) / Math.max(psiSS_dyn, 0.001);
+
+  console.log(`  avg Vx = ${avgVx.toFixed(2)} m/s,  Vx/R = ${psiSS_dyn.toFixed(4)} rad/s,  avg ψ̇ = ${avgPsiDot.toFixed(4)} rad/s,  err = ${(relErr*100).toFixed(2)}%`);
+  allPassed = check('ψ̇ / (Vx/R) within 10%', relErr, 0, 0.10) && allPassed;
+}
+
+// ─── Check 9: Neutral steer — front/rear avg slip angles balance ──────────────
+// At 50/50 weight distribution the front and rear slip angles should be
+// roughly equal in magnitude (within 20%) in the steady-state portion of
+// a step steer.
+console.log('\nCheck 9 — Stage 8: Neutral steer — front/rear slip angles balance');
+{
+  const neutralParams = { ...BASE, frontWeightFraction: 0.50 };
+  const stepScenario  = SCENARIOS.find(s => s.id === 'step_steer')!;
+  const results       = runSimulation(neutralParams, COEFFS, stepScenario);
+
+  const tail = results.slice(-20);
+  const avgAlphaF = tail.reduce((sum, r) => sum + Math.abs(r.slipAngle[0] + r.slipAngle[1]) / 2, 0) / tail.length;
+  const avgAlphaR = tail.reduce((sum, r) => sum + Math.abs(r.slipAngle[2] + r.slipAngle[3]) / 2, 0) / tail.length;
+
+  const ratio = avgAlphaF > 0 && avgAlphaR > 0 ? Math.abs(avgAlphaF - avgAlphaR) / Math.max(avgAlphaF, avgAlphaR) : 1;
+  console.log(`  avg |αF| = ${(avgAlphaF * 180/Math.PI).toFixed(3)}°,  avg |αR| = ${(avgAlphaR * 180/Math.PI).toFixed(3)}°,  ratio diff = ${(ratio*100).toFixed(1)}%`);
+  allPassed = check('neutral: front/rear slip balance within 20%', ratio, 0, 0.20) && allPassed;
+}
+
+// ─── Check 10: Sine sweep — peak |ay| occurs in 0.5–3.0 Hz band ──────────────
+// For the default vehicle the natural frequency is ~1–2 Hz.
+// We scan the sine-sweep results and find the frequency where |ay| is maximum.
+// Expected: frequency at peak |ay| is between 0.5 and 3.0 Hz.
+console.log('\nCheck 10 — Stage 8: Sine sweep — resonant frequency 0.5–3.0 Hz');
+{
+  const sweepScenario = SCENARIOS.find(s => s.id === 'sine_sweep')!;
+  const results       = runSimulation(BASE, COEFFS, sweepScenario);
+
+  // Instantaneous frequency at each sample: f(t) = 0.2 + 3.8*(t/30)
+  let maxAy   = 0;
+  let peakHz  = 0;
+  for (const r of results) {
+    const absAy = Math.abs(r.ay);
+    if (absAy > maxAy) {
+      maxAy  = absAy;
+      peakHz = 0.2 + 3.8 * (r.t / 30);
+    }
+  }
+
+  console.log(`  Peak |ay| = ${(maxAy / G).toFixed(3)} g  at f = ${peakHz.toFixed(2)} Hz`);
+  const inBand = peakHz >= 0.5 && peakHz <= 3.0;
+  allPassed = check('peak |ay| frequency in 0.5–3.0 Hz', inBand ? 1 : 0, 1) && allPassed;
+}
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 console.log('\n' + '─'.repeat(55));
 if (allPassed) {
   console.log('\x1b[32mAll checks passed.\x1b[0m');
-  console.log('Checks 1–3: algebraic self-consistency (first principles).');
-  console.log('Check 4: matches Gillespie Ch.6 eq.6.15/6.16 exactly.');
+  console.log('Checks 1–3:  algebraic self-consistency (first principles).');
+  console.log('Check  4:    matches Gillespie Ch.6 eq.6.15/6.16 exactly.');
+  console.log('Checks 8–10: Stage 8 time-domain simulation (step steer, neutral steer, sine sweep).');
 } else {
   console.log('\x1b[31mOne or more checks FAILED.\x1b[0m');
   process.exit(1);
