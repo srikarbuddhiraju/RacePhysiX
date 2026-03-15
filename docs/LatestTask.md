@@ -1,37 +1,38 @@
 # Latest Task — ApexSim
 
-Rolling log. Trim oldest entries as new sessions are added.
+Rolling log. 200-line limit — trim oldest entries as sessions accumulate.
 
 ---
 
-## Session 1 — 2026-03-15
+## Session 2 — 2026-03-15  |  branch: `feature/stage3-load-transfer-drivetrain`
 
-### Status: Complete — v0.1 committed on feature/v0.1-scaffold
+### Status: IN PROGRESS — Stage 3
 
 ### Done this session
-- Researched GitHub landscape — confirmed ApexSim fills an unoccupied gap
-- Named project: ApexSim
-- Created GitHub repo: https://github.com/srikarbuddhiraju/ApexSim
-- Initialised local repo at `/home/srikarbuddhiraju/Srikar/Repo/ApexSim`
-- Wrote `CLAUDE.md` (adapted from Panchangam, ApexSim-specific physics rules added)
-- Wrote `docs/lessons.md`
-- Wrote `docs/ConvoQAClaude.md`
-- Wrote `docs/LatestTask.md` (this file)
-- Physics reference docs being written by parallel agents:
-  - mechanics-fundamentals.md
-  - vehicle-geometry.md
-  - bicycle-model.md
-  - tyre-pacejka.md
-  - load-transfer.md
+- Stages 1+2 committed to main (c6549a9)
+- Multi-view canvas: top-down + chase cam, vehicle class silhouettes
+- Branching convention established — see memory/feedback_branching.md
 
-### Pending — next session
-- [ ] Merge feature/v0.1-scaffold → main and push to GitHub
-- [ ] Set GitHub repo topics
-- [ ] Physics validation: test with Milliken reference values
-- [ ] Add slip angle warning to Three.js scene (visual, not just text)
-- [ ] Decide next: Pacejka Stage 2 or improve visualisation first
+### Stage 3 checklist
+- [ ] 3a Lateral load transfer — per-corner Fz via nonlinear per-tyre Pacejka sum
+- [ ] 3b Longitudinal load transfer — weight shift under throttle/braking
+- [ ] 3c Combined slip (friction ellipse) — Fx reduces Fy on driven axles
+- [ ] 3d Drivetrain (FWD/RWD/AWD/AWD_TV) + torque vectoring
+- [ ] UI drivetrain section in ParameterPanel
+- [ ] ResultsPanel Stage 3 outputs
+- [ ] tsc clean + validate
 
-### Key Findings
-- Tech stack: TypeScript + React + Three.js confirmed. Build tool TBD.
-- Physics validation standard: Milliken (textbook) + real-world data (both required)
-- No competitors in browser-based physics-correct vehicle dynamics space
+### Key physics decisions
+- Per-axle solver sums Fy_outer + Fy_inner — nonlinearity from Pacejka curve shape
+- Combined slip applied per-tyre in bisection solver (friction ellipse scaling peakMu_eff)
+- TV: tvBias ∝ slipAngleDiffDeg clamped ±0.8, Mz = FxRear × tvBias × TW/2
+
+---
+
+## Session 1 — 2026-03-15 | main
+
+### Status: Complete — c6549a9
+
+Scaffold, bicycle model (validated Gillespie), Pacejka Stage 2, tyre presets,
+charts (TyreCurveChart + HandlingDiagram), ParameterPanel sliders, InfoTooltips,
+TopDownView multi-view + vehicle silhouettes.

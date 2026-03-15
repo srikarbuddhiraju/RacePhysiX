@@ -88,3 +88,69 @@ export function solveSlipAngle(
   }
   return (lo + hi) * 0.5;
 }
+
+/**
+ * Per-axle slip angle solver with lateral load transfer + combined slip.
+ *
+ * Models both tyres on an axle separately (FzOuter / FzInner after lateral
+ * load transfer).  Combined slip via the friction ellipse:
+ *
+ *   FyAvail_tyre(α) = Fy_pacejka(α, Fz, B, C, peakMu_eff, E)
+ *   where peakMu_eff = peakMu × √(1 − (Fx_per_tyre / Fx_max_tyre)²)
+ *
+ * The naturally different Fz values on inside/outside tyres mean the two
+ * Pacejka curves differ, capturing load-transfer sensitivity without needing
+ * an explicit degressive-μ model.
+ *
+ * @param FyRequired   Target combined lateral force for this axle [N] (≥ 0)
+ * @param FzOuter      Normal load on the outside (higher-loaded) tyre [N]
+ * @param FzInner      Normal load on the inside (lighter) tyre [N]
+ * @param FxAxle       Total longitudinal drive/brake force on this axle [N]
+ * @returns            Slip angle [rad]
+ */
+export function solveSlipAngleTyreAxle(
+  FyRequired: number,
+  FzOuter: number,
+  FzInner: number,
+  FxAxle: number,
+  B: number,
+  C: number,
+  peakMu: number,
+  E: number,
+): number {
+  const FxPerTyre = FxAxle / 2;
+
+  // Effective peak mu after friction ellipse for each tyre
+  const ellipseScale = (Fz: number) => {
+    const FxMax = Math.max(peakMu * Fz, 1);   // avoid /0
+    const ratio = Math.min(Math.abs(FxPerTyre) / FxMax, 0.98);
+    return Math.sqrt(1 - ratio * ratio);
+  };
+
+  const peakMuOuter = peakMu * ellipseScale(FzOuter);
+  const peakMuInner = peakMu * ellipseScale(FzInner);
+
+  // Combined Fy for this axle at a given slip angle
+  const getFyAxle = (alpha: number): number =>
+    pacejkaFy(alpha, FzOuter, B, C, peakMuOuter, E) +
+    pacejkaFy(alpha, FzInner, B, C, peakMuInner, E);
+
+  // Scan for peak alpha (combined from both tyres)
+  let maxFy = 0, peakAlpha = 0.01;
+  for (let alpha = 0.01; alpha <= 0.45; alpha += 0.002) {
+    const Fy = getFyAxle(alpha);
+    if (Fy > maxFy) { maxFy = Fy; peakAlpha = alpha; }
+    else if (Fy < maxFy - 150) break;   // well past peak
+  }
+
+  if (FyRequired >= maxFy) return peakAlpha;   // saturated
+
+  // Bisection
+  let lo = 0, hi = peakAlpha;
+  for (let i = 0; i < 50; i++) {
+    const mid = (lo + hi) * 0.5;
+    if (getFyAxle(mid) < FyRequired) lo = mid;
+    else                             hi = mid;
+  }
+  return (lo + hi) * 0.5;
+}

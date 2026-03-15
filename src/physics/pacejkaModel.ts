@@ -1,164 +1,167 @@
 /**
- * Pacejka tyre model — steady-state constant radius corner.
+ * Pacejka tyre model — Stage 3: load transfer + drivetrain + combined slip.
  *
- * Uses the Magic Formula (pacejka.ts) to compute realistic slip angles and
- * lateral forces. Generates pre-computed chart data for the tyre curve and
- * handling diagram.
- *
- * Assumptions (same as bicycle model plus):
- *  - No load transfer: axle Fz fixed at static value (no lateral/longitudinal transfer)
- *  - Same B, C, peakMu, E for front and rear (v0.1 simplification)
- *  - Pure lateral cornering: no brake/traction forces
- *
- * Reference: docs/physics-reference/tyre-pacejka.md
- *            docs/physics-reference/bicycle-model.md
+ * Computation order:
+ *  1. ay = V²/R  (fixed by scenario)
+ *  2. Drivetrain pass 0 — initial Fx estimate with static Fz
+ *  3. ax from Fx/mass → longitudinal load transfer
+ *  4. Load transfer (lat + long) → per-corner Fz
+ *  5. Drivetrain pass 1 — refined Fx + TV moment using updated Fz + slip diff
+ *  6. Slip angles via solveSlipAngleTyreAxle (per-corner + friction ellipse)
+ *  7. Balance, utilisation, chart data
  */
 
-import { pacejkaFy, solveSlipAngle } from './pacejka';
+import { pacejkaFy, solveSlipAngleTyreAxle } from './pacejka';
+import { computeLoadTransfer }                from './loadTransfer';
+import { computeDrivetrain }                  from './drivetrain';
 import type { VehicleParams, PacejkaCoeffs, PacejkaResult, TyreCurvePoint, HandlingPoint } from './types';
 
-const G           = 9.81;
-const RAD_TO_DEG  = 180 / Math.PI;
-const DEG_TO_RAD  = Math.PI / 180;
+const G          = 9.81;
+const RAD_TO_DEG = 180 / Math.PI;
+const DEG_TO_RAD = Math.PI / 180;
 
 export const DEFAULT_PACEJKA_COEFFS: PacejkaCoeffs = {
-  B:      10.0,   // stiffness factor [1/rad]
-  C:      1.30,   // shape factor
-  peakMu: 1.20,   // peak friction coefficient — D = 1.2 × Fz (typical passenger car)
-  E:     -1.50,   // curvature factor
+  B:      10.0,
+  C:      1.30,
+  peakMu: 1.20,
+  E:     -1.50,
 };
 
-// Threshold for neutral steer classification (deg)
 const NEUTRAL_THRESHOLD_DEG = 0.1;
 
-// ─── Tyre curve sweep ────────────────────────────────────────────────────────
-
-function buildCurveData(
-  FzFront: number,
-  FzRear:  number,
+// Both-axle tyre curve using per-corner Fz (pure lateral, no Fx)
+function buildCurveDataBoth(
+  FzFO: number, FzFI: number,
+  FzRO: number, FzRI: number,
   B: number, C: number, peakMu: number, E: number,
 ): TyreCurvePoint[] {
-  const points: TyreCurvePoint[] = [];
+  const pts: TyreCurvePoint[] = [];
   for (let alphaDeg = -15; alphaDeg <= 15.001; alphaDeg += 0.2) {
     const alpha_rad = alphaDeg * DEG_TO_RAD;
-    points.push({
+    pts.push({
       alphaDeg:  Math.round(alphaDeg * 10) / 10,
-      FyFrontKN: pacejkaFy(alpha_rad, FzFront, B, C, peakMu, E) / 1000,
-      FyRearKN:  pacejkaFy(alpha_rad, FzRear,  B, C, peakMu, E) / 1000,
+      FyFrontKN: (pacejkaFy(alpha_rad, FzFO, B, C, peakMu, E) +
+                  pacejkaFy(alpha_rad, FzFI, B, C, peakMu, E)) / 1000,
+      FyRearKN:  (pacejkaFy(alpha_rad, FzRO, B, C, peakMu, E) +
+                  pacejkaFy(alpha_rad, FzRI, B, C, peakMu, E)) / 1000,
     });
   }
-  return points;
+  return pts;
 }
 
-// ─── Handling diagram sweep ──────────────────────────────────────────────────
-
+// Handling curve — sweeps ay with fixed Fx (constant throttle)
 function buildHandlingCurve(
-  mass: number,
-  a: number,
-  b: number,
-  FzFront: number,
-  FzRear:  number,
+  params: VehicleParams,
   B: number, C: number, peakMu: number, E: number,
-  L: number,
+  FxFront_fixed: number,
+  FxRear_fixed:  number,
 ): HandlingPoint[] {
-  const points: HandlingPoint[] = [];
+  const { mass, wheelbase: L, frontWeightFraction, cgHeight: hCG, trackWidth: TW } = params;
+  const b = frontWeightFraction * L;
+  const a = L - b;
+  const ayLimitMs2 = peakMu * G * 0.97;
+  const ax_ms2     = (FxFront_fixed + FxRear_fixed) / mass;
+  const pts: HandlingPoint[] = [];
 
-  // Limit: ay at which either axle saturates = peakMu × g
-  // (Both axles saturate at the same ay for equal peakMu, as static Fz scales linearly with b/L and a/L)
-  const ayLimitMs2 = peakMu * G * 0.97; // stay 3% below limit for numerical safety
-  const N_STEPS    = 100;
-
-  for (let i = 0; i <= N_STEPS; i++) {
-    const ay_ms2    = (i / N_STEPS) * ayLimitMs2;
-    const ayG       = ay_ms2 / G;
-
-    const FyFrontReq = mass * ay_ms2 * (b / L);  // moment equilibrium
-    const FyRearReq  = mass * ay_ms2 * (a / L);
-
-    const alphaF_rad = solveSlipAngle(FyFrontReq, FzFront, B, C, peakMu, E);
-    const alphaR_rad = solveSlipAngle(FyRearReq,  FzRear,  B, C, peakMu, E);
-
-    const steerCorrDeg = (alphaF_rad - alphaR_rad) * RAD_TO_DEG;
-
-    points.push({ ayG: Math.round(ayG * 1000) / 1000, steerCorrDeg: Math.round(steerCorrDeg * 10000) / 10000 });
+  for (let i = 0; i <= 100; i++) {
+    const ay_ms2 = (i / 100) * ayLimitMs2;
+    const lt = computeLoadTransfer(
+      { mass, wheelbase: L, cgHeight: hCG, trackWidth: TW, frontWeightFraction },
+      ay_ms2, ax_ms2,
+    );
+    const FyFReq = mass * ay_ms2 * (b / L);
+    const FyRReq = mass * ay_ms2 * (a / L);
+    const aF = solveSlipAngleTyreAxle(FyFReq, lt.FzFR, lt.FzFL, FxFront_fixed, B, C, peakMu, E);
+    const aR = solveSlipAngleTyreAxle(FyRReq, lt.FzRR, lt.FzRL, FxRear_fixed,  B, C, peakMu, E);
+    const steerCorrDeg = (aF - aR) * RAD_TO_DEG;
+    pts.push({ ayG: Math.round(ay_ms2 / G * 1000) / 1000, steerCorrDeg: Math.round(steerCorrDeg * 1e4) / 1e4 });
   }
-
-  return points;
+  return pts;
 }
 
-// ─── Main function ───────────────────────────────────────────────────────────
-
-export function computePacejkaModel(
-  params: VehicleParams,
-  coeffs: PacejkaCoeffs,
-): PacejkaResult {
-  const {
-    mass,
-    wheelbase: L,
-    frontWeightFraction,
-    turnRadius: R,
-    speedKph,
-  } = params;
+export function computePacejkaModel(params: VehicleParams, coeffs: PacejkaCoeffs): PacejkaResult {
+  const { mass, wheelbase: L, frontWeightFraction, turnRadius: R, speedKph, cgHeight: hCG, trackWidth: TW } = params;
   const { B, C, peakMu, E } = coeffs;
 
   const speedMs = speedKph / 3.6;
-
-  // ── Geometry (identical to bicycleModel.ts) ───────────────────────────────
-  const b = frontWeightFraction * L;   // CG to rear axle
-  const a = L - b;                     // CG to front axle
-
-  // ── Per-axle normal loads (static, no load transfer) ─────────────────────
-  const FzFrontN = mass * G * (b / L);   // front axle load [N]
-  const FzRearN  = mass * G * (a / L);   // rear axle load  [N]
-
-  // ── Lateral acceleration (circular motion) ────────────────────────────────
-  const ay_ms2            = (speedMs * speedMs) / R;
+  const b = frontWeightFraction * L;
+  const a = L - b;
+  const ay_ms2             = (speedMs * speedMs) / R;
   const lateralAccelerationG = ay_ms2 / G;
+  const FzFront_s = mass * G * (b / L);
+  const FzRear_s  = mass * G * (a / L);
 
-  // ── Required axle lateral forces (moment equilibrium) ────────────────────
-  const frontLateralForceN = mass * ay_ms2 * (b / L);
-  const rearLateralForceN  = mass * ay_ms2 * (a / L);
+  // Pass 0: drivetrain with static Fz
+  const dt0 = computeDrivetrain({
+    drivetrainType: params.drivetrainType, throttlePercent: params.throttlePercent,
+    enginePowerKW: params.enginePowerKW, awdFrontBias: params.awdFrontBias,
+    mass, speedMs, peakMu, FzFrontAxle: FzFront_s, FzRearAxle: FzRear_s,
+    trackWidth: TW, slipAngleDiffDeg: 0,
+  });
 
-  // ── Slip angles: invert Pacejka curve ────────────────────────────────────
-  const frontSlipAngleRad = solveSlipAngle(frontLateralForceN, FzFrontN, B, C, peakMu, E);
-  const rearSlipAngleRad  = solveSlipAngle(rearLateralForceN,  FzRearN,  B, C, peakMu, E);
+  // Load transfer
+  const lt = computeLoadTransfer(
+    { mass, wheelbase: L, cgHeight: hCG, trackWidth: TW, frontWeightFraction },
+    ay_ms2, dt0.ax_ms2,
+  );
+
+  // Quick slip angle estimate for TV
+  const FyFReq0 = mass * ay_ms2 * (b / L);
+  const FyRReq0 = mass * ay_ms2 * (a / L);
+  const aF0 = solveSlipAngleTyreAxle(FyFReq0, lt.FzFR, lt.FzFL, dt0.FxFront, B, C, peakMu, E);
+  const aR0 = solveSlipAngleTyreAxle(FyRReq0, lt.FzRR, lt.FzRL, dt0.FxRear,  B, C, peakMu, E);
+  const slipDiff0 = (aF0 - aR0) * RAD_TO_DEG;
+
+  // Pass 1: drivetrain with updated Fz + slip diff for TV
+  const dt = computeDrivetrain({
+    drivetrainType: params.drivetrainType, throttlePercent: params.throttlePercent,
+    enginePowerKW: params.enginePowerKW, awdFrontBias: params.awdFrontBias,
+    mass, speedMs, peakMu, FzFrontAxle: lt.FzFrontAxle, FzRearAxle: lt.FzRearAxle,
+    trackWidth: TW, slipAngleDiffDeg: slipDiff0,
+  });
+
+  // Final slip angles
+  const FyFrontReq = mass * ay_ms2 * (b / L);
+  const FyRearReq  = mass * ay_ms2 * (a / L);
+  const frontSlipAngleRad = solveSlipAngleTyreAxle(FyFrontReq, lt.FzFR, lt.FzFL, dt.FxFront, B, C, peakMu, E);
+  const rearSlipAngleRad  = solveSlipAngleTyreAxle(FyRearReq,  lt.FzRR, lt.FzRL, dt.FxRear,  B, C, peakMu, E);
 
   const frontSlipAngleDeg = frontSlipAngleRad * RAD_TO_DEG;
   const rearSlipAngleDeg  = rearSlipAngleRad  * RAD_TO_DEG;
   const slipAngleDiffDeg  = frontSlipAngleDeg - rearSlipAngleDeg;
-
-  // ── Balance ───────────────────────────────────────────────────────────────
   const balance =
     Math.abs(slipAngleDiffDeg) < NEUTRAL_THRESHOLD_DEG ? 'neutral' :
     slipAngleDiffDeg > 0 ? 'understeer' : 'oversteer';
 
-  // ── Tyre utilisation ──────────────────────────────────────────────────────
-  const frontUtilisation = frontLateralForceN / (peakMu * FzFrontN);
-  const rearUtilisation  = rearLateralForceN  / (peakMu * FzRearN);
+  const frontUtilisation = FyFrontReq / Math.max(peakMu * lt.FzFrontAxle, 1);
+  const rearUtilisation  = FyRearReq  / Math.max(peakMu * lt.FzRearAxle,  1);
+  const frontCombinedUtil = Math.min(1, Math.hypot(
+    FyFrontReq / Math.max(peakMu * lt.FzFrontAxle, 1),
+    dt.FxFront / Math.max(peakMu * lt.FzFrontAxle, 1),
+  ));
+  const rearCombinedUtil = Math.min(1, Math.hypot(
+    FyRearReq  / Math.max(peakMu * lt.FzRearAxle, 1),
+    dt.FxRear  / Math.max(peakMu * lt.FzRearAxle, 1),
+  ));
 
-  // ── Operating-point overlays for chart ───────────────────────────────────
-  const frontOpFyKN = frontLateralForceN / 1000;
-  const rearOpFyKN  = rearLateralForceN  / 1000;
-
-  // ── Pre-computed chart data ───────────────────────────────────────────────
-  const curveData     = buildCurveData(FzFrontN, FzRearN, B, C, peakMu, E);
-  const handlingCurve = buildHandlingCurve(mass, a, b, FzFrontN, FzRearN, B, C, peakMu, E, L);
+  const curveData     = buildCurveDataBoth(lt.FzFR, lt.FzFL, lt.FzRR, lt.FzRL, B, C, peakMu, E);
+  const handlingCurve = buildHandlingCurve(params, B, C, peakMu, E, dt.FxFront, dt.FxRear);
 
   return {
     a, b,
-    FzFrontN, FzRearN,
+    FzFrontN: lt.FzFrontAxle, FzRearN: lt.FzRearAxle,
+    FzFL: lt.FzFL, FzFR: lt.FzFR, FzRL: lt.FzRL, FzRR: lt.FzRR,
+    latTransferFront: lt.latTransferFront, latTransferRear: lt.latTransferRear,
+    longTransfer: lt.longTransfer,
+    driveForceN: dt.driveForceN, ax_ms2: dt.ax_ms2, FxFront: dt.FxFront, FxRear: dt.FxRear,
+    tvYawMoment: dt.tvYawMoment,
     frontSlipAngleDeg, rearSlipAngleDeg, slipAngleDiffDeg,
-    frontLateralForceN, rearLateralForceN,
-    lateralAccelerationG,
-    balance,
-    curveData,
-    handlingCurve,
-    frontOpAlphaDeg: frontSlipAngleDeg,
-    frontOpFyKN,
-    rearOpAlphaDeg:  rearSlipAngleDeg,
-    rearOpFyKN,
-    frontUtilisation,
-    rearUtilisation,
+    frontLateralForceN: FyFrontReq, rearLateralForceN: FyRearReq,
+    lateralAccelerationG, balance,
+    frontUtilisation, rearUtilisation, frontCombinedUtil, rearCombinedUtil,
+    curveData, handlingCurve,
+    frontOpAlphaDeg: frontSlipAngleDeg, frontOpFyKN: FyFrontReq / 1000,
+    rearOpAlphaDeg: rearSlipAngleDeg,   rearOpFyKN:  FyRearReq  / 1000,
     speedMs,
   };
 }
