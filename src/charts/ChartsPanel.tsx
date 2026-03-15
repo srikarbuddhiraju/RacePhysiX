@@ -12,6 +12,7 @@ import { HandlingDiagram } from './HandlingDiagram';
 import { InfoTooltip }     from '../components/InfoTooltip';
 import type { PacejkaResult, PhysicsResult, PacejkaCoeffs, VehicleParams, VehicleClass } from '../physics/types';
 import './ChartsPanel.css';
+import { LapTimePanel } from '../components/LapTimePanel';
 
 // ─── Tyre presets ──────────────────────────────────────────────────────────────
 
@@ -153,7 +154,7 @@ export function ChartsPanel({
   coeffs, onCoeffsChange,
   params, onParamsChange,
 }: Props) {
-  const [activeTab, setActiveTab]       = useState<'presets' | 'advanced'>('presets');
+  const [activeTab, setActiveTab]       = useState<'presets' | 'advanced' | 'laptime'>('presets');
   const [selectedPreset, setSelected]   = useState<string>('road-standard');
 
   const categoryToClass = (cat: TyrePreset['category']): VehicleClass =>
@@ -199,10 +200,16 @@ export function ChartsPanel({
           >
             Advanced
           </button>
+          <button
+            className={`ctrl-tab ${activeTab === 'laptime' ? 'active' : ''}`}
+            onClick={() => setActiveTab('laptime')}
+          >
+            Lap Time
+          </button>
         </div>
 
-        {/* Tab content */}
-        {activeTab === 'presets' ? (
+        {/* Tab content — hidden when Lap Time tab active (lap time takes full area) */}
+        {activeTab === 'presets' && (
           <PresetsTab
             presets={PRESETS}
             selectedId={selectedPreset}
@@ -211,7 +218,8 @@ export function ChartsPanel({
             tyreSectionWidth={params.tyreSectionWidth}
             coeffs={coeffs}
           />
-        ) : (
+        )}
+        {activeTab === 'advanced' && (
           <AdvancedTab
             coeffs={coeffs}
             setCoeff={setCoeff}
@@ -223,11 +231,15 @@ export function ChartsPanel({
         )}
       </div>
 
-      {/* ── Charts ────────────────────────────────────────────────────────── */}
-      <div className="charts-grid">
-        <TyreCurveChart result={pacejka} />
-        <HandlingDiagram pacejka={pacejka} bicycle={bicycle} />
-      </div>
+      {/* ── Charts or Lap Time ────────────────────────────────────────────── */}
+      {activeTab === 'laptime' ? (
+        <LapTimePanel params={params} coeffs={coeffs} />
+      ) : (
+        <div className="charts-grid">
+          <TyreCurveChart result={pacejka} />
+          <HandlingDiagram pacejka={pacejka} bicycle={bicycle} />
+        </div>
+      )}
 
     </div>
   );

@@ -175,3 +175,33 @@ input[type='range']::-webkit-slider-thumb:hover {
   border-color: var(--accent);
   color: var(--accent-text);
 }
+
+/* ── Panel tabs (Vehicle / Suspension / Aero) ────────────────────────────── */
+
+.param-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+  margin-bottom: 8px;
+}
+
+.param-tab {
+  padding: 5px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.param-tab:hover { background: var(--bg-active); color: var(--text-hover); }
+
+.param-tab--active {
+  background: var(--bg-active);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}

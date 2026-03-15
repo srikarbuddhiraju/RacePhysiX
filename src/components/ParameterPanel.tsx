@@ -3,6 +3,9 @@ import type { VehicleParams, DrivetrainType } from '../physics/types';
 import { InfoTooltip } from './InfoTooltip';
 import './ParameterPanel.css';
 
+// ── Tab type ─────────────────────────────────────────────────────────────────
+type PanelTab = 'vehicle' | 'suspension' | 'aero';
+
 // ── Power unit helpers ────────────────────────────────────────────────────────
 type PowerUnit = 'kW' | 'BHP' | 'PS';
 const toKW   = (v: number, u: PowerUnit) => u === 'BHP' ? v / 1.34102 : u === 'PS' ? v / 1.35962 : v;
@@ -98,97 +101,134 @@ const SLIDERS: SliderConfig[] = [
 
 export function ParameterPanel({ params, onChange }: Props) {
   const [powerUnit, setPowerUnit] = useState<PowerUnit>('kW');
+  const [tab, setTab] = useState<PanelTab>('vehicle');
 
   const set = (key: keyof VehicleParams, value: number) => {
     onChange({ ...params, [key]: value });
   };
 
   // Derived display values
-  const speedMs     = (params.speedKph / 3.6);
-  const ay          = (speedMs * speedMs) / params.turnRadius / 9.81;
-  const L           = params.wheelbase;
-  const b           = params.frontWeightFraction * L;
-  const a           = L - b;
+  const speedMs = params.speedKph / 3.6;
+  const ay      = (speedMs * speedMs) / params.turnRadius / 9.81;
+  const L       = params.wheelbase;
+  const b       = params.frontWeightFraction * L;
+  const a       = L - b;
 
   return (
     <div className="param-panel">
       <div className="param-title">ApexSim</div>
       <div className="param-subtitle">Vehicle Dynamics Simulator</div>
 
-      {/* Corner scenario section */}
-      <div className="param-section-label">Corner scenario</div>
-      {SLIDERS.slice(0, 2).map(cfg => <SliderRow key={cfg.key} cfg={cfg} params={params} set={set} />)}
-
-      <div className="param-derived">
-        <DerivedRow label="Lateral accel." value={`${ay.toFixed(3)} g`} tip="ay = V²/R. If this exceeds ~0.4g the linear model is becoming inaccurate — switch attention to the Pacejka charts below." />
+      {/* ── Tab bar ────────────────────────────────────────────────────────── */}
+      <div className="param-tabs">
+        {(['vehicle', 'suspension', 'aero'] as PanelTab[]).map(t => (
+          <button
+            key={t}
+            className={`param-tab ${tab === t ? 'param-tab--active' : ''}`}
+            onClick={() => setTab(t)}
+          >
+            {t === 'vehicle' ? 'Vehicle' : t === 'suspension' ? 'Susp.' : 'Aero'}
+          </button>
+        ))}
       </div>
 
-      {/* Tyre section */}
-      <div className="param-section-label">Tyre (bicycle model)</div>
-      {SLIDERS.slice(2, 3).map(cfg => <SliderRow key={cfg.key} cfg={cfg} params={params} set={set} />)}
+      {/* ── Vehicle tab ────────────────────────────────────────────────────── */}
+      {tab === 'vehicle' && <>
+        <div className="param-section-label">Corner scenario</div>
+        {SLIDERS.slice(0, 2).map(cfg => <SliderRow key={cfg.key} cfg={cfg} params={params} set={set} />)}
+        <div className="param-derived">
+          <DerivedRow label="Lateral accel." value={`${ay.toFixed(3)} g`} tip="ay = V²/R. If this exceeds ~0.4g the linear model is becoming inaccurate — switch attention to the Pacejka charts below." />
+        </div>
 
-      {/* Weight & geometry */}
-      <div className="param-section-label">Weight & geometry</div>
-      {SLIDERS.slice(3).map(cfg => <SliderRow key={cfg.key} cfg={cfg} params={params} set={set} />)}
+        <div className="param-section-label">Tyre (bicycle model)</div>
+        {SLIDERS.slice(2, 3).map(cfg => <SliderRow key={cfg.key} cfg={cfg} params={params} set={set} />)}
 
-      {/* Derived geometry display */}
-      <div className="param-derived">
-        <DerivedRow label="CG→front (a)" value={`${a.toFixed(3)} m`} tip="Distance from centre of gravity to front axle. a = L − b = wheelbase × (1 − front weight fraction)." />
-        <DerivedRow label="CG→rear (b)"  value={`${b.toFixed(3)} m`} tip="Distance from centre of gravity to rear axle. b = L × front weight fraction. Front load = mg·b/L." />
-        <DerivedRow label="Front load Wf" value={`${(params.mass * 9.81 * b / L / 1000).toFixed(2)} kN`} tip="Static front axle load = mass × g × b/L. This is the Fz each front tyre sees at rest (half per tyre)." />
-        <DerivedRow label="Rear load Wr"  value={`${(params.mass * 9.81 * a / L / 1000).toFixed(2)} kN`} tip="Static rear axle load = mass × g × a/L." />
-      </div>
+        <div className="param-section-label">Weight & geometry</div>
+        {SLIDERS.slice(3).map(cfg => <SliderRow key={cfg.key} cfg={cfg} params={params} set={set} />)}
+        <div className="param-derived">
+          <DerivedRow label="CG→front (a)" value={`${a.toFixed(3)} m`} tip="a = wheelbase × (1 − front weight fraction)." />
+          <DerivedRow label="CG→rear (b)"  value={`${b.toFixed(3)} m`} tip="b = wheelbase × front weight fraction." />
+          <DerivedRow label="Front load Wf" value={`${(params.mass * 9.81 * b / L / 1000).toFixed(2)} kN`} tip="Static front axle load = mass × g × b/L." />
+          <DerivedRow label="Rear load Wr"  value={`${(params.mass * 9.81 * a / L / 1000).toFixed(2)} kN`} tip="Static rear axle load = mass × g × a/L." />
+        </div>
 
-      {/* ── Drivetrain (Stage 3) ──────────────────────────────────────────── */}
-      <div className="param-section-label">Drivetrain</div>
+        <div className="param-section-label">Drivetrain</div>
+        <DrivetrainSelector value={params.drivetrainType} onChange={dt => onChange({ ...params, drivetrainType: dt })} />
+        <PowerSliderRow powerKW={params.enginePowerKW} unit={powerUnit} onUnitChange={setPowerUnit} onKWChange={kw => onChange({ ...params, enginePowerKW: kw })} />
+        <SliderRow cfg={{ label: 'Throttle', key: 'throttlePercent', min: 0, max: 100, step: 5, unit: '%', format: v => v.toFixed(0), tip: 'Fraction of maximum engine power applied. At 0% = coast. Throttle on driven axle → combined slip → reduced lateral grip.' }} params={params} set={set} />
+        {(params.drivetrainType === 'AWD' || params.drivetrainType === 'AWD_TV') && (
+          <SliderRow cfg={{ label: 'AWD split', key: 'awdFrontBias', min: 0, max: 1, step: 0.05, unit: '%', format: v => `${(v*100).toFixed(0)}F / ${((1-v)*100).toFixed(0)}R`, tip: 'Torque split front/rear. 0.40 = 40F/60R typical.' }} params={params} set={set} />
+        )}
+        <div className="param-derived">
+          <DerivedRow label="Drive force" value={(() => { const vS = Math.max(speedMs,2); return `${((params.enginePowerKW*1000*params.throttlePercent/100)/vS/1000).toFixed(2)} kN`; })()} tip="F = P × throttle / V." />
+        </div>
+      </>}
 
-      <DrivetrainSelector
-        value={params.drivetrainType}
-        onChange={dt => onChange({ ...params, drivetrainType: dt })}
-      />
+      {/* ── Suspension tab ─────────────────────────────────────────────────── */}
+      {tab === 'suspension' && <>
+        <div className="param-section-label">Spring rates (wheel rate)</div>
+        <SliderRow cfg={{ label: 'Front spring', key: 'frontSpringRate', min: 5000, max: 150000, step: 1000, unit: 'N/m', format: v => `${(v/1000).toFixed(0)}k`, tip: 'Per-wheel spring rate. Higher = stiffer ride but faster transient response. Roll stiffness ∝ k × TW². Road: 15–30 kN/m; GT: 40–80; Formula: 80–200.' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Rear spring',  key: 'rearSpringRate',  min: 5000, max: 150000, step: 1000, unit: 'N/m', format: v => `${(v/1000).toFixed(0)}k`, tip: 'Stiffer rear spring increases rear roll stiffness → moves load transfer to rear → more oversteer tendency.' }} params={params} set={set} />
 
-      <PowerSliderRow
-        powerKW={params.enginePowerKW}
-        unit={powerUnit}
-        onUnitChange={setPowerUnit}
-        onKWChange={kw => onChange({ ...params, enginePowerKW: kw })}
-      />
-      <SliderRow
-        cfg={{
-          label: 'Throttle', key: 'throttlePercent', min: 0, max: 100, step: 5, unit: '%',
-          format: v => v.toFixed(0),
-          tip: 'Fraction of maximum engine power applied. At 0% = coast (pure lateral model). Increasing throttle loads the driven axle longitudinally → combined slip → reduces available lateral grip on that axle.',
-        }}
-        params={params} set={set}
-      />
+        <div className="param-section-label">Anti-roll bars (ARB)</div>
+        <SliderRow cfg={{ label: 'Front ARB', key: 'frontARBRate', min: 0, max: 40000, step: 500, unit: 'N/m eq.', format: v => v === 0 ? 'off' : `${(v/1000).toFixed(1)}k`, tip: 'Front anti-roll bar as equivalent wheel rate. Adding front ARB increases front roll stiffness → more lateral load transfer to front axle → more understeer.' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Rear ARB',  key: 'rearARBRate',  min: 0, max: 40000, step: 500, unit: 'N/m eq.', format: v => v === 0 ? 'off' : `${(v/1000).toFixed(1)}k`, tip: 'Rear anti-roll bar. Adding rear ARB shifts load transfer to rear → more oversteer tendency. Classic handling tuning: soften rear ARB to reduce oversteer.' }} params={params} set={set} />
 
-      {(params.drivetrainType === 'AWD' || params.drivetrainType === 'AWD_TV') && (
-        <SliderRow
-          cfg={{
-            label: 'AWD front torque split', key: 'awdFrontBias', min: 0, max: 1, step: 0.05, unit: '%',
-            format: v => `${(v * 100).toFixed(0)}F / ${((1 - v) * 100).toFixed(0)}R`,
-            tip: 'Fraction of total drive torque sent to the front axle. 0.40 = 40F/60R (typical AWD). Biasing toward front → more FWD-like understeer. Toward rear → more RWD-like oversteer under power.',
-          }}
-          params={params} set={set}
-        />
-      )}
-
-      {/* Derived — drive force at current settings */}
-      <div className="param-derived">
-        <DerivedRow
-          label="Drive force"
-          value={(() => {
-            const vSafe = Math.max(params.speedKph / 3.6, 2);
-            const F = (params.enginePowerKW * 1000 * params.throttlePercent / 100) / vSafe;
-            return `${(F / 1000).toFixed(2)} kN`;
+        <div className="param-derived">
+          {(() => {
+            const TW = params.trackWidth;
+            const tw2o2 = (TW*TW)/2;
+            const kF = (params.frontSpringRate + params.frontARBRate) * tw2o2;
+            const kR = (params.rearSpringRate  + params.rearARBRate)  * tw2o2;
+            const tot = kF + kR;
+            const ratio = tot > 0 ? kF/tot : 0.5;
+            const rollDeg = tot > 0 ? (params.mass * ay * 9.81 * params.cgHeight / tot) * (180/Math.PI) : 0;
+            return <>
+              <DerivedRow label="Roll stiffness F" value={`${(kF/57.3).toFixed(0)} Nm/deg`} tip="Front axle roll stiffness = (k_spring + k_ARB) × TW²/2. More = less body roll on front." />
+              <DerivedRow label="Roll stiffness R" value={`${(kR/57.3).toFixed(0)} Nm/deg`} tip="Rear axle roll stiffness." />
+              <DerivedRow label="Load transfer split" value={`${(ratio*100).toFixed(1)}% front`} tip="Fraction of lateral load transfer on front axle. >50% → understeer tendency. The key tuning parameter for handling balance." />
+              <DerivedRow label="Roll angle @ ay" value={`${rollDeg.toFixed(2)} deg`} tip="Steady-state body roll angle at current lateral acceleration. Φ = m·ay·hCG / KΦ_total." />
+            </>;
           })()}
-          tip="F = P × throttle / V. Actual wheel force; capped at tyre traction limit per axle."
-        />
-      </div>
+        </div>
+      </>}
+
+      {/* ── Aero & Braking tab ─────────────────────────────────────────────── */}
+      {tab === 'aero' && <>
+        <div className="param-section-label">Aerodynamics</div>
+        <SliderRow cfg={{ label: 'Downforce CL', key: 'aeroCL', min: 0, max: 4.0, step: 0.05, unit: '', format: v => v.toFixed(2), tip: 'Downforce coefficient. F_down = ½ρV²A·CL. 0 = clean road car; 0.3 = mild aero; 1.5 = GT wing; 3.0+ = formula car. Increases grip at higher speeds.' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Drag CD',       key: 'aeroCD', min: 0.10, max: 1.50, step: 0.05, unit: '', format: v => v.toFixed(2), tip: 'Drag coefficient. F_drag = ½ρV²A·CD. 0.25 = slippery road car; 0.50 = GT; 0.80 = open wheel. Drag limits top speed and requires more engine power.' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Frontal area',  key: 'aeroReferenceArea', min: 0.8, max: 3.0, step: 0.1, unit: 'm²', format: v => v.toFixed(1), tip: 'Frontal reference area for aero calculations. 1.5 m² = formula car; 1.8 = sports car; 2.0 = road saloon; 2.5 = SUV.' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Aero balance', key: 'aeroBalance', min: 0.30, max: 0.70, step: 0.01, unit: '%', format: v => `${(v*100).toFixed(0)}F / ${((1-v)*100).toFixed(0)}R`, tip: 'Fraction of total downforce acting on the front axle. <0.50 = rear-biased → oversteer at high speed. >0.50 = front-biased → understeer. Typical: 0.35–0.45F.' }} params={params} set={set} />
+        <div className="param-derived">
+          {(() => {
+            const q = 0.5 * 1.225 * speedMs * speedMs;
+            const F_down = q * params.aeroReferenceArea * params.aeroCL;
+            const F_drag = q * params.aeroReferenceArea * params.aeroCD;
+            return <>
+              <DerivedRow label="Downforce @ V" value={`${(F_down/1000).toFixed(2)} kN`} tip="Speed-dependent downforce at current speed. Adds to tyre Fz → more grip. Grows with V²." />
+              <DerivedRow label="Drag @ V"      value={`${(F_drag/1000).toFixed(2)} kN`} tip="Aerodynamic drag force at current speed. Must be overcome by engine drive force." />
+              <DerivedRow label="Drag power"    value={`${(F_drag * speedMs / 1000).toFixed(1)} kW`} tip="Power consumed by drag = F_drag × V. At high speed this dominates the power budget." />
+            </>;
+          })()}
+        </div>
+
+        <div className="param-section-label">Braking</div>
+        <SliderRow cfg={{ label: 'Braking',    key: 'brakingG',  min: 0, max: 1.5, step: 0.05, unit: 'g', format: v => v.toFixed(2), tip: 'Applied braking deceleration. 0 = coasting. 0.5g = gentle; 1.0g = firm; 1.5g = maximum ABS-limited stop. Shifts weight to front axle, reduces rear lateral grip.' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Brake bias', key: 'brakeBias', min: 0.40, max: 0.90, step: 0.01, unit: '%', format: v => `${(v*100).toFixed(0)}F / ${((1-v)*100).toFixed(0)}R`, tip: 'Fraction of brake force on front axle. 0.65 = 65F/35R typical road. More front bias = stable but front tyres saturate early. More rear = faster yaw but rear lock risk.' }} params={params} set={set} />
+        {params.brakingG > 0 && (
+          <div className="param-derived">
+            {(() => {
+              const F_brake = params.mass * params.brakingG * 9.81;
+              return <DerivedRow label="Brake force" value={`${(F_brake/1000).toFixed(2)} kN`} tip="Total brake force = m × brakingG × g. Split front/rear by brake bias; ABS clips each axle at μ×Fz." />;
+            })()}
+          </div>
+        )}
+      </>}
 
       <div className="param-note">
         Bicycle model — steady-state constant radius.<br />
-        Stage 3: lateral + longitudinal load transfer · combined slip · drivetrain
+        Stages 3–6: load transfer · suspension · drivetrain · braking · aero
       </div>
     </div>
   );

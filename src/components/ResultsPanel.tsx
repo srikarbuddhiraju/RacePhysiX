@@ -156,7 +156,16 @@ function UtilBar({ label, pct, color }: { label: string; pct: number; color: str
   );
 }
 
-function CornerLoad({ fz, highlight }: { fz: number; highlight?: boolean }) {
+function DataRow({ label, value, tip }: { label: string; value: string; tip?: string }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, alignItems: 'center' }}>
+      <span style={{ color: 'var(--text-faint)' }}>{label}{tip && <InfoTooltip text={tip} />}</span>
+      <span style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{value}</span>
+    </div>
+  );
+}
+
+function CornerLoad( fz, highlight }: { fz: number; highlight?: boolean }) {
   return (
     <div style={{
       textAlign: 'center', padding: '5px 4px',
@@ -235,20 +244,45 @@ function Stage3Panel({ p }: { p: PacejkaResult }) {
       {hasFx && (
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div style={{ fontSize: 9, color: 'var(--text-faint)', marginBottom: 2, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Drivetrain</div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
-            <span style={{ color: 'var(--text-faint)' }}>Drive force</span>
-            <span style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{(p.driveForceN / 1000).toFixed(2)} kN</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
-            <span style={{ color: 'var(--text-faint)' }}>Fx front / rear</span>
-            <span style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{(p.FxFront / 1000).toFixed(2)} / {(p.FxRear / 1000).toFixed(2)} kN</span>
-          </div>
+          <DataRow label="Drive force"    value={`${(p.driveForceN / 1000).toFixed(2)} kN`} />
+          <DataRow label="Fx front / rear" value={`${(p.FxFront/1000).toFixed(2)} / ${(p.FxRear/1000).toFixed(2)} kN`} />
           {p.tvYawMoment !== 0 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, borderTop: '1px solid var(--border-subtle)', paddingTop: 4, marginTop: 2 }}>
-              <span style={{ color: 'var(--text-faint)' }}>TV yaw moment <InfoTooltip text="Torque-vectoring yaw moment = FxRear × tvBias × TW/2. Positive = helps car rotate = reduces understeer. Control law: tvBias ∝ (αf−αr)." /></span>
+              <span style={{ color: 'var(--text-faint)' }}>TV yaw moment <InfoTooltip text="Torque-vectoring yaw moment = FxRear × tvBias × TW/2. Positive = helps car rotate = reduces understeer." /></span>
               <span style={{ color: p.tvYawMoment > 0 ? '#4ade80' : '#f43f5e', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{p.tvYawMoment.toFixed(0)} Nm</span>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Stage 4: Suspension ─────────────────────────────────── */}
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ fontSize: 9, color: 'var(--text-faint)', marginBottom: 2, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Suspension</div>
+        <DataRow label="Roll angle"     value={`${p.rollAngleDeg.toFixed(2)}°`} />
+        <DataRow label="Roll stiff F/R" value={`${p.rollStiffFront.toFixed(0)} / ${p.rollStiffRear.toFixed(0)} Nm/deg`} />
+        <DataRow label="LT split"       value={`${(p.rollStiffRatio*100).toFixed(1)}% front`} tip="Lateral load transfer fraction to front axle, set by roll stiffness ratio. >50% = more understeer tendency." />
+      </div>
+
+      {/* ── Stage 5: Braking ───────────────────────────────────── */}
+      {(p.FxBrakeFront > 1 || p.FxBrakeRear > 1) && (
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ fontSize: 9, color: 'var(--text-faint)', marginBottom: 2, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Braking</div>
+          <DataRow label="Fx brake F/R" value={`${(p.FxBrakeFront/1000).toFixed(2)} / ${(p.FxBrakeRear/1000).toFixed(2)} kN`} />
+          {(p.absActiveFront || p.absActiveRear) && (
+            <div style={{ fontSize: 9, color: '#facc15', padding: '2px 0' }}>
+              ABS active: {p.absActiveFront ? 'front ' : ''}{p.absActiveRear ? 'rear' : ''}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Stage 6: Aero ──────────────────────────────────────── */}
+      {p.aeroDownforceN > 10 && (
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ fontSize: 9, color: 'var(--text-faint)', marginBottom: 2, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Aerodynamics</div>
+          <DataRow label="Downforce"      value={`${(p.aeroDownforceN/1000).toFixed(2)} kN`} tip="½ρV²A·CL — adds to tyre Fz → higher cornering grip at speed." />
+          <DataRow label="Drag"           value={`${(p.aeroDragN/1000).toFixed(2)} kN`} tip="½ρV²A·CD — opposing force that must be overcome by drive force." />
+          <DataRow label="Aero Fz F/R"    value={`+${(p.FzAeroFront/1000).toFixed(2)} / +${(p.FzAeroRear/1000).toFixed(2)} kN`} tip="Extra tyre load from downforce per axle. Added to static weight before load transfer." />
         </div>
       )}
     </div>

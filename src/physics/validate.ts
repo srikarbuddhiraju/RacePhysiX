@@ -49,6 +49,10 @@ const BASE: VehicleParams = {
   throttlePercent: 0,
   enginePowerKW: 150,
   awdFrontBias: 0.40,
+  frontSpringRate: 25000, rearSpringRate: 28000,
+  frontARBRate: 8000, rearARBRate: 6000,
+  brakingG: 0, brakeBias: 0.65,
+  aeroCL: 0.30, aeroCD: 0.30, aeroReferenceArea: 2.0, aeroBalance: 0.45,
 };
 
 let allPassed = true;
