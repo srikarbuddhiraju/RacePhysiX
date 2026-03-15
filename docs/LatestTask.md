@@ -6,7 +6,7 @@ Rolling log. Trim oldest entries as new sessions are added.
 
 ## Session 1 — 2026-03-15
 
-### Status: In Progress
+### Status: Complete — v0.1 committed on feature/v0.1-scaffold
 
 ### Done this session
 - Researched GitHub landscape — confirmed ApexSim fills an unoccupied gap
@@ -24,11 +24,12 @@ Rolling log. Trim oldest entries as new sessions are added.
   - tyre-pacejka.md
   - load-transfer.md
 
-### Pending
-- [ ] Finalise tech stack (build tool, hosting)
+### Pending — next session
+- [ ] Merge feature/v0.1-scaffold → main and push to GitHub
 - [ ] Set GitHub repo topics
-- [ ] Scaffold v0.1 project structure
-- [ ] Begin physics engine implementation (bicycle model first)
+- [ ] Physics validation: test with Milliken reference values
+- [ ] Add slip angle warning to Three.js scene (visual, not just text)
+- [ ] Decide next: Pacejka Stage 2 or improve visualisation first
 
 ### Key Findings
 - Tech stack: TypeScript + React + Three.js confirmed. Build tool TBD.
