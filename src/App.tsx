@@ -23,6 +23,19 @@ const DEFAULT_PARAMS: VehicleParams = {
   throttlePercent: 0,
   enginePowerKW: 150,
   awdFrontBias: 0.40,
+  // Stage 4 — Suspension
+  frontSpringRate: 25000,
+  rearSpringRate:  28000,
+  frontARBRate:    8000,
+  rearARBRate:     6000,
+  // Stage 5 — Braking
+  brakingG:   0,
+  brakeBias:  0.65,
+  // Stage 6 — Aero
+  aeroCL:            0.30,
+  aeroCD:            0.30,
+  aeroReferenceArea: 2.0,
+  aeroBalance:       0.45,
 };
 
 export function App() {
@@ -44,15 +57,15 @@ export function App() {
         <ParameterPanel params={params} onChange={setParams} />
         <div className="canvas-area">
           <TopDownView params={params} result={bicycle} darkMode={darkMode} />
+          <button
+            className="theme-toggle"
+            onClick={() => setDarkMode(d => !d)}
+            title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {darkMode ? '☀' : '🌙'}
+          </button>
         </div>
         <ResultsPanel result={bicycle} pacejka={pacejka} />
-        <button
-          className="theme-toggle"
-          onClick={() => setDarkMode(d => !d)}
-          title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-        >
-          {darkMode ? '☀' : '🌙'}
-        </button>
       </div>
 
       {/* Bottom row: dynamic charts (tyre curve + handling diagram + Pacejka sliders) */}

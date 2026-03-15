@@ -21,6 +21,19 @@ export interface VehicleParams {
   throttlePercent: number;           // 0–100  — fraction of full throttle applied
   enginePowerKW:   number;           // kW     — peak wheel power
   awdFrontBias:    number;           // 0–1    — fraction of torque to front (AWD modes only)
+  // ── Stage 4 — Suspension ─────────────────────────────────────────────────
+  frontSpringRate: number;           // N/m — per-wheel spring rate (ride spring)
+  rearSpringRate:  number;           // N/m
+  frontARBRate:    number;           // N/m — ARB as equivalent wheel-rate contribution
+  rearARBRate:     number;           // N/m
+  // ── Stage 5 — Braking ────────────────────────────────────────────────────
+  brakingG:        number;           // g   — braking deceleration demand (0 = coasting)
+  brakeBias:       number;           // 0–1 — fraction of brake force to front axle
+  // ── Stage 6 — Aero ───────────────────────────────────────────────────────
+  aeroCL:            number;         // downforce coeff (0 = none, 0.3 road, 3+ F1)
+  aeroCD:            number;         // drag coefficient
+  aeroReferenceArea: number;         // m², frontal reference area
+  aeroBalance:       number;         // 0–1, fraction of downforce on front axle
 }
 
 export type Balance = 'understeer' | 'neutral' | 'oversteer';
@@ -136,4 +149,22 @@ export interface PacejkaResult {
   rearOpFyKN:      number;
 
   speedMs: number;
+
+  // ── Stage 4 — Suspension ─────────────────────────────────────────────────
+  rollAngleDeg:    number;   // deg
+  rollStiffFront:  number;   // Nm/deg, front axle
+  rollStiffRear:   number;   // Nm/deg, rear axle
+  rollStiffRatio:  number;   // KΦ_front / KΦ_total
+
+  // ── Stage 5 — Braking ────────────────────────────────────────────────────
+  FxBrakeFront:    number;   // N
+  FxBrakeRear:     number;   // N
+  absActiveFront:  boolean;
+  absActiveRear:   boolean;
+
+  // ── Stage 6 — Aero ───────────────────────────────────────────────────────
+  aeroDownforceN:  number;   // N total
+  aeroDragN:       number;   // N
+  FzAeroFront:     number;   // N extra Fz front
+  FzAeroRear:      number;   // N extra Fz rear
 }

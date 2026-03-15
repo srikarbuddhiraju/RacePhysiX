@@ -1,15 +1,15 @@
 /**
  * Load transfer — lateral and longitudinal.
  *
- * Lateral (cornering):
+ * Lateral (cornering) — Stage 3 → 4:
  *   ΔFz_total = m × ay × hCG / TW
- *   Split front/rear by static weight fraction (equal roll stiffness assumption).
- *   Inside tyre unloads, outside tyre gains.  Net AXLE load unchanged.
+ *   Split front/rear by roll stiffness ratio φ_front (Stage 4).
+ *   Falls back to b/L weight-fraction if rollStiffRatio not provided.
  *
  * Longitudinal (throttle/braking):
  *   ΔFz_long = m × ax × hCG / L
- *   Front axle LOSES load under throttle (ax > 0); GAINS under braking (ax < 0).
- *   Changes TOTAL axle load → changes peak Fy per axle.
+ *   ax > 0 = acceleration → rear gains, front loses.
+ *   ax < 0 = braking      → front gains, rear loses.
  *
  * Reference: Milliken & Milliken RCVD Ch.17; Gillespie Ch.2
  */
@@ -22,51 +22,57 @@ export interface LoadTransferInput {
   cgHeight:            number;  // m
   trackWidth:          number;  // m
   frontWeightFraction: number;
+  rollStiffRatio?:     number;  // KΦ_front / KΦ_total (Stage 4). Defaults to b/L.
+  FzBoostFront?:       number;  // N, aero downforce boost on front (Stage 6)
+  FzBoostRear?:        number;  // N, aero downforce boost on rear
 }
 
 export interface LoadTransferResult {
-  // Per-axle effective loads (after longitudinal transfer)
   FzFrontAxle: number;
   FzRearAxle:  number;
 
-  // Per-corner loads (FL = front-left = inside for a left-hand corner)
   FzFL: number;
   FzFR: number;
   FzRL: number;
   FzRR: number;
 
-  // Transfer deltas for display
-  latTransferFront: number;   // N, how much shifts to outside front tyre
-  latTransferRear:  number;   // N, how much shifts to outside rear tyre
-  longTransfer:     number;   // N, positive = rear gains under throttle
+  latTransferFront: number;
+  latTransferRear:  number;
+  longTransfer:     number;
 }
 
 export function computeLoadTransfer(
   p: LoadTransferInput,
   ay_ms2: number,
-  ax_ms2: number,
+  ax_ms2: number,  // positive = acceleration, negative = braking
 ): LoadTransferResult {
-  const { mass, wheelbase: L, cgHeight: hCG, trackWidth: TW, frontWeightFraction } = p;
+  const {
+    mass, wheelbase: L, cgHeight: hCG, trackWidth: TW,
+    frontWeightFraction,
+    rollStiffRatio,
+    FzBoostFront = 0,
+    FzBoostRear  = 0,
+  } = p;
 
-  const b = frontWeightFraction * L;   // CG→rear axle
-  const a = L - b;                     // CG→front axle
+  const b = frontWeightFraction * L;
+  const a = L - b;
 
-  // Static axle loads
-  const FzFront_s = mass * G * (b / L);
-  const FzRear_s  = mass * G * (a / L);
+  // Static axle loads + aero downforce boost
+  const FzFront_s = mass * G * (b / L) + FzBoostFront;
+  const FzRear_s  = mass * G * (a / L) + FzBoostRear;
 
-  // Longitudinal: ΔFz_long = m × ax × hCG / L  (positive = rear gains under throttle)
+  // Longitudinal: ax > 0 → rear gains (throttle); ax < 0 → front gains (braking)
   const longTransfer = mass * ax_ms2 * hCG / L;
+  const FzFrontAxle  = Math.max(0, FzFront_s - longTransfer);
+  const FzRearAxle   = Math.max(0, FzRear_s  + longTransfer);
 
-  const FzFrontAxle = Math.max(0, FzFront_s - longTransfer);
-  const FzRearAxle  = Math.max(0, FzRear_s  + longTransfer);
+  // Lateral: use roll stiffness ratio if available, else weight fraction b/L
+  const phiFront = rollStiffRatio !== undefined ? rollStiffRatio : (b / L);
+  const phiRear  = 1 - phiFront;
 
-  // Lateral: ΔFz_lat_front = m × ay × hCG / TW × (b/L)  (front axle share)
-  //          ΔFz_lat_rear  = m × ay × hCG / TW × (a/L)  (rear axle share)
-  const latTransferFront = mass * ay_ms2 * hCG / TW * (b / L);
-  const latTransferRear  = mass * ay_ms2 * hCG / TW * (a / L);
+  const latTransferFront = mass * ay_ms2 * hCG * phiFront / TW;
+  const latTransferRear  = mass * ay_ms2 * hCG * phiRear  / TW;
 
-  // Per-corner: inside (left for left turn) unloads, outside (right) gains
   const FzFL = Math.max(0, FzFrontAxle / 2 - latTransferFront);
   const FzFR = Math.max(0, FzFrontAxle / 2 + latTransferFront);
   const FzRL = Math.max(0, FzRearAxle  / 2 - latTransferRear);

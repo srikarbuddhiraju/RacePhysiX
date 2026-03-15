@@ -1,38 +1,39 @@
 # Latest Task — ApexSim
 
-Rolling log. 200-line limit — trim oldest entries as sessions accumulate.
+Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
-## Session 2 — 2026-03-15  |  branch: `feature/stage3-load-transfer-drivetrain`
+## Session 3 — 2026-03-15  |  branch: `feature/stage4-suspension`
 
-### Status: IN PROGRESS — Stage 3
+### Status: IN PROGRESS — UX polish pass remaining
 
-### Done this session
-- Stages 1+2 committed to main (c6549a9)
-- Multi-view canvas: top-down + chase cam, vehicle class silhouettes
-- Branching convention established — see memory/feedback_branching.md
+### Completed this session
+- [x] Stage 4: Suspension roll stiffness (suspension.ts, KΦ model, roll angle)
+- [x] Stage 5: Braking (braking.ts, ABS clip, combined braking+cornering)
+- [x] Stage 6: Aero (aero.ts, F_down + F_drag, speed-dependent grip)
+- [x] Stage 7: Lap time estimator (laptime.ts, 4 track presets, LapTimePanel)
+- [x] ParameterPanel: 3-tab layout (Vehicle / Susp. / Aero & Brake)
+- [x] ResultsPanel: Stage 4/5/6 outputs (suspension, braking, aero sections)
+- [x] ChartsPanel: "Lap Time" tab
+- [x] validate.ts: all 4 Gillespie checks pass
 
-### Stage 3 checklist
-- [ ] 3a Lateral load transfer — per-corner Fz via nonlinear per-tyre Pacejka sum
-- [ ] 3b Longitudinal load transfer — weight shift under throttle/braking
-- [ ] 3c Combined slip (friction ellipse) — Fx reduces Fy on driven axles
-- [ ] 3d Drivetrain (FWD/RWD/AWD/AWD_TV) + torque vectoring
-- [ ] UI drivetrain section in ParameterPanel
-- [ ] ResultsPanel Stage 3 outputs
-- [ ] tsc clean + validate
-
-### Key physics decisions
-- Per-axle solver sums Fy_outer + Fy_inner — nonlinearity from Pacejka curve shape
-- Combined slip applied per-tyre in bisection solver (friction ellipse scaling peakMu_eff)
-- TV: tvBias ∝ slipAngleDiffDeg clamped ±0.8, Mz = FxRear × tvBias × TW/2
+### Remaining UX polish
+- [ ] Responsive layout (min-width handling, mobile/tablet)
+- [ ] Export: PNG chart download, CSV data export
+- [ ] URL-serialised parameters (shareable links)
+- [ ] Lap time: visual track map SVG per preset
+- [ ] Lap time: add ABS flag to braking capability calculation
+- [ ] Merge to main when polish is done
 
 ---
 
-## Session 1 — 2026-03-15 | main
+## Session 2 — 2026-03-15  |  Status: MERGED to main (4c57091)
 
-### Status: Complete — c6549a9
+Stage 3, power units, dark/light theme, display fixes.
 
-Scaffold, bicycle model (validated Gillespie), Pacejka Stage 2, tyre presets,
-charts (TyreCurveChart + HandlingDiagram), ParameterPanel sliders, InfoTooltips,
-TopDownView multi-view + vehicle silhouettes.
+---
+
+## Session 1 — 2026-03-15  |  Status: MERGED to main (c6549a9)
+
+Scaffold, bicycle model (Gillespie-validated), Pacejka, charts, TopDownView.

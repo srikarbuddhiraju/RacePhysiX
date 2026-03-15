@@ -33,12 +33,16 @@ Srikar can and will catch incorrect physics — accuracy is non-negotiable.
 ## Physics Model Roadmap
 Build and validate each stage before moving to the next.
 
-| Stage | Model | What It Captures |
-|---|---|---|
-| 1 | Bicycle model | Yaw, understeer/oversteer, cornering response |
-| 2 | Pacejka Magic Formula | Realistic tyre lateral + longitudinal forces |
-| 3 | Quarter-car model | Suspension dynamics, ride, wheel hop |
-| 4 | Full 14-DOF | Complete vehicle, research-grade (long term) |
+| Stage | Model | Status | What It Captures |
+|---|---|---|---|
+| 1 | Bicycle model | ✅ done | Yaw, understeer/oversteer, cornering response |
+| 2 | Pacejka Magic Formula | ✅ done | Realistic tyre lateral + longitudinal forces |
+| 3 | Load transfer + drivetrain | ✅ done | Per-corner Fz, combined slip, FWD/RWD/AWD/AWD+TV |
+| 4 | Suspension (roll stiffness) | 🔄 next | Roll angle, ARB, accurate load transfer split |
+| 5 | Braking model | planned | Brake bias, longitudinal decel, combined braking+cornering |
+| 6 | Aerodynamics | planned | Speed-dependent downforce + drag |
+| 7 | Lap time estimator | planned | Min-time solve over corner+straight track segments |
+| 8 | Full 14-DOF | long term | Research-grade complete vehicle |
 
 ## Physics Reference Docs
 All physics knowledge lives in `docs/physics-reference/`. Read relevant file before
