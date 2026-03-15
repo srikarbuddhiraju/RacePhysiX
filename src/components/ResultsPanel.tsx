@@ -1,4 +1,5 @@
 import type { PhysicsResult } from '../physics/types';
+import { InfoTooltip } from './InfoTooltip';
 import './ResultsPanel.css';
 
 interface Props {
@@ -12,28 +13,30 @@ const BALANCE_CONFIG = {
 };
 
 interface MetricProps {
-  label: string;
-  value: string;
-  sub?: string;
+  label:     string;
+  value:     string;
+  sub?:      string;
   highlight?: boolean;
+  tip:       string;
 }
 
-function Metric({ label, value, sub, highlight }: MetricProps) {
+function Metric({ label, value, sub, highlight, tip }: MetricProps) {
   return (
     <div className={`metric ${highlight ? 'metric--highlight' : ''}`}>
       <div className="metric-value">{value}</div>
       {sub && <div className="metric-sub">{sub}</div>}
-      <div className="metric-label">{label}</div>
+      <div className="metric-label">
+        {label}
+        <InfoTooltip text={tip} />
+      </div>
     </div>
   );
 }
 
 export function ResultsPanel({ result }: Props) {
-  const bc = BALANCE_CONFIG[result.balance];
-
+  const bc    = BALANCE_CONFIG[result.balance];
   const kSign = result.underSteerGradientDegPerG >= 0 ? '+' : '';
 
-  // Linear model valid only up to ~4–5° slip angle
   const LINEAR_LIMIT_DEG = 5;
   const modelWarning =
     result.frontSlipAngleDeg > LINEAR_LIMIT_DEG ||
@@ -44,11 +47,15 @@ export function ResultsPanel({ result }: Props) {
 
       {modelWarning && (
         <div className="model-warning">
-          ⚠ Slip angles exceed ~5° — linear model out of range. Results indicative only.
+          ⚠ Slip angles exceed ~5° — linear model out of range. Results indicative only. See Pacejka charts below for accurate forces.
         </div>
       )}
 
-      <div className="balance-badge" style={{ borderColor: bc.color, color: bc.color }}>
+      <div
+        className="balance-badge"
+        style={{ borderColor: bc.color, color: bc.color }}
+        title="Whether the front or rear axle is generating more slip angle. Understeer = front slips more. Oversteer = rear slips more."
+      >
         {bc.label}
         <span className="balance-diff">
           {result.slipAngleDiffDeg >= 0 ? '+' : ''}
@@ -59,55 +66,69 @@ export function ResultsPanel({ result }: Props) {
       <div className="metrics-grid">
         <Metric
           label="Lat. acceleration"
-          value={result.lateralAccelerationG.toFixed(2)}
+          value={result.lateralAccelerationG.toFixed(3)}
           sub="g"
+          tip="Centripetal acceleration in the corner = V²/R divided by g. At 1g the car is at the grip limit of a typical road tyre. This drives all lateral tyre forces."
         />
         <Metric
           label="Understeer gradient K"
           value={`${kSign}${result.underSteerGradientDegPerG.toFixed(2)}`}
           sub="deg/g"
           highlight={Math.abs(result.underSteerGradientDegPerG) > 2}
+          tip="Extra steering angle the driver must add per g of lateral acceleration. K > 0 = understeer (more steer needed as speed rises). K < 0 = oversteer (less steer needed; car becomes unstable above critical speed). K = 0 = neutral steer."
         />
         <Metric
-          label="Front slip angle αf"
-          value={result.frontSlipAngleDeg.toFixed(2)}
+          label="Front slip αf"
+          value={result.frontSlipAngleDeg.toFixed(3)}
           sub="deg"
+          tip="Angle between the front tyre's velocity direction and its heading. The tyre builds lateral force as α increases. Linear model valid up to ~5°; above that Pacejka is needed."
         />
         <Metric
-          label="Rear slip angle αr"
-          value={result.rearSlipAngleDeg.toFixed(2)}
+          label="Rear slip αr"
+          value={result.rearSlipAngleDeg.toFixed(3)}
           sub="deg"
+          tip="Angle between the rear tyre's velocity direction and its heading. If αr > αf the rear is working harder = oversteer tendency. If αf > αr = understeer."
         />
         <Metric
           label="Steer — kinematic"
-          value={result.kinematicSteerAngleDeg.toFixed(2)}
+          value={result.kinematicSteerAngleDeg.toFixed(3)}
           sub="deg (L/R)"
+          tip="Pure geometry steer angle to follow this arc at zero speed — Ackermann steer angle. = wheelbase ÷ radius (in radians). Independent of speed and tyre properties."
         />
         <Metric
-          label="Steer — dynamic correction"
-          value={`${result.dynamicCorrectionDeg >= 0 ? '+' : ''}${result.dynamicCorrectionDeg.toFixed(2)}`}
+          label="Dynamic correction"
+          value={`${result.dynamicCorrectionDeg >= 0 ? '+' : ''}${result.dynamicCorrectionDeg.toFixed(3)}`}
           sub="deg (K·ay)"
+          tip="Extra steer beyond the geometric angle needed to balance tyre slip. = K × ay. Positive = driver adds steer (understeer). Negative = driver removes steer (oversteer)."
         />
         <Metric
-          label="Total steer angle δ"
-          value={result.totalSteerAngleDeg.toFixed(2)}
+          label="Total steer δ"
+          value={result.totalSteerAngleDeg.toFixed(3)}
           sub="deg"
+          tip="Total steering input = kinematic + dynamic correction. This is the tyre steer angle. Divide by the steering ratio to get steering wheel angle."
         />
         <Metric
           label="Yaw rate"
           value={(result.yawRateRadPerS * 180 / Math.PI).toFixed(1)}
           sub="deg/s"
+          tip="How fast the car rotates about its vertical axis. r = V/R. A higher speed or tighter corner = higher yaw rate. Important for stability control systems."
         />
       </div>
 
       <div className="forces-row">
         <div className="force-item">
-          <span className="force-label">Front Fy</span>
-          <span className="force-value">{(result.frontLateralForceN / 1000).toFixed(2)} kN</span>
+          <span className="force-label">
+            Front Fy
+            <InfoTooltip text="Lateral force generated by the front axle (both tyres combined). Computed from moment equilibrium: Fyf = m·ay·b/L. This is what the front tyres must generate to keep the car on the arc." />
+          </span>
+          <span className="force-value">{(result.frontLateralForceN / 1000).toFixed(3)} kN</span>
         </div>
         <div className="force-item">
-          <span className="force-label">Rear Fy</span>
-          <span className="force-value">{(result.rearLateralForceN / 1000).toFixed(2)} kN</span>
+          <span className="force-label">
+            Rear Fy
+            <InfoTooltip text="Lateral force generated by the rear axle (both tyres combined). Fyr = m·ay·a/L. The front/rear split depends on CG position (a and b)." />
+          </span>
+          <span className="force-value">{(result.rearLateralForceN / 1000).toFixed(3)} kN</span>
         </div>
       </div>
 

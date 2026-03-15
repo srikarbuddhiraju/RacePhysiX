@@ -40,8 +40,11 @@ const BASE: VehicleParams = {
   frontWeightFraction: 0.55,
   corneringStiffnessNPerDeg: 500,
   cgHeight: 0.55,
+  trackWidth: 1.5,
+  tyreSectionWidth: 0.205,
   turnRadius: 200,
   speedKph: 80,
+  vehicleClass: 'road',
 };
 
 let allPassed = true;

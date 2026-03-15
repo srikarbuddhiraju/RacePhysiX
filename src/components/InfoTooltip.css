@@ -1,0 +1,29 @@
+.info-icon {
+  font-size: 9px;
+  color: #3a3a5a;
+  cursor: help;
+  margin-left: 4px;
+  vertical-align: middle;
+  user-select: none;
+  transition: color 0.1s;
+}
+
+.info-icon:hover {
+  color: #8080c0;
+}
+
+.info-tooltip-popup {
+  position: fixed;
+  background: #1a1a2e;
+  border: 1px solid #3a3a5a;
+  border-radius: 7px;
+  padding: 9px 12px;
+  font-size: 11px;
+  color: #c0c0e0;
+  line-height: 1.55;
+  max-width: 240px;
+  pointer-events: none;
+  z-index: 9999;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.7);
+  white-space: normal;
+}

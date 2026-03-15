@@ -65,6 +65,53 @@ Longitudinal + lateral load transfer formulas, per-wheel Fz, Pacejka nonlinearit
 
 ---
 
+## Textbook catalogue
+
+All PDFs in `docs/Textbooks/`.
+
+### Gillespie — *Fundamentals of Vehicle Dynamics* (Revised Ed.)
+**Notation:** `b`=CG to FRONT, `c`=CG to REAR — **opposite** to ApexSim.
+
+| Topic | Location |
+|---|---|
+| Tyre slip, lateral force, SAE axes | Ch.2 |
+| Bicycle model EOM | Ch.6 §6.1–6.2 |
+| Understeer gradient K (eq.6.15) | Ch.6 §6.3 |
+| Handling equation δ=L/R+K·ay (eq.6.16) | Ch.6 §6.3 |
+| Characteristic / critical speed | Ch.6 §6.3 |
+| Handling diagram | Ch.6 §6.4 |
+
+### Milliken & Milliken — *Race Car Vehicle Dynamics* (RCVD)
+**Notation:** `a`=CG to front, `b`=CG to rear — **matches ApexSim**.
+
+| Topic | Location |
+|---|---|
+| Tyre lateral force, friction circle, combined slip | Ch.2 p.13 |
+| Vehicle axis systems | Ch.4 p.113 |
+| Bicycle model, K, characteristic/critical speed | Ch.5 p.123 |
+| Transient stability, dynamic response | Ch.6 p.231 |
+| g-g diagram | Ch.9 p.345 |
+| Tyre data treatment, Pacejka nondimensionalisation | Ch.14 p.473 |
+| Lateral + longitudinal load transfer, per-wheel Fz | Ch.18 p.665 |
+
+### Pacejka — *Tyre and Vehicle Dynamics* (3rd Ed.)
+**Notation:** ISO (z-up); α sign opposite SAE (positive α → positive Fy). C_Fα = BCD.
+**Filename:** use symlink `Pacejka-Tire-and-Vehicle-Dynamics-2016.pdf` (Unicode in original).
+
+| Topic | Location |
+|---|---|
+| Slip angle α, longitudinal slip κ, C_Fα definition | Ch.1 §1.2.1 p.3 |
+| Magic Formula basic form B,C,D,E (eq.1.6) | Ch.1 §1.2.1 p.7 |
+| Effective axle cornering characteristics | Ch.1 §1.2.2 p.7 |
+| Bicycle model EOM, linear 2-DOF, steady-state | Ch.1 §1.3.1–1.3.2 p.16 |
+| Nonlinear steady-state, handling diagram | Ch.1 §1.3.3 p.35 |
+| Brush model (physical tyre) | Ch.3 |
+| Magic Formula — full formulation | Ch.4 |
+| Transient tyre, relaxation length | Ch.7–8 |
+| SWIFT model (high-frequency) | Ch.9 |
+
+---
+
 ## Notation conventions (ApexSim vs Gillespie)
 
 | Quantity | ApexSim | Gillespie Ch.6 |
