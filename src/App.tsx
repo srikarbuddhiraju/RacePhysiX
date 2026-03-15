@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { computeBicycleModel } from './physics/bicycleModel';
 import { computePacejkaModel, DEFAULT_PACEJKA_COEFFS } from './physics/pacejkaModel';
 import { ParameterPanel } from './components/ParameterPanel';
@@ -28,6 +28,11 @@ const DEFAULT_PARAMS: VehicleParams = {
 export function App() {
   const [params, setParams]   = useState<VehicleParams>(DEFAULT_PARAMS);
   const [coeffs, setCoeffs]   = useState<PacejkaCoeffs>(DEFAULT_PACEJKA_COEFFS);
+  const [darkMode, setDarkMode] = useState(true);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
+  }, [darkMode]);
 
   const bicycle = useMemo(() => computeBicycleModel(params),         [params]);
   const pacejka = useMemo(() => computePacejkaModel(params, coeffs), [params, coeffs]);
@@ -38,9 +43,16 @@ export function App() {
       <div className="app-main">
         <ParameterPanel params={params} onChange={setParams} />
         <div className="canvas-area">
-          <TopDownView params={params} result={bicycle} />
+          <TopDownView params={params} result={bicycle} darkMode={darkMode} />
         </div>
         <ResultsPanel result={bicycle} pacejka={pacejka} />
+        <button
+          className="theme-toggle"
+          onClick={() => setDarkMode(d => !d)}
+          title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {darkMode ? '☀' : '🌙'}
+        </button>
       </div>
 
       {/* Bottom row: dynamic charts (tyre curve + handling diagram + Pacejka sliders) */}
