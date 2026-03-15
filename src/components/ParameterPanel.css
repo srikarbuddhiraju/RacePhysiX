@@ -176,6 +176,26 @@ input[type='range']::-webkit-slider-thumb:hover {
   color: var(--accent-text);
 }
 
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 1200px) {
+  .param-panel {
+    width: 220px;
+    min-width: 220px;
+    padding: 14px 12px;
+  }
+}
+
+@media (max-width: 900px) {
+  .param-panel {
+    width: 100%;
+    min-width: unset;
+    max-height: 340px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
 /* ── Panel tabs (Vehicle / Suspension / Aero) ────────────────────────────── */
 
 .param-tabs {

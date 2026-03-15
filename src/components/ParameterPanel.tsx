@@ -195,6 +195,8 @@ export function ParameterPanel({ params, onChange }: Props) {
 
       {/* ── Aero & Braking tab ─────────────────────────────────────────────── */}
       {tab === 'aero' && <>
+        <div className="param-section-label">Aero preset</div>
+        <AeroPresets params={params} onChange={onChange} />
         <div className="param-section-label">Aerodynamics</div>
         <SliderRow cfg={{ label: 'Downforce CL', key: 'aeroCL', min: 0, max: 4.0, step: 0.05, unit: '', format: v => v.toFixed(2), tip: 'Downforce coefficient. F_down = ½ρV²A·CL. 0 = clean road car; 0.3 = mild aero; 1.5 = GT wing; 3.0+ = formula car. Increases grip at higher speeds.' }} params={params} set={set} />
         <SliderRow cfg={{ label: 'Drag CD',       key: 'aeroCD', min: 0.10, max: 1.50, step: 0.05, unit: '', format: v => v.toFixed(2), tip: 'Drag coefficient. F_drag = ½ρV²A·CD. 0.25 = slippery road car; 0.50 = GT; 0.80 = open wheel. Drag limits top speed and requires more engine power.' }} params={params} set={set} />
@@ -343,6 +345,47 @@ function DerivedRow({ label, value, tip }: { label: string; value: string; tip: 
         <InfoTooltip text={tip} />
       </span>
       <span className="derived-value">{value}</span>
+    </div>
+  );
+}
+
+// ── Aero presets ─────────────────────────────────────────────────────────────
+
+interface AeroPreset {
+  label:  string;
+  tip:    string;
+  aeroCL:            number;
+  aeroCD:            number;
+  aeroReferenceArea: number;
+  aeroBalance:       number;
+}
+
+const AERO_PRESETS: AeroPreset[] = [
+  { label: 'Road',    tip: 'Clean road car — no wings, low drag. CL≈0, CD≈0.28.', aeroCL: 0,    aeroCD: 0.28, aeroReferenceArea: 2.0, aeroBalance: 0.45 },
+  { label: 'Mild',    tip: 'Mild aero kit — small lip spoiler + front splitter. CL≈0.3, CD≈0.33.', aeroCL: 0.30, aeroCD: 0.33, aeroReferenceArea: 1.9, aeroBalance: 0.45 },
+  { label: 'GT',      tip: 'GT3/GTE-style wing package. CL≈0.9, CD≈0.55.', aeroCL: 0.90, aeroCD: 0.55, aeroReferenceArea: 1.8, aeroBalance: 0.42 },
+  { label: 'Formula', tip: 'Open-wheel formula car. High downforce, high drag. CL≈2.8, CD≈0.90.', aeroCL: 2.80, aeroCD: 0.90, aeroReferenceArea: 1.5, aeroBalance: 0.40 },
+];
+
+function AeroPresets({ params, onChange }: { params: VehicleParams; onChange: (p: VehicleParams) => void }) {
+  const active = AERO_PRESETS.findIndex(p =>
+    Math.abs(p.aeroCL - params.aeroCL) < 0.01 &&
+    Math.abs(p.aeroCD - params.aeroCD) < 0.01 &&
+    Math.abs(p.aeroReferenceArea - params.aeroReferenceArea) < 0.01,
+  );
+
+  return (
+    <div className="dt-selector" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+      {AERO_PRESETS.map((preset, i) => (
+        <button
+          key={preset.label}
+          className={`dt-btn ${active === i ? 'dt-btn--active' : ''}`}
+          title={preset.tip}
+          onClick={() => onChange({ ...params, aeroCL: preset.aeroCL, aeroCD: preset.aeroCD, aeroReferenceArea: preset.aeroReferenceArea, aeroBalance: preset.aeroBalance })}
+        >
+          {preset.label}
+        </button>
+      ))}
     </div>
   );
 }

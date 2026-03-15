@@ -12,6 +12,9 @@
  */
 
 import { computeBicycleModel } from './bicycleModel';
+import { computeSuspension, computeRollAngle } from './suspension';
+import { computeAero } from './aero';
+import { computeBraking } from './braking';
 import type { VehicleParams } from './types';
 
 const PASS = '\x1b[32mPASS\x1b[0m';
@@ -157,6 +160,117 @@ console.log('\nCheck 4 — Gillespie eq.6.15 numerical reference (SI)');
     delta_gillespie,
     0.001,
   ) && allPassed;
+}
+
+// ─── Check 5: Stage 4 — Suspension roll stiffness ────────────────────────────
+// Hand calc using RCVD Ch.16 formula: KΦ = (k_spring + k_ARB) × TW²/2
+//   TW = 1.5 m  →  TW²/2 = 1.125
+//   KΦ_front = (25000 + 8000) × 1.125 = 33000 × 1.125 = 37125 Nm/rad
+//   KΦ_rear  = (28000 + 6000) × 1.125 = 34000 × 1.125 = 38250 Nm/rad
+//   KΦ_total = 75375 Nm/rad
+//   φ_front  = 37125 / 75375 = 0.49271...
+//   Roll angle @ ay=0.5g=4.905 m/s²: Φ = m×ay×hCG/KΦ × (180/π)
+//            = 1500×4.905×0.55/75375 × 57.2957 = 3.076°
+console.log('\nCheck 5 — Stage 4 Suspension (RCVD Ch.16 roll stiffness model)');
+{
+  const susp = computeSuspension({
+    mass: BASE.mass, cgHeight: BASE.cgHeight, trackWidth: BASE.trackWidth,
+    frontSpringRate: BASE.frontSpringRate, rearSpringRate: BASE.rearSpringRate,
+    frontARBRate: BASE.frontARBRate, rearARBRate: BASE.rearARBRate,
+  });
+
+  const TW = BASE.trackWidth;
+  const tw2o2 = TW * TW / 2;
+  const KPhiFront_exp = (BASE.frontSpringRate + BASE.frontARBRate) * tw2o2;
+  const KPhiRear_exp  = (BASE.rearSpringRate  + BASE.rearARBRate)  * tw2o2;
+  const KPhiTotal_exp = KPhiFront_exp + KPhiRear_exp;
+  const rollRatio_exp = KPhiFront_exp / KPhiTotal_exp;
+
+  allPassed = check('KΦ_front = 37125 Nm/rad', susp.KPhiFront, KPhiFront_exp) && allPassed;
+  allPassed = check('KΦ_rear  = 38250 Nm/rad', susp.KPhiRear,  KPhiRear_exp)  && allPassed;
+  allPassed = check('KΦ_total = 75375 Nm/rad', susp.KPhiTotal, KPhiTotal_exp) && allPassed;
+  allPassed = check('φ_front  = 0.4927...',    susp.rollStiffRatio, rollRatio_exp) && allPassed;
+
+  // Roll angle at ay = 0.5 g
+  const ay05 = 0.5 * G;
+  const rollDeg = computeRollAngle(susp, BASE.mass, BASE.cgHeight, ay05);
+  const rollDeg_exp = (BASE.mass * ay05 * BASE.cgHeight / KPhiTotal_exp) * (180 / Math.PI);
+  allPassed = check(`Roll angle @ 0.5g = ${rollDeg_exp.toFixed(4)}°`, rollDeg, rollDeg_exp, 1e-8) && allPassed;
+  console.log(`  Roll angle @ 0.5 g = ${rollDeg.toFixed(4)}° (expected ${rollDeg_exp.toFixed(4)}°)`);
+}
+
+// ─── Check 6: Stage 6 — Aerodynamics ─────────────────────────────────────────
+// Hand calc at V = 80 kph = 22.222 m/s, CL=CD=0.30, A=2.0, balance=0.45
+//   q = ½ × 1.225 × (80/3.6)² = 302.469 Pa
+//   downforce = 302.469 × 2.0 × 0.30 = 181.481 N
+//   drag      = 302.469 × 2.0 × 0.30 = 181.481 N  (CL = CD here)
+//   FzBoostFront = 181.481 × 0.45 = 81.667 N
+//   FzBoostRear  = 181.481 × 0.55 = 99.815 N
+console.log('\nCheck 6 — Stage 6 Aerodynamics (q, downforce, drag, axle splits)');
+{
+  const V = 80 / 3.6;
+  const qPa_exp        = 0.5 * 1.225 * V * V;
+  const downforce_exp  = qPa_exp * 2.0 * 0.30;
+  const drag_exp       = qPa_exp * 2.0 * 0.30;
+  const FzFront_exp    = downforce_exp * 0.45;
+  const FzRear_exp     = downforce_exp * 0.55;
+
+  const aero = computeAero({
+    aeroCL: 0.30, aeroCD: 0.30, aeroReferenceArea: 2.0, aeroBalance: 0.45, speedMs: V,
+  });
+
+  console.log(`  q = ${aero.qPa.toFixed(3)} Pa (expected ${qPa_exp.toFixed(3)})`);
+  console.log(`  downforce = ${aero.downforceN.toFixed(3)} N,  drag = ${aero.dragN.toFixed(3)} N`);
+  allPassed = check('q matches ½ρV²',            aero.qPa,        qPa_exp,       1e-6) && allPassed;
+  allPassed = check('downforce = q×A×CL',         aero.downforceN, downforce_exp, 1e-6) && allPassed;
+  allPassed = check('drag = q×A×CD',              aero.dragN,      drag_exp,      1e-6) && allPassed;
+  allPassed = check('FzBoostFront = Fd×balance',  aero.FzBoostFront, FzFront_exp, 1e-6) && allPassed;
+  allPassed = check('FzBoostRear  = Fd×(1−bal)',  aero.FzBoostRear,  FzRear_exp,  1e-6) && allPassed;
+}
+
+// ─── Check 7: Stage 5 — Braking model ────────────────────────────────────────
+// Hand calc: m=1500, brakingG=0.8, brakeBias=0.65, peakMu=1.0
+//   F_req  = 1500 × 0.8 × 9.81 = 11772 N
+//   Ffront_raw = 0.65 × 11772 = 7651.8 N
+//   Frear_raw  = 0.35 × 11772 = 4120.2 N
+//   Static Fz_front_axle = 1500×9.81×0.55 = 8093.25 N
+//   ABS limit front = 1.0 × 8093.25 × 0.95 = 7688.59 N > 7651.8 → ABS OFF
+//   ABS limit rear  = 1.0 × 6620.25 × 0.95 = 6289.24 N > 4120.2 → ABS OFF
+//   brakingAx = (7651.8 + 4120.2)/1500 = 11772/1500 = 7.848 m/s²
+console.log('\nCheck 7 — Stage 5 Braking (bias distribution, no-ABS regime)');
+{
+  const FzFrontAxle = BASE.mass * G * BASE.frontWeightFraction;
+  const FzRearAxle  = BASE.mass * G * (1 - BASE.frontWeightFraction);
+  const peakMu      = 1.0;  // default Pacejka peakMu
+
+  const F_req_exp   = BASE.mass * 0.8 * G;
+  const FxFront_exp = 0.65 * F_req_exp;
+  const FxRear_exp  = 0.35 * F_req_exp;
+  const ax_exp      = F_req_exp / BASE.mass;  // ABS not active → total = requested
+
+  const brk = computeBraking({
+    brakingG: 0.8, brakeBias: 0.65,
+    mass: BASE.mass, peakMu,
+    FzFrontAxle, FzRearAxle,
+  });
+
+  console.log(`  FxFront=${brk.FxBrakeFront.toFixed(1)} N, FxRear=${brk.FxBrakeRear.toFixed(1)} N, ax=${brk.brakingAx_ms2.toFixed(4)} m/s²`);
+  console.log(`  ABS front=${brk.absActiveFront}, rear=${brk.absActiveRear}`);
+  allPassed = check('FxBrakeFront = bias × F_total', brk.FxBrakeFront, FxFront_exp, 1e-4) && allPassed;
+  allPassed = check('FxBrakeRear  = (1−bias) × F',  brk.FxBrakeRear,  FxRear_exp,  1e-4) && allPassed;
+  allPassed = check('brakingAx = 0.8g = 7.848 m/s²', brk.brakingAx_ms2, ax_exp,     1e-4) && allPassed;
+  allPassed = check('ABS inactive (front)', brk.absActiveFront ? 1 : 0, 0) && allPassed;
+  allPassed = check('ABS inactive (rear)',  brk.absActiveRear  ? 1 : 0, 0) && allPassed;
+
+  // ABS activation test: extreme braking at 2g, bias 0.85 (over-biased front)
+  // Ffront_raw = 0.85 × 1500×2×9.81 = 25009.5 N > limit 7688.59 → ABS ON
+  const brkABS = computeBraking({
+    brakingG: 2.0, brakeBias: 0.85,
+    mass: BASE.mass, peakMu,
+    FzFrontAxle, FzRearAxle,
+  });
+  allPassed = check('ABS activates at extreme overbias', brkABS.absActiveFront ? 1 : 0, 1) && allPassed;
+  console.log(`  ABS activation test: front=${brkABS.absActiveFront}, rear=${brkABS.absActiveRear}`);
 }
 
 // ─── Summary ─────────────────────────────────────────────────────────────────

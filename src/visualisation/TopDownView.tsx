@@ -629,7 +629,7 @@ export function TopDownView({ params, result, darkMode = true }: Props) {
 
       renderer.setSize(nw, nh);
       renderer.setPixelRatio(dpr);
-      render(stateRef.current);
+      render(stateRef.current!);
     };
     const ro = new ResizeObserver(onResize);
     ro.observe(mount);

@@ -1,7 +1,11 @@
 import { useMemo, useState } from 'react';
 import { computeLapTime, TRACK_PRESETS } from '../physics/laptime';
+import type { TrackLayout } from '../physics/laptime';
 import type { VehicleParams, PacejkaCoeffs } from '../physics/types';
 import { InfoTooltip } from './InfoTooltip';
+import { exportParamsAndResultsCSV } from '../utils/export';
+import { computeBicycleModel } from '../physics/bicycleModel';
+import { computePacejkaModel } from '../physics/pacejkaModel';
 
 interface Props {
   params: VehicleParams;
@@ -43,6 +47,21 @@ export function LapTimePanel({ params, coeffs }: Props) {
           Lap Time Estimator
           <InfoTooltip text="Point-mass lap simulation. Max corner speed from Pacejka μ + aero grip. Straight speed from engine P/V curve minus drag. Braking zones computed backward from corner entry." />
         </span>
+        <button
+          onClick={() => {
+            const bicycle = computeBicycleModel(params);
+            const pacejka = computePacejkaModel(params, coeffs);
+            exportParamsAndResultsCSV(params, bicycle, pacejka);
+          }}
+          title="Export params + results as CSV"
+          style={{
+            marginLeft: 'auto', padding: '3px 10px', fontSize: 10, fontWeight: 600,
+            background: 'var(--bg-card)', border: '1px solid var(--border)',
+            borderRadius: 5, color: 'var(--text-secondary)', cursor: 'pointer',
+          }}
+        >
+          Export CSV
+        </button>
         <select
           value={trackKey}
           onChange={e => setTrackKey(e.target.value)}
@@ -56,6 +75,11 @@ export function LapTimePanel({ params, coeffs }: Props) {
             <option key={k} value={k}>{v.name}</option>
           ))}
         </select>
+      </div>
+
+      {/* Track map */}
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '8px 10px' }}>
+        <TrackMapSVG layout={layout} />
       </div>
 
       {/* Summary row */}
@@ -81,6 +105,61 @@ export function LapTimePanel({ params, coeffs }: Props) {
         Accuracy improves with Stage 3–6 parameters tuned to the actual vehicle.
       </div>
     </div>
+  );
+}
+
+// ── Track map SVG ─────────────────────────────────────────────────────────────
+
+function buildTrackPath(layout: TrackLayout): string {
+  // Walk the track: straight = forward, corner = arc turn (always left-hand circuit)
+  const SCALE = 0.4;  // pixels per metre
+  let x = 0, y = 0, heading = 0;  // heading in radians, 0 = right (+x)
+  const pts: string[] = [`M 0 0`];
+
+  for (const seg of layout.segments) {
+    if (seg.type === 'straight') {
+      const dx = Math.cos(heading) * seg.length * SCALE;
+      const dy = Math.sin(heading) * seg.length * SCALE;
+      x += dx; y += dy;
+      pts.push(`l ${dx.toFixed(1)} ${dy.toFixed(1)}`);
+    } else if (seg.type === 'corner' && seg.radius) {
+      // Arc: sweep angle = arcLength / radius (radians), always turning left
+      const sweep = seg.length / seg.radius;  // radians
+      const R = seg.radius * SCALE;
+      // Centre of arc: perpendicular left of current heading
+      const cx = x + Math.cos(heading - Math.PI / 2) * R;
+      const cy = y + Math.sin(heading - Math.PI / 2) * R;
+      // New end point on arc
+      const newHeading = heading + sweep;
+      const nx = cx + Math.cos(newHeading + Math.PI / 2) * R;
+      const ny = cy + Math.sin(newHeading + Math.PI / 2) * R;
+      // SVG arc: large-arc-flag=0 (sweep < π), sweep-flag=1 (clockwise in SVG coords)
+      const largeArc = sweep > Math.PI ? 1 : 0;
+      pts.push(`A ${R.toFixed(1)} ${R.toFixed(1)} 0 ${largeArc} 1 ${nx.toFixed(1)} ${ny.toFixed(1)}`);
+      x = nx; y = ny;
+      heading = newHeading;
+    }
+  }
+  pts.push('Z');
+  return pts.join(' ');
+}
+
+function TrackMapSVG({ layout }: { layout: TrackLayout }) {
+  const path = useMemo(() => buildTrackPath(layout), [layout]);
+
+  // Fit to a viewBox by measuring bounding box of the path (approx via a temp SVG element)
+  const W = 220, H = 120;
+  return (
+    <svg
+      viewBox={`-20 -20 ${W} ${H}`}
+      width="100%"
+      style={{ maxHeight: 110, display: 'block' }}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d={path} fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+      {/* Start/finish marker */}
+      <circle cx="0" cy="0" r="3.5" fill="var(--accent-text)" />
+    </svg>
   );
 }
 
