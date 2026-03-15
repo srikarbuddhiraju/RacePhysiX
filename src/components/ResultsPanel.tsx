@@ -146,60 +146,82 @@ function UtilBar({ label, pct, color }: { label: string; pct: number; color: str
   return (
     <div style={{ flex: 1 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, marginBottom: 3 }}>
-        <span style={{ color: '#5a5a7a' }}>{label}</span>
+        <span style={{ color: 'var(--text-muted)' }}>{label}</span>
         <span style={{ color, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{(pct * 100).toFixed(0)}%</span>
       </div>
-      <div style={{ height: 4, background: '#1e1e2e', borderRadius: 2, overflow: 'hidden' }}>
+      <div style={{ height: 4, background: 'var(--border-subtle)', borderRadius: 2, overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${Math.min(pct * 100, 100)}%`, background: color, borderRadius: 2, transition: 'width 0.1s' }} />
       </div>
     </div>
   );
 }
 
-function CornerLoad({ label, fz }: { label: string; fz: number }) {
+function CornerLoad({ fz, highlight }: { fz: number; highlight?: boolean }) {
   return (
-    <div style={{ textAlign: 'center' }}>
-      <div style={{ fontSize: 9, color: '#4a4a6a', marginBottom: 2 }}>{label}</div>
-      <div style={{ fontSize: 11, fontWeight: 600, color: '#c0c0e0', fontVariantNumeric: 'tabular-nums' }}>
+    <div style={{
+      textAlign: 'center', padding: '5px 4px',
+      background: highlight ? 'var(--bg-active)' : 'var(--bg-page)',
+      borderRadius: 4,
+      border: `1px solid ${highlight ? 'var(--accent)' : 'var(--border-subtle)'}`,
+    }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
         {(fz / 1000).toFixed(2)}
       </div>
-      <div style={{ fontSize: 8, color: '#3a3a5a' }}>kN</div>
+      <div style={{ fontSize: 8, color: 'var(--text-muted)', marginTop: 1 }}>kN</div>
     </div>
   );
 }
 
 function Stage3Panel({ p }: { p: PacejkaResult }) {
   const hasFx = p.FxFront > 1 || p.FxRear > 1;
+  // Highlight the more loaded corner (outside) in each row
+  const frontOutsideMore = p.FzFR >= p.FzFL;
+  const rearOutsideMore  = p.FzRR >= p.FzRL;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ fontSize: 10, fontWeight: 600, color: '#4a4a6a', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+      <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
         Stage 3 — Load Transfer &amp; Drivetrain
       </div>
+
+      {/* ── Per-corner loads ──────────────────────────────────────── */}
       <div>
-        <div style={{ fontSize: 9, color: '#4a4a6a', marginBottom: 6 }}>
-          Per-corner loads
+        <div style={{ fontSize: 9, color: 'var(--text-faint)', marginBottom: 6 }}>
+          Per-corner loads (Fz)
           <InfoTooltip text="Normal force Fz on each tyre after lateral + longitudinal load transfer. Outside tyres gain load in cornering. Unequal Fz changes the Pacejka curve per tyre → real grip loss captured." />
         </div>
-        <div style={{ background: '#0c0c14', border: '1px solid #1e1e2e', borderRadius: 6, padding: '8px 12px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px' }}>
-            <CornerLoad label="FL (inside)"  fz={p.FzFL} />
-            <CornerLoad label="FR (outside)" fz={p.FzFR} />
-            <CornerLoad label="RL (inside)"  fz={p.FzRL} />
-            <CornerLoad label="RR (outside)" fz={p.FzRR} />
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: '8px 10px' }}>
+          {/* Column headers */}
+          <div style={{ display: 'grid', gridTemplateColumns: '32px 1fr 1fr', gap: '3px 6px', alignItems: 'center' }}>
+            <div />
+            <div style={{ fontSize: 8, color: 'var(--text-muted)', textAlign: 'center', letterSpacing: '0.06em' }}>INSIDE</div>
+            <div style={{ fontSize: 8, color: 'var(--text-muted)', textAlign: 'center', letterSpacing: '0.06em' }}>OUTSIDE</div>
+
+            {/* Front row */}
+            <div style={{ fontSize: 9, color: 'var(--text-secondary)', fontWeight: 600, textAlign: 'right', paddingRight: 4 }}>F</div>
+            <CornerLoad fz={p.FzFL} highlight={!frontOutsideMore} />
+            <CornerLoad fz={p.FzFR} highlight={frontOutsideMore} />
+
+            {/* Rear row */}
+            <div style={{ fontSize: 9, color: 'var(--text-secondary)', fontWeight: 600, textAlign: 'right', paddingRight: 4 }}>R</div>
+            <CornerLoad fz={p.FzRL} highlight={!rearOutsideMore} />
+            <CornerLoad fz={p.FzRR} highlight={rearOutsideMore} />
           </div>
-          <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid #1e1e2e', display: 'flex', gap: 12, fontSize: 9, color: '#4a4a6a', flexWrap: 'wrap' }}>
-            <span>Lat ΔFz F: <b style={{ color: '#c0c0e0' }}>{(p.latTransferFront / 1000).toFixed(2)} kN</b></span>
-            <span>Lat ΔFz R: <b style={{ color: '#c0c0e0' }}>{(p.latTransferRear / 1000).toFixed(2)} kN</b></span>
-            {p.longTransfer > 10 && <span>Long ΔFz: <b style={{ color: '#c0c0e0' }}>{(p.longTransfer / 1000).toFixed(2)} kN</b></span>}
+
+          <div style={{ marginTop: 7, paddingTop: 6, borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 12, fontSize: 9, color: 'var(--text-faint)', flexWrap: 'wrap' }}>
+            <span>Lat ΔFz front: <b style={{ color: 'var(--text-primary)' }}>{(p.latTransferFront / 1000).toFixed(2)} kN</b></span>
+            <span>rear: <b style={{ color: 'var(--text-primary)' }}>{(p.latTransferRear / 1000).toFixed(2)} kN</b></span>
+            {p.longTransfer > 10 && <span>Long ΔFz: <b style={{ color: 'var(--text-primary)' }}>{(p.longTransfer / 1000).toFixed(2)} kN</b></span>}
           </div>
         </div>
       </div>
+
+      {/* ── Friction circle utilisation ───────────────────────────── */}
       <div>
-        <div style={{ fontSize: 9, color: '#4a4a6a', marginBottom: 6 }}>
-          Friction circle utilisation
+        <div style={{ fontSize: 9, color: 'var(--text-faint)', marginBottom: 6 }}>
+          Grip utilisation
           <InfoTooltip text="Front/rear tyre grip usage. Lateral: Fy/(μ·Fz). Combined: √(Fy²+Fx²)/(μ·Fz) — shows how throttle on driven wheels eats into cornering grip." />
         </div>
-        <div style={{ background: '#0c0c14', border: '1px solid #1e1e2e', borderRadius: 6, padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
           <UtilBar label="Front lateral" pct={p.frontUtilisation} color="#60a5fa" />
           <UtilBar label="Rear  lateral" pct={p.rearUtilisation}  color="#f87171" />
           {hasFx && <>
@@ -208,20 +230,22 @@ function Stage3Panel({ p }: { p: PacejkaResult }) {
           </>}
         </div>
       </div>
+
+      {/* ── Drivetrain (only when throttle > 0) ──────────────────── */}
       {hasFx && (
-        <div style={{ background: '#0c0c14', border: '1px solid #1e1e2e', borderRadius: 6, padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ fontSize: 9, color: '#4a4a6a', marginBottom: 2, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Drivetrain</div>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ fontSize: 9, color: 'var(--text-faint)', marginBottom: 2, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Drivetrain</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
-            <span style={{ color: '#4a4a6a' }}>Drive force</span>
-            <span style={{ color: '#c0c0e0', fontVariantNumeric: 'tabular-nums' }}>{(p.driveForceN / 1000).toFixed(2)} kN</span>
+            <span style={{ color: 'var(--text-faint)' }}>Drive force</span>
+            <span style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{(p.driveForceN / 1000).toFixed(2)} kN</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
-            <span style={{ color: '#4a4a6a' }}>Fx front / rear</span>
-            <span style={{ color: '#c0c0e0', fontVariantNumeric: 'tabular-nums' }}>{(p.FxFront / 1000).toFixed(2)} / {(p.FxRear / 1000).toFixed(2)} kN</span>
+            <span style={{ color: 'var(--text-faint)' }}>Fx front / rear</span>
+            <span style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{(p.FxFront / 1000).toFixed(2)} / {(p.FxRear / 1000).toFixed(2)} kN</span>
           </div>
           {p.tvYawMoment !== 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, borderTop: '1px solid #1e1e2e', paddingTop: 4, marginTop: 2 }}>
-              <span style={{ color: '#4a4a6a' }}>TV yaw moment <InfoTooltip text="Torque-vectoring yaw moment = FxRear × tvBias × TW/2. Positive = helps car rotate = reduces understeer. Control law: tvBias ∝ (αf−αr)." /></span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, borderTop: '1px solid var(--border-subtle)', paddingTop: 4, marginTop: 2 }}>
+              <span style={{ color: 'var(--text-faint)' }}>TV yaw moment <InfoTooltip text="Torque-vectoring yaw moment = FxRear × tvBias × TW/2. Positive = helps car rotate = reduces understeer. Control law: tvBias ∝ (αf−αr)." /></span>
               <span style={{ color: p.tvYawMoment > 0 ? '#4ade80' : '#f43f5e', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{p.tvYawMoment.toFixed(0)} Nm</span>
             </div>
           )}

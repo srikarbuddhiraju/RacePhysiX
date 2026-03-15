@@ -499,9 +499,9 @@ function buildScene(scene: Scene, params: VehicleParams, result: PhysicsResult):
 
   const vecZ = 0.55;
   scene.add(new ArrowHelper(frontHeadDir, new Vector3(0, a, vecZ), slipL, 0x22d3ee, slipHL, slipHW));
-  scene.add(new ArrowHelper(frontVelDir,  new Vector3(0, a, vecZ), slipL, 0xf0f0f0, slipHL, slipHW));
+  scene.add(new ArrowHelper(frontVelDir,  new Vector3(0, a, vecZ), slipL, 0xfde68a, slipHL, slipHW));
   scene.add(new ArrowHelper(rearHeadDir,  new Vector3(0, -b, vecZ), slipL, 0x22d3ee, slipHL, slipHW));
-  scene.add(new ArrowHelper(rearVelDir,   new Vector3(0, -b, vecZ), slipL, 0xf0f0f0, slipHL, slipHW));
+  scene.add(new ArrowHelper(rearVelDir,   new Vector3(0, -b, vecZ), slipL, 0xfde68a, slipHL, slipHW));
 
   // ── Lateral force arrows ───────────────────────────────────────────────────
   const leftDir      = new Vector3(-1, 0, 0);
@@ -735,7 +735,7 @@ function ViewLegend({ fyFrontColor, fyRearColor, balance, darkMode = true }: {
         Legend
       </span>
       <LegendItem icon={<ArrowSvg color="#22d3ee" />} label="Wheel heading" />
-      <LegendItem icon={<ArrowSvg color="#f0f0f0" />} label="Contact velocity (gap = α)" />
+      <LegendItem icon={<ArrowSvg color="#fde68a" />} label="Contact velocity (gap = α)" />
       <LegendItem icon={<ArrowSvg color={fyFrontColor} />} label={`Front Fy (${balanceNote})`} />
       <LegendItem icon={<ArrowSvg color={fyRearColor}  />} label="Rear Fy" />
       <LegendItem icon={<ArrowSvg color="#60a5fa" />} label="Speed" />
