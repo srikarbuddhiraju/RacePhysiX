@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { computeBicycleModel } from './physics/bicycleModel';
 import { computePacejkaModel, DEFAULT_PACEJKA_COEFFS } from './physics/pacejkaModel';
 import { ParameterPanel } from './components/ParameterPanel';
@@ -7,6 +7,14 @@ import { TopDownView }    from './visualisation/TopDownView';
 import { ChartsPanel }    from './charts/ChartsPanel';
 import type { VehicleParams, PacejkaCoeffs } from './physics/types';
 import './App.css';
+
+// ── URL hash persistence ──────────────────────────────────────────────────────
+function encodeParams(p: VehicleParams): string {
+  try { return btoa(JSON.stringify(p)); } catch { return ''; }
+}
+function decodeParams(hash: string): Partial<VehicleParams> {
+  try { return JSON.parse(atob(hash.replace(/^#/, ''))) as Partial<VehicleParams>; } catch { return {}; }
+}
 
 const DEFAULT_PARAMS: VehicleParams = {
   mass: 1500,
@@ -38,10 +46,27 @@ const DEFAULT_PARAMS: VehicleParams = {
   aeroBalance:       0.45,
 };
 
+function loadInitialParams(): VehicleParams {
+  if (window.location.hash.length > 1) {
+    const decoded = decodeParams(window.location.hash);
+    if (decoded && typeof decoded === 'object' && 'mass' in decoded) {
+      return { ...DEFAULT_PARAMS, ...decoded };
+    }
+  }
+  return DEFAULT_PARAMS;
+}
+
 export function App() {
-  const [params, setParams]   = useState<VehicleParams>(DEFAULT_PARAMS);
-  const [coeffs, setCoeffs]   = useState<PacejkaCoeffs>(DEFAULT_PACEJKA_COEFFS);
+  const [params, setParamsRaw] = useState<VehicleParams>(loadInitialParams);
+  const [coeffs, setCoeffs]    = useState<PacejkaCoeffs>(DEFAULT_PACEJKA_COEFFS);
   const [darkMode, setDarkMode] = useState(true);
+
+  // Keep URL hash in sync with params
+  const setParams = useCallback((p: VehicleParams) => {
+    setParamsRaw(p);
+    const encoded = encodeParams(p);
+    if (encoded) history.replaceState(null, '', `#${encoded}`);
+  }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');

@@ -160,7 +160,7 @@ function driveForce(V: number, powerKW: number, mass: number): number {
 
 /** Brake deceleration at speed V, accounting for aero (aerodynamic braking boost). */
 function brakeDecel(V: number, inp: LapSimInput): number {
-  const { mass, brakingCapG, aeroCL, aeroReferenceArea: A } = inp;
+  const { mass, aeroCL, aeroReferenceArea: A } = inp;
   const downforce = 0.5 * RHO_AIR * V * V * A * aeroCL;
   // More downforce → more brake force available (friction limit rises)
   const aeroBoost = downforce * inp.peakMu;

@@ -31,6 +31,44 @@
   overflow: hidden;
 }
 
+/* ── Responsive breakpoints ──────────────────────────────────────────────── */
+
+/* Narrow: tighten the top/bottom split */
+@media (max-width: 1200px) {
+  .app-main {
+    flex: 0 0 55%;
+  }
+}
+
+/* Compact: stack everything vertically, enable scroll */
+@media (max-width: 900px) {
+  .app {
+    height: auto;
+    min-height: 100vh;
+    overflow: auto;
+  }
+
+  .app-main {
+    flex: none;
+    flex-wrap: wrap;
+    height: auto;
+    overflow: visible;
+  }
+
+  .canvas-area {
+    order: -1;
+    width: 100%;
+    height: 300px;
+    flex: none;
+  }
+
+  .app-charts {
+    flex: none;
+    height: 420px;
+    min-height: 420px;
+  }
+}
+
 /* ── Theme toggle button ─────────────────────────────────────────────────── */
 
 .theme-toggle {

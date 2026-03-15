@@ -20,6 +20,26 @@
   overflow-y: auto;
 }
 
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 1200px) {
+  .results-panel {
+    width: 220px;
+    min-width: 220px;
+    padding: 14px 12px;
+  }
+}
+
+@media (max-width: 900px) {
+  .results-panel {
+    width: 100%;
+    min-width: unset;
+    max-height: 300px;
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+}
+
 .balance-badge {
   border: 2px solid;
   border-radius: 8px;
