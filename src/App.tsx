@@ -57,15 +57,15 @@ export function App() {
         <ParameterPanel params={params} onChange={setParams} />
         <div className="canvas-area">
           <TopDownView params={params} result={bicycle} darkMode={darkMode} />
+          <button
+            className="theme-toggle"
+            onClick={() => setDarkMode(d => !d)}
+            title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {darkMode ? '☀' : '🌙'}
+          </button>
         </div>
         <ResultsPanel result={bicycle} pacejka={pacejka} />
-        <button
-          className="theme-toggle"
-          onClick={() => setDarkMode(d => !d)}
-          title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-        >
-          {darkMode ? '☀' : '🌙'}
-        </button>
       </div>
 
       {/* Bottom row: dynamic charts (tyre curve + handling diagram + Pacejka sliders) */}
