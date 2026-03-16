@@ -60,6 +60,9 @@ const DEFAULT_PARAMS: VehicleParams = {
   wheelRadiusM:     0.32,
   enginePeakRpm:    5500,
   engineRedlineRpm: 6500,
+  // Race simulation
+  fuelLoadKg:             45,
+  fuelBurnRateKgPerLap:   2.5,
 };
 
 function loadInitialParams(): VehicleParams {

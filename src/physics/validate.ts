@@ -73,6 +73,7 @@ const BASE: VehicleParams = {
   gearCount: 6, firstGearRatio: 3.0, topGearRatio: 0.72,
   finalDriveRatio: 3.9, wheelRadiusM: 0.32,
   enginePeakRpm: 5500, engineRedlineRpm: 6500,
+  fuelLoadKg: 45, fuelBurnRateKgPerLap: 2.5,
 };
 
 let allPassed = true;

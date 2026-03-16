@@ -1,9 +1,9 @@
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
-import { computeLapTime, TRACK_PRESETS } from '../physics/laptime';
+import { computeLapTime, simulateRace, TRACK_PRESETS } from '../physics/laptime';
 import { computeMaxDriveForce } from '../physics/gearModel';
 import { optimiseSetup, OPTIMISE_BOUNDS, OPTIMISABLE_KEYS } from '../physics/optimise';
 import type { OptimiseResult } from '../physics/optimise';
-import type { TrackLayout } from '../physics/laptime';
+import type { TrackLayout, RaceResult } from '../physics/laptime';
 import type { VehicleParams, PacejkaCoeffs } from '../physics/types';
 import { InfoTooltip } from './InfoTooltip';
 import { exportLapTimeCSV } from '../utils/export';
@@ -48,9 +48,18 @@ type OptimState =
   | { status: 'done'; result: OptimiseResult }
   | { status: 'error'; message: string };
 
+type RaceSimState =
+  | { status: 'idle' }
+  | { status: 'running' }
+  | { status: 'done'; result: RaceResult }
+  | { status: 'error'; message: string };
+
 export function LapTimePanel({ params, coeffs, onChange }: Props) {
   const [trackKey,   setTrackKey]   = useState<string>('club');
   const [optimState, setOptimState] = useState<OptimState>({ status: 'idle' });
+  const [raceState,  setRaceState]  = useState<RaceSimState>({ status: 'idle' });
+  const [numLaps,    setNumLaps]    = useState<number>(10);
+  const [startTempC, setStartTempC] = useState<number>(30);
   const layout = TRACK_PRESETS[trackKey];
 
   /**
@@ -116,6 +125,29 @@ export function LapTimePanel({ params, coeffs, onChange }: Props) {
     setOptimState({ status: 'idle' });
   };
 
+  const handleSimulateRace = () => {
+    setRaceState({ status: 'running' });
+    setTimeout(() => {
+      try {
+        const inp = inpBuilder(params);
+        const result = simulateRace(
+          layout, inp,
+          numLaps,
+          params.fuelLoadKg ?? 45,
+          params.fuelBurnRateKgPerLap ?? 2.5,
+          startTempC,
+          params.tyreOptTempC,
+          params.tyreTempHalfWidthC,
+          params.tyreTempFloorMu,
+        );
+        setRaceState({ status: 'done', result });
+      } catch (e) {
+        console.error(e);
+        setRaceState({ status: 'error', message: String(e) });
+      }
+    }, 0);
+  };
+
   return (
     <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto', height: '100%' }}>
 
@@ -151,7 +183,8 @@ export function LapTimePanel({ params, coeffs, onChange }: Props) {
             ))}
           </optgroup>
           <optgroup label="Real Circuits">
-            {['monza', 'monaco', 'spa', 'silverstone', 'suzuka'].map(k => (
+            {['monza', 'monaco', 'spa', 'silverstone', 'suzuka',
+              'nurburgring_gp', 'bahrain', 'barcelona', 'hungaroring', 'montreal'].map(k => (
               <option key={k} value={k}>{TRACK_PRESETS[k].name}</option>
             ))}
           </optgroup>
@@ -228,10 +261,155 @@ export function LapTimePanel({ params, coeffs, onChange }: Props) {
         ))}
       </div>
 
+      {/* Race Simulation */}
+      <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 10, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            Race Simulation
+            <InfoTooltip text="Multi-lap simulation with tyre thermal evolution and fuel burn. Tyre temp rises from cold start → optimal → degrades. μ follows a bell curve centred at optimal temp. Fuel mass reduction is modelled per-lap. Sectors split at 1/3 and 2/3 of track distance." />
+          </span>
+        </div>
+
+        {/* Controls row */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <div>
+            <div style={{ fontSize: 9, color: 'var(--text-faint)', marginBottom: 3 }}>
+              Laps: <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{numLaps}</span>
+            </div>
+            <input type="range" min={1} max={50} value={numLaps}
+              onChange={e => setNumLaps(parseInt(e.target.value))}
+              style={{ width: '100%', accentColor: 'var(--accent)' }} />
+          </div>
+          <div>
+            <div style={{ fontSize: 9, color: 'var(--text-faint)', marginBottom: 3 }}>
+              Start tyre temp: <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{startTempC}°C</span>
+              <span style={{ color: 'var(--text-dim)', fontSize: 8 }}> (opt: {params.tyreOptTempC}°C)</span>
+            </div>
+            <input type="range" min={10} max={80} value={startTempC}
+              onChange={e => setStartTempC(parseInt(e.target.value))}
+              style={{ width: '100%', accentColor: 'var(--accent)' }} />
+          </div>
+        </div>
+
+        {/* Fuel display */}
+        <div style={{ fontSize: 9, color: 'var(--text-muted)', display: 'flex', gap: 12 }}>
+          <span>Fuel load: <span style={{ color: 'var(--text-secondary)' }}>{(params.fuelLoadKg ?? 45).toFixed(0)} kg</span></span>
+          <span>Burn rate: <span style={{ color: 'var(--text-secondary)' }}>{(params.fuelBurnRateKgPerLap ?? 2.5).toFixed(1)} kg/lap</span></span>
+          <span style={{ color: 'var(--text-dim)' }}>→ {(numLaps * (params.fuelBurnRateKgPerLap ?? 2.5)).toFixed(1)} kg total</span>
+        </div>
+
+        <button
+          onClick={handleSimulateRace}
+          disabled={raceState.status === 'running'}
+          style={{
+            padding: '5px 14px', fontSize: 10, fontWeight: 700, alignSelf: 'flex-start',
+            background: raceState.status === 'running' ? 'var(--bg-card)' : 'var(--accent)',
+            border: 'none', borderRadius: 5,
+            color: raceState.status === 'running' ? 'var(--text-muted)' : 'var(--accent-text)',
+            cursor: raceState.status === 'running' ? 'default' : 'pointer',
+            opacity: raceState.status === 'running' ? 0.6 : 1,
+          }}
+        >
+          {raceState.status === 'running' ? 'Simulating…' : 'Simulate Race'}
+        </button>
+
+        {raceState.status === 'error' && (
+          <div style={{ fontSize: 10, color: '#f87171', padding: '6px 8px', background: 'var(--bg-card)', borderRadius: 6 }}>
+            {raceState.message}
+          </div>
+        )}
+
+        {raceState.status === 'done' && (
+          <RaceResultTable result={raceState.result} />
+        )}
+      </div>
+
       <div style={{ fontSize: 9, color: 'var(--text-dim)', lineHeight: 1.5, marginTop: 4 }}>
-        Point-mass model — no gear shifts, no tyre temp, no slip angle limits on straights.<br />
+        Point-mass model — no gear shifts, no slip angle limits on straights.<br />
         Accuracy improves with Stage 3–6 parameters tuned to the actual vehicle.
       </div>
+    </div>
+  );
+}
+
+// ── Race result table ──────────────────────────────────────────────────────────
+
+function fmtSec(s: number): string {
+  return s.toFixed(3);
+}
+
+function RaceResultTable({ result }: { result: RaceResult }) {
+  const { laps, fastestLapNum } = result;
+  const COL = { lap: 28, time: 54, gap: 48, s1: 40, s2: 40, s3: 40, temp: 36, mu: 32, fuel: 36 };
+  const headerStyle: React.CSSProperties = {
+    fontSize: 8, color: 'var(--text-faint)', fontWeight: 700, textTransform: 'uppercase',
+    letterSpacing: '0.04em', textAlign: 'right' as const, paddingBottom: 4,
+  };
+  const cellStyle: React.CSSProperties = {
+    fontSize: 9, textAlign: 'right' as const, fontVariantNumeric: 'tabular-nums',
+    padding: '2px 0',
+  };
+
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 354 }}>
+        <thead>
+          <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+            <th style={{ ...headerStyle, width: COL.lap, textAlign: 'left' as const }}>Lap</th>
+            <th style={{ ...headerStyle, width: COL.time }}>Time</th>
+            <th style={{ ...headerStyle, width: COL.gap }}>Gap</th>
+            <th style={{ ...headerStyle, width: COL.s1 }}>S1</th>
+            <th style={{ ...headerStyle, width: COL.s2 }}>S2</th>
+            <th style={{ ...headerStyle, width: COL.s3 }}>S3</th>
+            <th style={{ ...headerStyle, width: COL.temp }}>T°C</th>
+            <th style={{ ...headerStyle, width: COL.mu }}>μ%</th>
+            <th style={{ ...headerStyle, width: COL.fuel }}>Fuel</th>
+          </tr>
+        </thead>
+        <tbody>
+          {laps.map(lap => {
+            const isFastest = lap.lap === fastestLapNum;
+            const rowStyle: React.CSSProperties = {
+              background: isFastest ? 'var(--bg-active)' : 'transparent',
+              borderBottom: '1px solid var(--border-subtle)',
+            };
+            const timeColor = isFastest ? 'var(--accent-text)' : 'var(--text-primary)';
+            const gapColor  = lap.gapToFastestSec < 0.001 ? 'var(--accent-text)' :
+                              lap.gapToFastestSec > 2 ? '#f87171' : 'var(--text-muted)';
+            const muColor   = lap.muFraction > 0.97 ? '#4ade80' :
+                              lap.muFraction > 0.90 ? 'var(--text-secondary)' : '#f87171';
+            return (
+              <tr key={lap.lap} style={rowStyle}>
+                <td style={{ ...cellStyle, textAlign: 'left', color: isFastest ? 'var(--accent-text)' : 'var(--text-faint)', fontWeight: isFastest ? 700 : 400 }}>
+                  {lap.lap}{isFastest ? ' ★' : ''}
+                </td>
+                <td style={{ ...cellStyle, color: timeColor, fontWeight: isFastest ? 700 : 400 }}>
+                  {fmtTime(lap.lapTimeSec)}
+                </td>
+                <td style={{ ...cellStyle, color: gapColor }}>
+                  {lap.gapToFastestSec < 0.001 ? '—' : `+${fmtSec(lap.gapToFastestSec)}`}
+                </td>
+                <td style={{ ...cellStyle, color: 'var(--text-muted)' }}>{fmtSec(lap.s1Sec)}</td>
+                <td style={{ ...cellStyle, color: 'var(--text-muted)' }}>{fmtSec(lap.s2Sec)}</td>
+                <td style={{ ...cellStyle, color: 'var(--text-muted)' }}>{fmtSec(lap.s3Sec)}</td>
+                <td style={{ ...cellStyle, color: 'var(--text-secondary)' }}>{lap.tyreTempC.toFixed(0)}</td>
+                <td style={{ ...cellStyle, color: muColor }}>{(lap.muFraction * 100).toFixed(0)}</td>
+                <td style={{ ...cellStyle, color: 'var(--text-dim)' }}>{lap.fuelMassKg.toFixed(1)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+        <tfoot>
+          <tr style={{ borderTop: '1px solid var(--border)' }}>
+            <td colSpan={2} style={{ ...cellStyle, textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 700, paddingTop: 4 }}>
+              Total
+            </td>
+            <td colSpan={7} style={{ ...cellStyle, color: 'var(--text-secondary)', fontWeight: 700, paddingTop: 4 }}>
+              {fmtTime(result.totalTimeSec)}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
     </div>
   );
 }

@@ -289,6 +289,10 @@ export function ParameterPanel({ params, onChange }: Props) {
           })()}
         </div>
 
+        <div className="param-section-label">Fuel &amp; Race (Race Sim)</div>
+        <SliderRow cfg={{ label: 'Fuel load', key: 'fuelLoadKg', min: 0, max: 120, step: 1, unit: 'kg', format: v => v.toFixed(0), tip: 'Total fuel mass at race start. Reduces car mass as it burns off each lap. Road: 40–60 kg; F1: ~100 kg; sprint/qualify: 2–5 kg.' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Burn rate', key: 'fuelBurnRateKgPerLap', min: 0.5, max: 5.0, step: 0.1, unit: 'kg/lap', format: v => v.toFixed(1), tip: 'Fuel consumed per lap. Road car: ~2–3 kg/lap; GT: ~3–4 kg/lap; F1: ~1.6–2.0 kg/lap. Determines how much lighter the car gets as the race progresses.' }} params={params} set={set} />
+
         <div className="param-section-label">Tyre Temperature (Stage 11)</div>
         <SliderRow cfg={{ label: 'Optimal temp', key: 'tyreOptTempC', min: 50, max: 150, step: 5, unit: '°C', format: v => v.toFixed(0), tip: 'Temperature at which the tyre reaches peak grip. Road tyre: ~80–90°C; track: ~95–110°C; motorsport: ~110–120°C. The bell curve peaks here.' }} params={params} set={set} />
         <SliderRow cfg={{ label: 'Half-width', key: 'tyreTempHalfWidthC', min: 10, max: 60, step: 5, unit: '°C', format: v => v.toFixed(0), tip: 'Grip drops 50% of the way to the floor at ±this many °C from optimal. Narrow = sensitive tyre (motorsport compound). Wide = forgiving (all-season).' }} params={params} set={set} />

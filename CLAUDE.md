@@ -43,11 +43,20 @@ Srikar can and will catch incorrect physics — accuracy is non-negotiable.
 | 6 | Aerodynamics | ✅ done | Speed-dependent downforce + drag, axle splits |
 | 7 | Lap time estimator | ✅ done | Point-mass sim over corner+straight segments, real circuits |
 | 8 | 14-DOF time-domain | ✅ done | Step steer / sine sweep / brake-in-turn ISO scenarios, RK4 ODE |
-| 9 | Tyre load sensitivity | 🔲 next | Pacejka B/C/E vary with Fz — degressive grip at high load, realistic load transfer penalty |
-| 10 | Gear model + powertrain | 🔲 next | Gear ratios, shift points, rev-limited P/V curve — accurate straight-line speeds |
-| 11 | Thermal tyre model | 🔲 next | Tyre temperature affects μ — warm-up, degradation, optimal operating window |
-| 12 | Setup optimisation | 🔲 next | Auto-find spring/ARB/aero for minimum lap time on a chosen circuit |
-| 13 | Full nonlinear | 🔲 next | Separate front/rear Cα, Stage 8 transients feeding lap sim, combined slip in estimator |
+| 9 | Tyre load sensitivity | ✅ done | Pacejka degressive μ with Fz — load sensitivity qFz parameter |
+| 10 | Gear model + powertrain | ✅ done | Gear ratios, shift points, rev-limited P/V curve — accurate straight-line speeds |
+| 11 | Thermal tyre model | ✅ done | Tyre temperature affects μ — warm-up, degradation, Gaussian bell curve |
+| 12 | Setup optimisation | ✅ done | Nelder-Mead simplex over 7 params (spring/ARB/aero/brake bias) — min lap time |
+| 13 | Full nonlinear | ✅ done | Separate front/rear Cα, combined slip friction circle, yaw transient penalty |
+| 14 | Race simulation | ✅ done | Multi-lap sim: tyre warmup/degradation, fuel burn, sector times, gap-to-fastest |
+| 15 | Track editor | 🔲 next | User-editable segment table with live SVG preview, JSON import/export |
+| 16 | GPS-accurate circuit maps | 🔲 future | TUMFTM Racetrack Database (LGPL-3.0) x/y CSV → svgPath per circuit |
+
+## Circuits Available
+- **Generic**: Club (~1.9 km), Karting (~1.0 km), GT circuit (~3.2 km), Formula test (~2.1 km)
+- **Real (schematic)**: Monza, Monaco, Spa, Silverstone, Suzuka
+- **Real (GPS-derived, TUMFTM LGPL-3.0)**: Nürburgring GP, Bahrain/Sakhir, Barcelona/Catalunya, Hungaroring/Budapest, Montreal
+- Total: 14 circuits
 
 ## Validation
 `src/physics/validate.ts` — run with `npx tsx src/physics/validate.ts`
@@ -56,7 +65,8 @@ Srikar can and will catch incorrect physics — accuracy is non-negotiable.
 - Check 6: Stage 6 aero (q, downforce, drag, axle splits)
 - Check 7: Stage 5 braking (bias distribution, ABS activation)
 - Checks 8–10: Stage 8 time-domain (step steer, neutral steer, sine sweep)
-- **All 18 checks pass. Extended suite: 178/178 pass.**
+- Checks 11–14: Stages 10–13 (gear model, thermal tyre, optimiser, combined slip/transient)
+- **All 21 checks pass. Extended suite: 309/309 pass.**
 
 ## Physics Reference Docs
 All physics knowledge lives in `docs/physics-reference/`. Read relevant file before
