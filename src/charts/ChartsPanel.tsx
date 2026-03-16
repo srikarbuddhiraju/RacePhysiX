@@ -11,6 +11,7 @@ import { TyreCurveChart }  from './TyreCurveChart';
 import { HandlingDiagram } from './HandlingDiagram';
 import { InfoTooltip }     from '../components/InfoTooltip';
 import type { PacejkaResult, PhysicsResult, PacejkaCoeffs, VehicleParams, VehicleClass } from '../physics/types';
+import type { LapResult, RaceResult, TrackLayout } from '../physics/laptime';
 import './ChartsPanel.css';
 import { LapTimePanel }       from '../components/LapTimePanel';
 import { TimeDomainPanel }   from '../components/TimeDomainPanel';
@@ -140,12 +141,18 @@ const COEFF_SLIDERS: CoeffSlider[] = [
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface Props {
-  pacejka:        PacejkaResult;
-  bicycle:        PhysicsResult;
-  coeffs:         PacejkaCoeffs;
-  onCoeffsChange: (c: PacejkaCoeffs) => void;
-  params:         VehicleParams;
-  onParamsChange: (p: VehicleParams) => void;
+  pacejka:             PacejkaResult;
+  bicycle:             PhysicsResult;
+  coeffs:              PacejkaCoeffs;
+  onCoeffsChange:      (c: PacejkaCoeffs) => void;
+  params:              VehicleParams;
+  onParamsChange:      (p: VehicleParams) => void;
+  trackKey:            string;
+  onTrackChange:       (k: string) => void;
+  onLapResultChange:   (r: LapResult) => void;
+  onRaceResultChange:  (r: RaceResult) => void;
+  onTriggerRaceAnim:   () => void;
+  onLayoutChange:      (layout: TrackLayout) => void;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -154,6 +161,8 @@ export function ChartsPanel({
   pacejka, bicycle,
   coeffs, onCoeffsChange,
   params, onParamsChange,
+  trackKey, onTrackChange,
+  onLapResultChange, onRaceResultChange, onTriggerRaceAnim, onLayoutChange,
 }: Props) {
   const [activeTab, setActiveTab]       = useState<'presets' | 'advanced' | 'laptime' | 'timedomain'>('presets');
   const [selectedPreset, setSelected]   = useState<string>('road-standard');
@@ -239,11 +248,21 @@ export function ChartsPanel({
       </div>
 
       {/* ── Charts, Lap Time, or Time Domain ────────────────────────────── */}
-      {activeTab === 'laptime' ? (
-        <LapTimePanel params={params} coeffs={coeffs} onChange={onParamsChange} />
-      ) : activeTab === 'timedomain' ? (
+      {/* Always mount LapTimePanel so it sends result to TrackVisualiser even before tab is active */}
+      <div style={{ display: activeTab === 'laptime' ? 'flex' : 'none', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+        <LapTimePanel
+          params={params} coeffs={coeffs} onChange={onParamsChange}
+          trackKey={trackKey} onTrackChange={onTrackChange}
+          onLapResultChange={onLapResultChange}
+          onRaceResultChange={onRaceResultChange}
+          onTriggerRaceAnim={onTriggerRaceAnim}
+          onLayoutChange={onLayoutChange}
+        />
+      </div>
+      {activeTab === 'timedomain' && (
         <TimeDomainPanel params={params} coeffs={coeffs} />
-      ) : (
+      )}
+      {activeTab !== 'laptime' && activeTab !== 'timedomain' && (
         <div className="charts-grid">
           <TyreCurveChart result={pacejka} />
           <HandlingDiagram pacejka={pacejka} bicycle={bicycle} />

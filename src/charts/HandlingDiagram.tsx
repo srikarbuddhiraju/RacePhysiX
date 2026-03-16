@@ -80,7 +80,7 @@ export function HandlingDiagram({ pacejka, bicycle }: Props) {
             domain={[-yRange, yRange]}
             tickFormatter={(v: number) => v.toFixed(1)}
             tick={{ fill: '#5a5a7a', fontSize: 10 }}
-            label={{ value: 'δ−L/R (deg)', angle: -90, position: 'insideLeft', offset: 10, fill: '#4a4a6a', fontSize: 10 }}
+            label={{ value: 'δ steer (deg)', angle: -90, position: 'insideLeft', offset: 10, fill: '#4a4a6a', fontSize: 10 }}
           />
 
           <Tooltip
@@ -125,9 +125,9 @@ export function HandlingDiagram({ pacejka, bicycle }: Props) {
           <ReferenceDot
             x={nearestPt.ayG}
             y={nearestPt.steerCorrDeg}
-            r={5}
+            r={8}
             fill={PACEJKA_COLOR}
-            stroke="#0a0a12"
+            stroke="#facc15"
             strokeWidth={2}
           />
         </LineChart>

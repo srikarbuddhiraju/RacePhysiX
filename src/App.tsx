@@ -1,10 +1,13 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { computeBicycleModel } from './physics/bicycleModel';
 import { computePacejkaModel, DEFAULT_PACEJKA_COEFFS } from './physics/pacejkaModel';
-import { ParameterPanel } from './components/ParameterPanel';
-import { ResultsPanel }   from './components/ResultsPanel';
-import { TopDownView }    from './visualisation/TopDownView';
-import { ChartsPanel }    from './charts/ChartsPanel';
+import { ParameterPanel }   from './components/ParameterPanel';
+import { ResultsPanel }     from './components/ResultsPanel';
+import { TopDownView }      from './visualisation/TopDownView';
+import { ChartsPanel }      from './charts/ChartsPanel';
+import { TrackVisualiser }  from './components/TrackVisualiser';
+import { TRACK_PRESETS } from './physics/laptime';
+import type { LapResult, RaceResult, TrackLayout } from './physics/laptime';
 import type { VehicleParams, PacejkaCoeffs } from './physics/types';
 import './App.css';
 
@@ -80,6 +83,17 @@ export function App() {
   const [coeffs, setCoeffs]    = useState<PacejkaCoeffs>(DEFAULT_PACEJKA_COEFFS);
   const [darkMode, setDarkMode] = useState(true);
 
+  // Track Visualiser state — shared between LapTimePanel (editor) and TrackVisualiser (map)
+  const [trackKey,      setTrackKey]      = useState<string>('club');
+  const [lapResult,     setLapResult]     = useState<LapResult | null>(null);
+  const [raceResult,    setRaceResult]    = useState<RaceResult | null>(null);
+  const [triggerRace,   setTriggerRace]   = useState<number>(0);
+  const [showTrackViz,  setShowTrackViz]  = useState<boolean>(false);
+  const [effectiveLayout, setEffectiveLayout] = useState<TrackLayout | null>(null);
+
+  /** Fallback lap result computed from default params until LapTimePanel mounts. */
+  const fallbackLayout = TRACK_PRESETS[trackKey] ?? TRACK_PRESETS['club'];
+
   // Keep URL hash in sync with params
   const setParams = useCallback((p: VehicleParams) => {
     setParamsRaw(p);
@@ -108,6 +122,37 @@ export function App() {
           >
             {darkMode ? '☀' : '🌙'}
           </button>
+          {/* Circuit Map toggle — below theme-toggle */}
+          <button
+            onClick={() => setShowTrackViz(v => !v)}
+            title={showTrackViz ? 'Close circuit map' : 'Open circuit map'}
+            style={{
+              position: 'absolute', top: 46, left: 8,
+              padding: '4px 10px', fontSize: 9, fontWeight: 600,
+              background: showTrackViz ? 'rgba(100,100,255,0.25)' : 'var(--bg-card)',
+              border: `1px solid ${showTrackViz ? '#6466f1' : 'var(--border)'}`,
+              borderRadius: 5, color: showTrackViz ? '#a0a0ff' : 'var(--text-secondary)',
+              cursor: 'pointer', zIndex: 10, whiteSpace: 'nowrap',
+            }}
+          >
+            {showTrackViz ? '⊟ Map' : '⊞ Map'}
+          </button>
+          {/* Circuit Map overlay — covers entire canvas-area */}
+          {showTrackViz && lapResult && (
+            <div style={{
+              position: 'absolute', inset: 0, zIndex: 50,
+              background: '#0a0a14',
+            }}>
+              <TrackVisualiser
+                layout={effectiveLayout ?? fallbackLayout}
+                result={lapResult}
+                raceResult={raceResult}
+                triggerRace={triggerRace}
+                params={params}
+                onClose={() => setShowTrackViz(false)}
+              />
+            </div>
+          )}
         </div>
         <ResultsPanel result={bicycle} pacejka={pacejka} />
       </div>
@@ -121,6 +166,12 @@ export function App() {
           onCoeffsChange={setCoeffs}
           params={params}
           onParamsChange={setParams}
+          trackKey={trackKey}
+          onTrackChange={setTrackKey}
+          onLapResultChange={setLapResult}
+          onRaceResultChange={setRaceResult}
+          onTriggerRaceAnim={() => setTriggerRace(n => n + 1)}
+          onLayoutChange={setEffectiveLayout}
         />
       </div>
     </div>

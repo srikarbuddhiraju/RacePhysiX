@@ -561,7 +561,7 @@ function buildScene(
 
   // ── Lateral force arrows ───────────────────────────────────────────────────
   const leftDir      = new Vector3(-1, 0, 0);
-  const frontFyColor = balance === 'understeer' ? 0xf97316 : 0x4ade80;
+  const frontFyColor = balance === 'understeer' ? 0x60a5fa : 0x4ade80;
   const rearFyColor  = balance === 'oversteer'  ? 0xf43f5e : 0x4ade80;
   const frontLen     = Math.max(MIN_ARROW, frontLateralForceN * FORCE_SCALE);
   const rearLen      = Math.max(MIN_ARROW, rearLateralForceN  * FORCE_SCALE);
@@ -729,7 +729,7 @@ export function TopDownView({ params, result, pacejka, coeffs, darkMode = true }
         aria-label="Vehicle dynamics visualisation — top-down and chase views" />
 
       {/* View labels */}
-      <ViewLabel text="Top View"   left="8px"  top="6px" />
+      <ViewLabel text="Top View"   left="46px"  top="6px" />
       <ViewLabel text="Chase View" left="62%"  top="6px" />
 
       {/* ── Top-down panel overlays (confined to left 60% so Chase View stays clear) ── */}
@@ -834,8 +834,8 @@ function ViewLegend({ fyFrontColor, fyRearColor, balance, darkMode = true }: {
       <LegendItem icon={<ArrowSvg color="#60a5fa" />} label="Speed" />
       <LegendItem icon={<DotSvg   color="#facc15" />} label="CG" />
       <LegendItem icon={<DotSvg   color="#3a607a" />} label="Turn centre" />
-      <LegendItem icon={<StrutSvg  color="#a78bfa" />} label="Suspension strut (colour = Fz load)" />
-      <LegendItem icon={<DownforceSvg color="#34d399" />} label="Downforce arrow (aero > 100 N)" />
+      <LegendItem icon={<StrutSvg  color="#4ade80" />} label="Suspension strut (colour = Fz load)" />
+      <LegendItem icon={<DownforceSvg color="#818cf8" />} label="Downforce arrow (aero > 100 N)" />
     </div>
   );
 }
@@ -962,7 +962,7 @@ function CornerLoadGauges({ pacejka, params }: { pacejka: PacejkaResult; params:
   const maxFz    = Math.max(FzFL, FzFR, FzRL, FzRR, staticFz * 1.4);
   return (
     <div style={{
-      position: 'absolute', bottom: 8, right: 8, pointerEvents: 'none',
+      position: 'absolute', bottom: 72, right: 8, pointerEvents: 'none',
       background: 'rgba(10,10,18,0.82)', border: '1px solid var(--border-subtle)',
       borderRadius: 6, padding: '6px 8px', minWidth: 112,
     }}>

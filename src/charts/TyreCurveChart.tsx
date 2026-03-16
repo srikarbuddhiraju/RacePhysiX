@@ -35,8 +35,8 @@ export function TyreCurveChart({ result }: Props) {
 
   return (
     <div className="chart-block">
-      <div className="chart-title">Tyre Lateral Force — Fy vs α</div>
-      <div className="chart-sub">Pacejka Magic Formula · front (blue) / rear (red)</div>
+      <div className="chart-title">Lateral Force Curve (Fy)</div>
+      <div className="chart-sub">Lateral force vs slip angle · front (blue) / rear (red)</div>
       <ResponsiveContainer width="100%" height={200}>
         <LineChart data={curveData} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#1e1e2e" />
@@ -67,8 +67,8 @@ export function TyreCurveChart({ result }: Props) {
           />
 
           {/* Linear model limit */}
-          <ReferenceLine x={5}  stroke="#facc15" strokeDasharray="4 4" strokeOpacity={0.5} />
-          <ReferenceLine x={-5} stroke="#facc15" strokeDasharray="4 4" strokeOpacity={0.5} />
+          <ReferenceLine x={5}  stroke="#facc15" strokeDasharray="4 4" strokeOpacity={0.5} label={{ value: 'linear limit', position: 'top', fontSize: 9, fill: '#666' }} />
+          <ReferenceLine x={-5} stroke="#facc15" strokeDasharray="4 4" strokeOpacity={0.5} label={{ value: 'linear limit', position: 'top', fontSize: 9, fill: '#666' }} />
 
           <Line
             dataKey="FyFrontKN"
@@ -91,17 +91,17 @@ export function TyreCurveChart({ result }: Props) {
           <ReferenceDot
             x={frontOpAlphaDeg}
             y={frontOpFyKN}
-            r={5}
+            r={8}
             fill={FRONT_COLOR}
-            stroke="#0a0a12"
+            stroke="#facc15"
             strokeWidth={2}
           />
           <ReferenceDot
             x={rearOpAlphaDeg}
             y={rearOpFyKN}
-            r={5}
+            r={8}
             fill={REAR_COLOR}
-            stroke="#0a0a12"
+            stroke="#facc15"
             strokeWidth={2}
           />
         </LineChart>
