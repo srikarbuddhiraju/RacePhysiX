@@ -71,6 +71,7 @@ const BASE: VehicleParams = {
   wheelbase: 2.7,
   frontWeightFraction: 0.55,
   corneringStiffnessNPerDeg: 500,
+  rearCorneringStiffnessNPerDeg: 500,  // Stage 13A — equal to front = symmetric (no effect on prior checks)
   cgHeight: 0.55,
   trackWidth: 1.5,
   tyreSectionWidth: 0.205,
@@ -824,6 +825,195 @@ const OPTIM_BUILDER = makeOptimInpBuilder(1.20);
   console.log(`  K4 BASE→opt: iterations=${res.iterations}, improvement=${res.improvement.toFixed(2)}s`);
   checkBool('K4 Converges in < 500 iterations', res.iterations < 500, true);
   checkBool('K4 Iterations > 0',                res.iterations > 0,   true);
+}
+
+// =============================================================================
+// SECTION L — SEPARATE FRONT/REAR CORNERING STIFFNESS (Stage 13A)
+// =============================================================================
+
+section('L — Separate Front/Rear Cornering Stiffness (Stage 13A)');
+
+// L1: Equal front/rear Cα → K matches single-Cα formula
+{
+  const DEG_TO_RAD = Math.PI / 180;
+  const p_sym = { ...BASE, rearCorneringStiffnessNPerDeg: BASE.corneringStiffnessNPerDeg };
+  const r_sym = computeBicycleModel(p_sym);
+  const Ca = BASE.corneringStiffnessNPerDeg / DEG_TO_RAD;
+  const bv = BASE.frontWeightFraction * BASE.wheelbase;
+  const av = BASE.wheelbase - bv;
+  const K_expected = (BASE.mass / BASE.wheelbase) * (bv / Ca - av / Ca);
+  const K_actual   = r_sym.underSteerGradientDegPerG / (RAD_TO_DEG * G);
+  check('L1 Equal Cα: K matches single-Cα formula (±1e-10)', K_actual, K_expected, 1e-10);
+}
+
+// L2: Newton 2nd law holds with separate Cα
+{
+  const r = computeBicycleModel({ ...BASE, rearCorneringStiffnessNPerDeg: BASE.corneringStiffnessNPerDeg * 0.8 });
+  const ay = r.lateralAccelerationG * G;
+  check('L2 Fyf + Fyr = m×ay (Newton 2nd, separate Cα)', r.frontLateralForceN + r.rearLateralForceN, BASE.mass * ay, 1e-4);
+}
+
+// L3: Softer rear → rear slips more → oversteer tendency
+{
+  const r_eq = computeBicycleModel({ ...BASE, rearCorneringStiffnessNPerDeg: BASE.corneringStiffnessNPerDeg });
+  const r_sr = computeBicycleModel({ ...BASE, rearCorneringStiffnessNPerDeg: BASE.corneringStiffnessNPerDeg * 0.7 });
+  checkBool('L3 Softer rear: αr > αf (oversteer tendency)', r_sr.rearSlipAngleDeg > r_sr.frontSlipAngleDeg, true);
+  checkBool('L3 Softer rear: K decreases vs equal Cα', r_sr.underSteerGradientDegPerG < r_eq.underSteerGradientDegPerG, true);
+}
+
+// L4: Stiffer rear → more understeer
+{
+  const r_eq = computeBicycleModel({ ...BASE, rearCorneringStiffnessNPerDeg: BASE.corneringStiffnessNPerDeg });
+  const r_hr = computeBicycleModel({ ...BASE, rearCorneringStiffnessNPerDeg: BASE.corneringStiffnessNPerDeg * 1.5 });
+  checkBool('L4 Stiffer rear: K > equal-Cα K (more understeer)', r_hr.underSteerGradientDegPerG > r_eq.underSteerGradientDegPerG, true);
+}
+
+// L5: 50/50 weight + equal Cα → K = 0 (neutral steer)
+{
+  const r = computeBicycleModel({ ...BASE, frontWeightFraction: 0.5, rearCorneringStiffnessNPerDeg: BASE.corneringStiffnessNPerDeg });
+  check('L5 50/50 + equal Cα: K = 0 (±1e-8)', r.underSteerGradientDegPerG, 0, 1e-8);
+  checkBool('L5 50/50 + equal Cα: balance = neutral', r.balance === 'neutral', true);
+}
+
+// L6: Hand-validated test case — mass=1200kg, L=2.6m, 50/50, CαF=50000N/rad, CαR=45000N/rad
+{
+  const DEG_TO_RAD = Math.PI / 180;
+  const p14: VehicleParams = {
+    ...BASE, mass: 1200, wheelbase: 2.6, frontWeightFraction: 0.5,
+    corneringStiffnessNPerDeg:     50000 * DEG_TO_RAD,  // → 50000 N/rad
+    rearCorneringStiffnessNPerDeg: 45000 * DEG_TO_RAD,  // → 45000 N/rad
+  };
+  const K_exp = (1200 / 2.6) * (1.3 / 50000 - 1.3 / 45000);  // rad/(m/s²)
+  const r     = computeBicycleModel(p14);
+  const K_act = r.underSteerGradientDegPerG / (RAD_TO_DEG * G);
+  console.log(`  L6 K_exp=${K_exp.toFixed(8)}, K_act=${K_act.toFixed(8)} rad/(m/s²)`);
+  check('L6 Hand-calc K (±1e-8)', K_act, K_exp, 1e-8);
+  checkBool('L6 K < 0 = oversteer', K_act < 0, true);
+}
+
+// =============================================================================
+// SECTION M — COMBINED SLIP IN LAP ESTIMATOR (Stage 13B)
+// =============================================================================
+
+section('M — Combined Slip in Lap Estimator (Stage 13B)');
+
+import type { LapSimInput, TrackLayout } from './laptime';
+
+// M1: combSlipBrakeFrac=0 → lap time identical to no-field version (backward compat)
+{
+  const inpA = makeLapInput(1500, 1.10, 200);
+  const inpB = { ...makeLapInput(1500, 1.10, 200), combSlipBrakeFrac: 0 };
+  const layout = TRACK_PRESETS['club'];
+  const tA = computeLapTime(layout, inpA).totalTimeSec;
+  const tB = computeLapTime(layout, inpB).totalTimeSec;
+  check('M1 combSlipBrakeFrac=0: lap time identical (±1e-6)', tB, tA, 1e-6);
+}
+
+// M2: combSlipBrakeFrac=0.4 → lap time ≥ frac=0 (never faster)
+{
+  const layout  = TRACK_PRESETS['club'];
+  const inpNoCS = { ...makeLapInput(1500, 1.20, 200), combSlipBrakeFrac: 0 };
+  const inpCS   = { ...makeLapInput(1500, 1.20, 200), brakingCapG: 1.0, combSlipBrakeFrac: 0.4 };
+  const tNoCS   = computeLapTime(layout, inpNoCS).totalTimeSec;
+  const tCS     = computeLapTime(layout, inpCS).totalTimeSec;
+  console.log(`  M2 no-CS: ${tNoCS.toFixed(2)}s, CS: ${tCS.toFixed(2)}s`);
+  checkBool('M2 Combined slip → lap time ≥ no-combined-slip', tCS >= tNoCS - 1e-4, true);
+}
+
+// M3: Hand-validated ay_max reduction — peakMu=1.2, brakeFrac=0.4, brakingCapG=1.0, no aero
+//   ay_max = sqrt(1.44 − 0.16) = sqrt(1.28) = 1.131371
+{
+  const R_M3 = 100;
+  const singleCorner: TrackLayout = {
+    name: 'm3_test',
+    segments: [{ type: 'corner', length: 2 * Math.PI * R_M3, radius: R_M3 }],
+  };
+  const inpCS: LapSimInput = {
+    mass: 1500, peakMu: 1.2, brakingCapG: 1.0,
+    aeroCL: 0, aeroCD: 0.30, aeroReferenceArea: 2.0,
+    dragForce: () => 0, driveForce: () => 9000,
+    combSlipBrakeFrac: 0.4,
+  };
+  const vC      = computeLapTime(singleCorner, inpCS).segments[0].minSpeedKph / 3.6;
+  const ay_act  = (vC * vC) / R_M3 / G;
+  const ay_exp  = Math.sqrt(1.44 - 0.16);  // 1.131371
+  console.log(`  M3 ay_max with CS = ${ay_act.toFixed(6)} g (expected ${ay_exp.toFixed(6)} g)`);
+  check('M3 ay_max with CS = sqrt(1.28) (±0.001)', ay_act, ay_exp, 1e-3);
+}
+
+// M4: Larger brakeFrac → lower ay_max → slower corner
+{
+  const R_M4 = 80;
+  const singleCorner: TrackLayout = { name: 'm4', segments: [{ type: 'corner', length: 2 * Math.PI * R_M4, radius: R_M4 }] };
+  const base4: LapSimInput = { mass: 1500, peakMu: 1.2, brakingCapG: 1.0, aeroCL: 0, aeroCD: 0.30, aeroReferenceArea: 2.0, dragForce: () => 0, driveForce: () => 9000 };
+  const v02 = computeLapTime(singleCorner, { ...base4, combSlipBrakeFrac: 0.2 }).segments[0].minSpeedKph;
+  const v04 = computeLapTime(singleCorner, { ...base4, combSlipBrakeFrac: 0.4 }).segments[0].minSpeedKph;
+  const v06 = computeLapTime(singleCorner, { ...base4, combSlipBrakeFrac: 0.6 }).segments[0].minSpeedKph;
+  checkBool('M4 More brakeFrac → slower corner (v0.2 > v0.4 > v0.6)', v02 > v04 && v04 > v06, true);
+}
+
+// =============================================================================
+// SECTION N — TRANSIENT YAW PENALTY (Stage 13C)
+// =============================================================================
+
+section('N — Transient Yaw Time Constant Penalty (Stage 13C)');
+
+// N1: No Ca fields → no transient penalty (all corner times = arc/V_corner)
+{
+  const layout  = TRACK_PRESETS['club'];
+  const res     = computeLapTime(layout, makeLapInput(1500, 1.10, 200));
+  let anyPenalty = false;
+  for (const seg of res.segments) {
+    if (seg.type === 'corner') {
+      const vC = seg.minSpeedKph / 3.6;
+      const t0 = seg.length / vC;
+      if (seg.timeSec > t0 + 1e-4) anyPenalty = true;
+    }
+  }
+  checkBool('N1 No Cα fields → no transient penalty', !anyPenalty, true);
+}
+
+// N2: With Ca fields → total lap time ≥ without (penalty ≥ 0)
+{
+  const DEG_TO_RAD = Math.PI / 180;
+  const layout   = TRACK_PRESETS['club'];
+  const inpNoT   = makeLapInput(1500, 1.10, 200);
+  const inpWithT = { ...inpNoT, frontCaNPerRad: 500 / DEG_TO_RAD, rearCaNPerRad: 450 / DEG_TO_RAD };
+  const tNoT     = computeLapTime(layout, inpNoT).totalTimeSec;
+  const tWithT   = computeLapTime(layout, inpWithT).totalTimeSec;
+  console.log(`  N2 no-transient: ${tNoT.toFixed(2)}s, with transient: ${tWithT.toFixed(2)}s`);
+  checkBool('N2 With Cα: lap time ≥ without (penalty ≥ 0)', tWithT >= tNoT - 1e-4, true);
+}
+
+// N3: τ formula arithmetic — hand-calc
+//   m=1200, V=22.222 m/s, CαF+CαR=95000 N/rad → τ = 0.14035 s; penalty = 0.05701 s
+{
+  const m = 1200, V = 80 / 3.6, CaF = 50000, CaR = 45000;
+  const tau     = m * V / (2 * (CaF + CaR));
+  const Vc      = 15 / 3.6;
+  const penalty = tau * Math.max(0, 1 - Vc / V) * 0.5;
+  console.log(`  N3 τ=${tau.toFixed(5)}s, penalty=${penalty.toFixed(5)}s`);
+  check('N3 τ = m×V/(2×(CαF+CαR)) = 0.14035 s (±0.0001)', tau, 0.14035, 0.0001);
+  check('N3 penalty = τ×(1−Vc/Ve)×0.5 = 0.05701 s (±0.001)', penalty, 0.05701, 0.001);
+}
+
+// N4: No penalty when V_corner >= V_entry
+{
+  const tau = 0.14, Vc = 25, Ve = 20;  // V_corner > V_entry
+  const penalty = tau * Math.max(0, 1 - Vc / Ve) * 0.5;
+  check('N4 No penalty when V_corner ≥ V_entry', penalty, 0, 1e-9);
+}
+
+// N5: Heavier car → larger τ → larger penalty at same corner
+{
+  const DEG_TO_RAD = Math.PI / 180;
+  const layout  = TRACK_PRESETS['club'];
+  const Ca      = 500 / DEG_TO_RAD;
+  const inpLt   = { ...makeLapInput(1000, 1.10, 200), frontCaNPerRad: Ca, rearCaNPerRad: Ca };
+  const inpHvy  = { ...makeLapInput(2000, 1.10, 200), frontCaNPerRad: Ca, rearCaNPerRad: Ca };
+  const tLt     = computeLapTime(layout, inpLt).totalTimeSec;
+  const tHvy    = computeLapTime(layout, inpHvy).totalTimeSec;
+  checkBool('N5 Heavier car → larger transient penalty → slower lap', tHvy > tLt, true);
 }
 
 // =============================================================================

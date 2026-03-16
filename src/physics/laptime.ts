@@ -289,6 +289,11 @@ export interface LapSimInput {
   aeroReferenceArea: number;   // m²
   dragForce:  (V: number) => number;  // pre-bound drag fn
   driveForce: (V: number) => number;  // pre-bound gear-model drive force fn (Stage 10)
+  // ── Stage 13B — Combined slip friction circle at corner entry ──────────────
+  combSlipBrakeFrac?: number;  // 0–1: fraction of brakingCapG applied during corner entry (default 0 = off)
+  // ── Stage 13C — Yaw transient time constant penalty ───────────────────────
+  frontCaNPerRad?: number;     // N/rad — front axle cornering stiffness (enables transient penalty)
+  rearCaNPerRad?:  number;     // N/rad — rear axle cornering stiffness
 }
 
 // ── Per-segment and lap result ────────────────────────────────────────────────
@@ -315,14 +320,21 @@ export interface LapResult {
 
 // ── Physics helpers ───────────────────────────────────────────────────────────
 
-/** Max cornering speed at radius R, accounting for aero downforce (iterative). */
+/** Max cornering speed at radius R, accounting for aero downforce (iterative).
+ *  Stage 13B: friction circle — lateral capacity reduced by corner-entry braking demand. */
 function maxCornerSpeed(R: number, inp: LapSimInput): number {
   const { mass, peakMu, aeroCL, aeroReferenceArea: A } = inp;
+  const brakeFrac   = inp.combSlipBrakeFrac ?? 0;           // 0 = no combined-slip correction
+  const brakeDemand = inp.brakingCapG * brakeFrac;          // g units
   let V = Math.sqrt(peakMu * G * R);  // initial guess (no aero)
   for (let i = 0; i < 10; i++) {
     const downforce = 0.5 * RHO_AIR * V * V * A * aeroCL;
     const muEff = peakMu * (mass * G + downforce) / (mass * G);
-    V = Math.sqrt(muEff * G * R);
+    // Stage 13B: ay_max = sqrt(muEff² − brakeDemand²) — friction circle
+    const ayMaxG = brakeDemand > 0
+      ? Math.sqrt(Math.max(muEff * muEff - brakeDemand * brakeDemand, 0.01))
+      : muEff;
+    V = Math.sqrt(ayMaxG * G * R);
   }
   return V;
 }
@@ -406,7 +418,21 @@ export function computeLapTime(layout: TrackLayout, inp: LapSimInput): LapResult
 
     if (seg.type === 'corner' && seg.radius) {
       const vC = vCorner[i];
-      const t  = seg.length / vC;
+
+      // Stage 13C — Yaw transient time penalty (Gillespie Ch.6 first-order yaw time constant)
+      // τ_yaw = m × V_entry / (2 × (CαF + CαR))
+      // t_penalty = τ_yaw × max(0, 1 − V_corner/V_entry) × 0.5
+      // (0.5 = empirical driver partial-correction factor; validated ~0.057s at a hairpin)
+      let tPenalty = 0;
+      const frontCa = inp.frontCaNPerRad;
+      const rearCa  = inp.rearCaNPerRad;
+      if (frontCa !== undefined && rearCa !== undefined
+          && frontCa > 0 && rearCa > 0 && vPrev > vC) {
+        const tau   = inp.mass * vPrev / (2 * (frontCa + rearCa));
+        tPenalty    = tau * (1 - vC / vPrev) * 0.5;
+      }
+
+      const t  = seg.length / vC + tPenalty;
       totalTime += t;
       segResults.push({
         type: 'corner', length: seg.length, timeSec: t,

@@ -21,6 +21,7 @@ const DEFAULT_PARAMS: VehicleParams = {
   wheelbase: 2.7,
   frontWeightFraction: 0.55,
   corneringStiffnessNPerDeg: 500,
+  rearCorneringStiffnessNPerDeg: 500,   // Stage 13A — default = same as front (neutral steer)
   cgHeight: 0.55,
   trackWidth: 1.5,
   tyreSectionWidth: 0.205,

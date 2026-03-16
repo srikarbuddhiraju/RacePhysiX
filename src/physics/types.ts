@@ -9,7 +9,8 @@ export interface VehicleParams {
   mass: number;                      // kg
   wheelbase: number;                 // m — front axle to rear axle
   frontWeightFraction: number;       // 0–1, e.g. 0.55 = 55% on front axle
-  corneringStiffnessNPerDeg: number; // N/deg, same front and rear (v0.1 simplification)
+  corneringStiffnessNPerDeg: number; // N/deg, front axle cornering stiffness (Stage 13A: separate front/rear)
+  rearCorneringStiffnessNPerDeg: number; // N/deg, rear axle cornering stiffness (Stage 13A — equal to front = symmetric)
   cgHeight: number;                  // m — CG height above ground
   trackWidth: number;                // m — lateral distance L/R tyres
   tyreSectionWidth: number;          // m — physical tyre section width (e.g. 0.205 for 205mm), drives visual

@@ -61,7 +61,8 @@ export function LapTimePanel({ params, coeffs, onChange }: Props) {
    */
   const inpBuilder = useCallback((p: VehicleParams) => {
     const { mass, brakingG, aeroCD, aeroReferenceArea, cgHeight, trackWidth,
-            tyreLoadSensitivity } = p;
+            tyreLoadSensitivity,
+            corneringStiffnessNPerDeg, rearCorneringStiffnessNPerDeg } = p;
     const peakMu      = coeffs.peakMu;
     const brakingCapG = Math.max(brakingG, 0.9);
 
@@ -82,11 +83,17 @@ export function LapTimePanel({ params, coeffs, onChange }: Props) {
     const muFrac    = qFz > 0 ? Math.max(0.5, 1 - qFz * (FzOuter / FzStatic - 1)) : 1.0;
     const peakMuEff = peakMu * muFrac;
 
+    const DEG_TO_RAD = Math.PI / 180;
     const dragForce  = (V: number) => 0.5 * RHO_AIR * V * V * aeroReferenceArea * aeroCD;
     const driveForce = (V: number) => computeMaxDriveForce(V, p);
     return {
       mass, peakMu: peakMuEff, brakingCapG,
       aeroCL: p.aeroCL, aeroCD, aeroReferenceArea, dragForce, driveForce,
+      // Stage 13B — combined slip friction circle at corner entry (40% brake demand)
+      combSlipBrakeFrac: 0.4,
+      // Stage 13C — yaw transient penalty via cornering stiffness
+      frontCaNPerRad: corneringStiffnessNPerDeg / DEG_TO_RAD,
+      rearCaNPerRad:  (rearCorneringStiffnessNPerDeg ?? corneringStiffnessNPerDeg) / DEG_TO_RAD,
     };
   }, [coeffs]);
 
