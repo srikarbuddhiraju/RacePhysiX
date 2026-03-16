@@ -1,3 +1,4 @@
+import type React from 'react';
 import type { PhysicsResult, PacejkaResult } from '../physics/types';
 import { InfoTooltip } from './InfoTooltip';
 import './ResultsPanel.css';
@@ -16,7 +17,7 @@ const BALANCE_CONFIG = {
 interface MetricProps {
   label:     string;
   value:     string;
-  sub?:      string;
+  sub?:      React.ReactNode;
   highlight?: boolean;
   tip:       string;
 }
@@ -68,7 +69,7 @@ export function ResultsPanel({ result, pacejka }: Props) {
         <Metric
           label="Lat. acceleration"
           value={result.lateralAccelerationG.toFixed(3)}
-          sub="g"
+          sub={<>g <span style={{ fontSize: 9, color: 'var(--text-faint)' }}>({(result.lateralAccelerationG * 9.81).toFixed(2)} m/s²)</span></>}
           tip="Centripetal acceleration in the corner = V²/R divided by g. At 1g the car is at the grip limit of a typical road tyre. This drives all lateral tyre forces."
         />
         <Metric
@@ -80,13 +81,13 @@ export function ResultsPanel({ result, pacejka }: Props) {
         />
         <Metric
           label="Front slip αf"
-          value={result.frontSlipAngleDeg.toFixed(3)}
+          value={result.frontSlipAngleDeg.toFixed(1)}
           sub="deg"
           tip="Angle between the front tyre's velocity direction and its heading. The tyre builds lateral force as α increases. Linear model valid up to ~5°; above that Pacejka is needed."
         />
         <Metric
           label="Rear slip αr"
-          value={result.rearSlipAngleDeg.toFixed(3)}
+          value={result.rearSlipAngleDeg.toFixed(1)}
           sub="deg"
           tip="Angle between the rear tyre's velocity direction and its heading. If αr > αf the rear is working harder = oversteer tendency. If αf > αr = understeer."
         />

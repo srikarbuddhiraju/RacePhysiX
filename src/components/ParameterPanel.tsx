@@ -176,7 +176,7 @@ export function ParameterPanel({ params, onChange }: Props) {
         <PowerSliderRow powerKW={params.enginePowerKW} unit={powerUnit} onUnitChange={setPowerUnit} onKWChange={kw => onChange({ ...params, enginePowerKW: kw })} />
         <SliderRow cfg={{ label: 'Throttle', key: 'throttlePercent', min: 0, max: 100, step: 5, unit: '%', format: v => v.toFixed(0), tip: 'Fraction of maximum engine power applied. At 0% = coast. Throttle on driven axle → combined slip → reduced lateral grip.' }} params={params} set={set} />
         {(params.drivetrainType === 'AWD' || params.drivetrainType === 'AWD_TV') && (
-          <SliderRow cfg={{ label: 'AWD split', key: 'awdFrontBias', min: 0, max: 1, step: 0.05, unit: '', format: v => `${(v*100).toFixed(0)}F / ${((1-v)*100).toFixed(0)}R`, tip: 'Torque split front/rear. 0.40 = 40F/60R typical.' }} params={params} set={set} />
+          <SliderRow cfg={{ label: 'AWD split', key: 'awdFrontBias', min: 0, max: 1, step: 0.05, unit: '', format: v => `${(v*100).toFixed(0)}%F / ${((1-v)*100).toFixed(0)}%R`, tip: 'Torque split front/rear. 0.40 = 40F/60R typical.' }} params={params} set={set} />
         )}
         <div className="param-derived">
           <DerivedRow label="Drive force" value={(() => { const vS = Math.max(speedMs,2); return `${((params.enginePowerKW*1000*params.throttlePercent/100)/vS/1000).toFixed(2)} kN`; })()} tip="F = P × throttle / V." />
@@ -249,7 +249,7 @@ export function ParameterPanel({ params, onChange }: Props) {
         <SliderRow cfg={{ label: 'Downforce CL', key: 'aeroCL', min: 0, max: 4.0, step: 0.05, unit: '', format: v => v.toFixed(2), tip: 'Downforce coefficient. F_down = ½ρV²A·CL. 0 = clean road car; 0.3 = mild aero; 1.5 = GT wing; 3.0+ = formula car. Increases grip at higher speeds.' }} params={params} set={set} />
         <SliderRow cfg={{ label: 'Drag CD',       key: 'aeroCD', min: 0.10, max: 1.50, step: 0.05, unit: '', format: v => v.toFixed(2), tip: 'Drag coefficient. F_drag = ½ρV²A·CD. 0.25 = slippery road car; 0.50 = GT; 0.80 = open wheel. Drag limits top speed and requires more engine power.' }} params={params} set={set} />
         <SliderRow cfg={{ label: 'Frontal area',  key: 'aeroReferenceArea', min: 0.8, max: 3.0, step: 0.1, unit: 'm²', format: v => v.toFixed(1), tip: 'Frontal reference area for aero calculations. 1.5 m² = formula car; 1.8 = sports car; 2.0 = road saloon; 2.5 = SUV.' }} params={params} set={set} />
-        <SliderRow cfg={{ label: 'Aero balance', key: 'aeroBalance', min: 0.30, max: 0.70, step: 0.01, unit: '', format: v => `${(v*100).toFixed(0)}F / ${((1-v)*100).toFixed(0)}R`, tip: 'Fraction of total downforce acting on the front axle. <0.50 = rear-biased → oversteer at high speed. >0.50 = front-biased → understeer. Typical: 0.35–0.45F.' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Aero balance', key: 'aeroBalance', min: 0.30, max: 0.70, step: 0.01, unit: '', format: v => `${(v*100).toFixed(0)}%F / ${((1-v)*100).toFixed(0)}%R`, tip: 'Fraction of total downforce acting on the front axle. <0.50 = rear-biased → oversteer at high speed. >0.50 = front-biased → understeer. Typical: 0.35–0.45F.' }} params={params} set={set} />
         <div className="param-derived">
           {(() => {
             const q = 0.5 * 1.225 * speedMs * speedMs;
@@ -265,7 +265,7 @@ export function ParameterPanel({ params, onChange }: Props) {
 
         <div className="param-section-label">Braking</div>
         <SliderRow cfg={{ label: 'Braking',    key: 'brakingG',  min: 0, max: 1.5, step: 0.05, unit: 'g', format: v => v.toFixed(2), tip: 'Applied braking deceleration. 0 = coasting. 0.5g = gentle; 1.0g = firm; 1.5g = maximum ABS-limited stop. Shifts weight to front axle, reduces rear lateral grip.' }} params={params} set={set} />
-        <SliderRow cfg={{ label: 'Brake bias', key: 'brakeBias', min: 0.40, max: 0.90, step: 0.01, unit: '', format: v => `${(v*100).toFixed(0)}F / ${((1-v)*100).toFixed(0)}R`, tip: 'Fraction of brake force on front axle. 0.65 = 65F/35R typical road. More front bias = stable but front tyres saturate early. More rear = faster yaw but rear lock risk.' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Brake bias', key: 'brakeBias', min: 0.40, max: 0.90, step: 0.01, unit: '', format: v => `${(v*100).toFixed(0)}%F / ${((1-v)*100).toFixed(0)}%R`, tip: 'Fraction of brake force on front axle. 0.65 = 65F/35R typical road. More front bias = stable but front tyres saturate early. More rear = faster yaw but rear lock risk.' }} params={params} set={set} />
         {params.brakingG > 0 && (
           <div className="param-derived">
             {(() => {

@@ -473,6 +473,9 @@ export interface LapSimInput {
   // ── Stage 13C — Yaw transient time constant penalty ───────────────────────
   frontCaNPerRad?: number;     // N/rad — front axle cornering stiffness (enables transient penalty)
   rearCaNPerRad?:  number;     // N/rad — rear axle cornering stiffness
+  /** Power-limited top speed (m/s). Caps maxCornerSpeed so high-CL fast corners
+   *  don't produce physically impossible speeds (iteration divergence fix). */
+  maxVehicleSpeedMs?: number;
 }
 
 // ── Per-segment and lap result ────────────────────────────────────────────────
@@ -486,6 +489,7 @@ export interface SegmentResult {
   minSpeedKph:   number;
   maxSpeedKph:   number;
   label:         string;
+  radius?:       number;  // m — corners only
 }
 
 export interface LapResult {
@@ -515,6 +519,10 @@ function maxCornerSpeed(R: number, inp: LapSimInput): number {
       : muEff;
     V = Math.sqrt(ayMaxG * G * R);
   }
+  // Cap at power-limited top speed: a car cannot corner faster than it can drive.
+  // Without this, high-CL fast corners (e.g. Blanchimont R=230, CL=4) diverge — the
+  // aero downforce feedback loop produces impossible speeds (>400 km/h for 150kW cars).
+  if (inp.maxVehicleSpeedMs !== undefined) V = Math.min(V, inp.maxVehicleSpeedMs);
   return V;
 }
 
@@ -618,6 +626,7 @@ export function computeLapTime(layout: TrackLayout, inp: LapSimInput): LapResult
         entrySpeedKph: vC * 3.6, exitSpeedKph: vC * 3.6,
         minSpeedKph: vC * 3.6, maxSpeedKph: vC * 3.6,
         label: seg.label ?? `R${seg.radius}m`,
+        radius: seg.radius,
       });
       vPrev = vC;
 

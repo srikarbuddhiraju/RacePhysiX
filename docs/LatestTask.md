@@ -4,84 +4,80 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
-## Session 11 — 2026-03-16  |  branch: `feature/stage8-14dof-timedomain`
+## Session 12 — 2026-03-16  |  branch: `feature/stage15-track-editor-visualiser`
 
-### Status: IN PROGRESS — 5 new circuits + race simulation + UI complete
+### Status: IN PROGRESS — Stage 16 (GPS-accurate circuit maps)
 
-### Completed this session (Session 11)
-- [x] VehicleParams: added `fuelLoadKg` (default 45 kg), `fuelBurnRateKgPerLap` (default 2.5 kg/lap)
-- [x] App.tsx: fuel defaults added
-- [x] laptime.ts: 5 new GPS-accurate circuit presets (TUMFTM LGPL-3.0)
-  - `nurburgring_gp` — Nürburgring GP (5.148 km) — 29 segments from 1029 GPS pts, ±3 m
-  - `bahrain` — Bahrain International Circuit / Sakhir (5.412 km) — 32 segs, ±9 m
-  - `barcelona` — Circuit de Barcelona-Catalunya (4.655 km) — 28 segs, ±7 m
-  - `hungaroring` — Hungaroring / Budapest (4.381 km) — 27 segs, ±1 m
-  - `montreal` — Circuit Gilles Villeneuve (4.361 km) — 27 segs, ±3 m
-  - Algorithm: circumradius (3-pt) → 9-pt rolling mean → 200m threshold → merge → harmonic-mean R
-  - Attribution: TUMFTM LGPL-3.0 comment in every circuit block
-- [x] laptime.ts: `simulateRace()` function
-  - Per-lap tyre temp: exponential warmup (TC=2.5 laps) → 1.5°C/lap degradation
-  - μ fraction: Gaussian bell curve (tyreTempHalfWidthC, tyreTempFloorMu from VehicleParams)
-  - Fuel burn: mass -= fuelBurnRateKgPerLap per lap
-  - Sector splits at 1/3 and 2/3 cumulative distance
-  - Returns LapData[] (lap, lapTimeSec, s1/s2/s3Sec, tyreTempC, muFraction, fuelMassKg, gapToFastestSec)
-- [x] LapTimePanel.tsx: Race Simulation section
-  - Laps slider (1–50), Start tyre temp slider (10–80°C)
-  - Fuel load + burn rate display (from params)
-  - "Simulate Race" button (async setTimeout)
-  - Results table: Lap | Time | Gap | S1 | S2 | S3 | T°C | μ% | Fuel | fastest lap ★
-- [x] LapTimePanel.tsx: Track selector — 5 new circuits in Real Circuits group
-- [x] ParameterPanel.tsx: "Fuel & Race" section (fuelLoadKg, fuelBurnRateKgPerLap sliders)
-- [x] validate.ts + test-extended.ts: BASE params updated with fuel fields
-- [x] `npm run build` → clean (0 errors)
-- [x] `npx tsx src/physics/validate.ts` → 21/21 pass
-- [x] `npx tsx src/physics/test-extended.ts` → 309/309 pass
+### Completed this session (Session 12)
 
-### Verification needed (browser)
-- [ ] Lap time panel: 5 new circuits appear in selector and produce sensible lap times
-- [ ] Race simulation: Simulate Race button produces results table with tyre warmup visible
-  (lap 1 should be slower, laps 3–5 near fastest, later laps degrade)
-- [ ] Fuel burn visible: lap times improve slightly lap-over-lap as mass drops
-- [ ] ParameterPanel: Fuel & Race sliders visible in Vehicle tab
+**Stage 15 — Track Editor + Circuit Map Overlay**
+- [x] TrackVisualiser.tsx: complete rewrite — premium circuit map overlay
+  - 3-column layout: speedometer+gear | SVG circuit | RPM+G-meter+tyre temps
+  - Always real-time animation (RAF, result.totalTimeSec duration per lap)
+  - Speed heatmap: 300 samples via getPointAtLength, HSL red→yellow→cyan
+  - Telemetry cluster: SpeedometerGauge, RpmGauge, GMeter, TyreTempGrid
+  - Race animation: lap-by-lap at each lap's real pace
+  - Car: glow + speed-colored dot, longitudinal G from speed derivative
+- [x] LapTimePanel.tsx: sticky ribbon (circuit name, distance, laptime, top/corner/avg speeds)
+- [x] LapTimePanel.tsx: track editor (lock/unlock, segment table, New/Import/Export JSON)
+- [x] ChartsPanel.tsx: LapTimePanel always mounted (display:none) so lapResult always populated
+- [x] App.tsx: circuit map as full canvas overlay (position:absolute, inset:0, zIndex:50)
+- [x] App.tsx: ⊞ Map button at top:46, left:8 (below theme-toggle)
+- [x] TopDownView.tsx: "Top View" label at left=46px (avoids theme-toggle overlap)
+- [x] TopDownView.tsx: CornerLoadGauges at bottom:72 (clears legend strip)
+- [x] Build clean; validate 21/21; test-extended 312/312
 
-### Next steps
-- [ ] Track editor UI (user-editable segment table + live SVG preview + JSON import/export)
-- [ ] Commit this session's work on current branch
-- [ ] Merge `feature/stage8-14dof-timedomain` → `main`
+**Physics bug fix (this session)**
+- [x] maxCornerSpeed() iteration diverges at high CL (e.g. CL=4.0 at Blanchimont R=230m)
+  - After 10 iters: ~480 km/h for a 150kW car — physically impossible
+  - Fix: cap at `computeMaxSpeed(params)` (power-limited top speed, e.g. 279 km/h)
+  - Added `maxVehicleSpeedMs?: number` to LapSimInput; set in inpBuilder
+  - Build clean, 312/312 pass
+
+**UX fixes (P1/P2 from /test-ux)**
+- [x] Force arrow understeer colour: 0xf97316 (orange) → 0x60a5fa (blue) — MoTeC standard
+- [x] Legend colour mismatches fixed: suspension strut → #4ade80, downforce → #818cf8
+- [x] CornerLoadGauges: bottom:44 → bottom:72 (safe clearance above legend)
+- [x] ResultsPanel: lateral accel now shows both g and m/s²
+- [x] ResultsPanel: slip angle precision 3dp → 1dp
+- [x] laptime.ts: radius? added to SegmentResult (corners only)
+- [x] LapTimePanel: corner radius shown in segment table as R=Xm
+- [x] LapTimePanel/fmtTime: lap time format consistent (3dp) everywhere
+- [x] TyreCurveChart: title → "Lateral Force Curve (Fy)"; ±5° lines labelled; op-point 5px→8px yellow ring
+- [x] HandlingDiagram: Y-axis → "δ steer (deg)"; op-point 5px→8px yellow ring
+- [x] ParameterPanel: brake bias / aero balance / AWD split now show % (e.g. 65%F / 35%R)
+
+### Current: Stage 16 — GPS-accurate circuit maps
+- [ ] Download/process GPS x/y CSV for Spa, Monza, Monaco, Silverstone, Suzuka from TUMFTM DB
+  - Srikar to fetch and paste CSV data (same process as Stage 14 circuits)
+  - OR: use the normalised path algorithm from Stage 14 to regenerate svgPath
+- [ ] Add svgPath + svgViewBox to each TrackLayout in laptime.ts
+- [ ] Verify circuit shapes look recognisable in TrackVisualiser
+- [ ] Build clean, validate pass
+- [ ] Commit Stage 15+16 work
+- [ ] Merge feature/stage15 → main
 - [ ] Deploy to Cloudflare Pages
 
----
-
-## Session 10 — 2026-03-16  |  branch: `feature/stage12-setup-optimisation`
-
-### Status: COMPLETE
-
-### Completed this session (Session 10)
-- [x] Stage 12: Setup optimiser — Nelder-Mead simplex over 7 parameters
-- [x] Stage 13A: Separate front/rear Cα — per-axle understeer gradient, slip angles
-- [x] Stage 13B: Combined slip friction circle — ay_max = sqrt(μ² − brakeDemand²)
-- [x] Stage 13C: Yaw transient penalty — τ = m×V/(2×(CαF+CαR)), t_penalty added per corner
-- [x] Black screen fix: `npm run build` surfaced 2 tsc -b errors (not caught by tsc --noEmit)
-- [x] HMR state mismatch fix: `(params[key] as number) ?? min` guard in SliderRow
-- [x] `npm run build` → clean; validate 21/21 pass; test-extended 235/235 pass
+### Known limitations (not bugs)
+- Circuit shapes for 5 schematic circuits (Spa, Monza, Monaco, Silverstone, Suzuka)
+  are algorithmically reconstructed from segment data — not GPS-accurate (Stage 16 fixes this)
+- All 5 GPS-derived circuits from Stage 14 (Nürburgring, Bahrain, Barcelona,
+  Hungaroring, Montreal) need svgPath added to show correctly in TrackVisualiser
 
 ---
 
-## Session 9 — 2026-03-16  |  branch: `feature/stage8-14dof-timedomain`
+## Sessions 9–11 — 2026-03-16  |  Status: COMPLETE / MERGED
 
-### Status: COMPLETE
-
-### Completed this session (Session 9)
-- [x] Stage 10: Gear model — geometric ratio progression, flat torque + constant power
-- [x] Stage 11: Tyre thermal model — bell-curve f(T), k=ln2/hw²
-- [x] Validate 16/16 pass; test-extended 209/209 pass
+- S9: Stage 10 (gear model), Stage 11 (tyre thermal)
+- S10: Stage 12 (setup optimiser), Stage 13A/B/C (separate Cα, combined slip, yaw transient)
+- S11: Stage 14 (race sim), 5 GPS circuits (TUMFTM), fuel model, race UI
 
 ---
 
 ## Sessions 1–8 — 2026-03-15  |  Status: COMPLETE / MERGED
 
 - S1–S4: Scaffold, bicycle model, Pacejka, load transfer, drivetrain, aero, braking, lap time, Stage 8 (14-DOF)
-- S5: Arc length fixes, direction tag fixes, extended test suite created
+- S5: Arc length fixes, direction tag fixes, extended test suite
 - S6: UX fixes, test reports, Stage 9 (load sensitivity)
 - S7: Session-start skill, V_ch formula fix
 - S8: ▶ Play animation, double-stroke track map, vectorEffect scaling

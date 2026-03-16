@@ -1,9 +1,9 @@
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { computeLapTime, simulateRace, TRACK_PRESETS } from '../physics/laptime';
-import { computeMaxDriveForce } from '../physics/gearModel';
+import type { TrackLayout, TrackSegment, LapResult, RaceResult } from '../physics/laptime';
+import { computeMaxDriveForce, computeMaxSpeed } from '../physics/gearModel';
 import { optimiseSetup, OPTIMISE_BOUNDS, OPTIMISABLE_KEYS } from '../physics/optimise';
 import type { OptimiseResult } from '../physics/optimise';
-import type { TrackLayout, RaceResult } from '../physics/laptime';
 import type { VehicleParams, PacejkaCoeffs } from '../physics/types';
 import { InfoTooltip } from './InfoTooltip';
 import { exportLapTimeCSV } from '../utils/export';
@@ -11,9 +11,20 @@ import { exportLapTimeCSV } from '../utils/export';
 const G = 9.81;
 
 interface Props {
-  params:   VehicleParams;
-  coeffs:   PacejkaCoeffs;
-  onChange: (p: VehicleParams) => void;
+  params:              VehicleParams;
+  coeffs:              PacejkaCoeffs;
+  onChange:            (p: VehicleParams) => void;
+  /** Lifted to App so TrackVisualiser can share the same selected circuit. */
+  trackKey:            string;
+  onTrackChange:       (k: string) => void;
+  /** Called whenever the computed lap result changes (feeds TrackVisualiser). */
+  onLapResultChange:   (r: LapResult) => void;
+  /** Called when race simulation completes (feeds TrackVisualiser). */
+  onRaceResultChange:  (r: RaceResult) => void;
+  /** Increment this to signal TrackVisualiser to start race animation. */
+  onTriggerRaceAnim:   () => void;
+  /** Called whenever effectiveLayout changes (feeds TrackVisualiser overlay). */
+  onLayoutChange:      (layout: TrackLayout) => void;
 }
 
 /** Labels for the 7 optimisable params shown in the result card. */
@@ -28,8 +39,8 @@ const OPTIM_LABELS: Record<string, string> = {
 };
 function fmtParamValue(key: string, v: number): string {
   if (key === 'aeroCL')      return v.toFixed(2);
-  if (key === 'aeroBalance') return `${(v * 100).toFixed(0)}F/${((1 - v) * 100).toFixed(0)}R`;
-  if (key === 'brakeBias')   return `${(v * 100).toFixed(0)}F/${((1 - v) * 100).toFixed(0)}R`;
+  if (key === 'aeroBalance') return `${(v * 100).toFixed(0)}%F/${((1 - v) * 100).toFixed(0)}%R`;
+  if (key === 'brakeBias')   return `${(v * 100).toFixed(0)}%F/${((1 - v) * 100).toFixed(0)}%R`;
   return `${(v / 1000).toFixed(1)}k N/m`;
 }
 
@@ -38,8 +49,7 @@ const RHO_AIR = 1.225;
 function fmtTime(sec: number): string {
   const m = Math.floor(sec / 60);
   const s = sec - m * 60;
-  // 1 decimal place — matches estimator precision. mm:ss.s for lap totals, ss.ss for segments.
-  return m > 0 ? `${m}:${s.toFixed(1).padStart(4, '0')}` : `${s.toFixed(1)}s`;
+  return m > 0 ? `${m}:${s.toFixed(3).padStart(6, '0')}` : `${s.toFixed(3)}s`;
 }
 
 type OptimState =
@@ -54,20 +64,65 @@ type RaceSimState =
   | { status: 'done'; result: RaceResult }
   | { status: 'error'; message: string };
 
-export function LapTimePanel({ params, coeffs, onChange }: Props) {
-  const [trackKey,   setTrackKey]   = useState<string>('club');
-  const [optimState, setOptimState] = useState<OptimState>({ status: 'idle' });
-  const [raceState,  setRaceState]  = useState<RaceSimState>({ status: 'idle' });
-  const [numLaps,    setNumLaps]    = useState<number>(10);
-  const [startTempC, setStartTempC] = useState<number>(30);
-  const layout = TRACK_PRESETS[trackKey];
+// ── localStorage for custom circuits ─────────────────────────────────────────
 
-  /**
-   * Build a LapSimInput from candidate params.
-   * Computes effective peakMu accounting for suspension load transfer at 1g lateral:
-   *   higher roll stiffness ratio → more load on outer tyre → load sensitivity penalty.
-   * This makes spring and ARB rates meaningful in the optimiser objective.
-   */
+const STORAGE_KEY = 'apexsim_custom_tracks';
+
+function loadCustomTracks(): Record<string, TrackLayout> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, TrackLayout>) : {};
+  } catch { return {}; }
+}
+
+function saveCustomTracks(tracks: Record<string, TrackLayout>): void {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(tracks)); } catch { /* quota */ }
+}
+
+const BUILTIN_KEYS = new Set([
+  'club', 'karting', 'gt_circuit', 'formula_test',
+  'monza', 'monaco', 'spa', 'silverstone', 'suzuka',
+  'nurburgring_gp', 'bahrain', 'barcelona', 'hungaroring', 'montreal',
+]);
+
+// ── Main component ─────────────────────────────────────────────────────────────
+
+export function LapTimePanel({
+  params, coeffs, onChange,
+  trackKey, onTrackChange,
+  onLapResultChange, onRaceResultChange, onTriggerRaceAnim, onLayoutChange,
+}: Props) {
+  const [optimState,  setOptimState]  = useState<OptimState>({ status: 'idle' });
+  const [raceState,   setRaceState]   = useState<RaceSimState>({ status: 'idle' });
+  const [numLaps,     setNumLaps]     = useState<number>(10);
+  const [startTempC,  setStartTempC]  = useState<number>(30);
+
+  // Custom circuit registry (localStorage backed)
+  const [customTracks, setCustomTracks] = useState<Record<string, TrackLayout>>(loadCustomTracks);
+
+  // Track editor state
+  const isBuiltin    = BUILTIN_KEYS.has(trackKey);
+  const baseLayout   = isBuiltin ? TRACK_PRESETS[trackKey] : (customTracks[trackKey] ?? TRACK_PRESETS['club']);
+  const [isLocked,   setIsLocked]   = useState<boolean>(isBuiltin);
+  const [editSegs,   setEditSegs]   = useState<TrackSegment[]>(() => baseLayout.segments.map(s => ({ ...s })));
+  const [editName,   setEditName]   = useState<string>(baseLayout.name);
+  const importRef = useRef<HTMLInputElement>(null);
+
+  // Reset editor state when circuit changes
+  useEffect(() => {
+    const layout = isBuiltin ? TRACK_PRESETS[trackKey] : (customTracks[trackKey] ?? TRACK_PRESETS['club']);
+    setIsLocked(isBuiltin);
+    setEditSegs(layout.segments.map(s => ({ ...s })));
+    setEditName(layout.name);
+  }, [trackKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Effective layout: use edited segments when unlocked
+  const effectiveLayout = useMemo<TrackLayout>(() => ({
+    ...baseLayout,
+    name: editName || baseLayout.name,
+    segments: isLocked ? baseLayout.segments : editSegs,
+  }), [baseLayout, isLocked, editSegs, editName]);
+
   const inpBuilder = useCallback((p: VehicleParams) => {
     const { mass, brakingG, aeroCD, aeroReferenceArea, cgHeight, trackWidth,
             tyreLoadSensitivity,
@@ -75,19 +130,15 @@ export function LapTimePanel({ params, coeffs, onChange }: Props) {
     const peakMu      = coeffs.peakMu;
     const brakingCapG = Math.max(brakingG, 0.9);
 
-    // Roll stiffness ratio at candidate setup
     const tw2o2   = (trackWidth * trackWidth) / 2;
     const kPhiF   = (p.frontSpringRate + p.frontARBRate) * tw2o2;
     const kPhiR   = (p.rearSpringRate  + p.rearARBRate)  * tw2o2;
     const kPhiTot = kPhiF + kPhiR;
     const phiFront = kPhiTot > 0 ? kPhiF / kPhiTot : 0.5;
 
-    // Lateral load transfer at representative 1g, front outer tyre
     const FzStatic  = mass * G / 4;
     const dFzOuter  = mass * G * cgHeight * phiFront / trackWidth;
     const FzOuter   = FzStatic + dFzOuter;
-
-    // Load sensitivity: μ degrades on overloaded outer tyre
     const qFz       = tyreLoadSensitivity;
     const muFrac    = qFz > 0 ? Math.max(0.5, 1 - qFz * (FzOuter / FzStatic - 1)) : 1.0;
     const peakMuEff = peakMu * muFrac;
@@ -98,21 +149,26 @@ export function LapTimePanel({ params, coeffs, onChange }: Props) {
     return {
       mass, peakMu: peakMuEff, brakingCapG,
       aeroCL: p.aeroCL, aeroCD, aeroReferenceArea, dragForce, driveForce,
-      // Stage 13B — combined slip friction circle at corner entry (40% brake demand)
       combSlipBrakeFrac: 0.4,
-      // Stage 13C — yaw transient penalty via cornering stiffness
       frontCaNPerRad: corneringStiffnessNPerDeg / DEG_TO_RAD,
       rearCaNPerRad:  (rearCorneringStiffnessNPerDeg ?? corneringStiffnessNPerDeg) / DEG_TO_RAD,
+      maxVehicleSpeedMs: computeMaxSpeed(p),
     };
   }, [coeffs]);
 
-  const result = useMemo(() => computeLapTime(layout, inpBuilder(params)), [params, layout, inpBuilder]);
+  const result = useMemo(() => computeLapTime(effectiveLayout, inpBuilder(params)), [params, effectiveLayout, inpBuilder]);
+
+  // Push result up to App / TrackVisualiser whenever it changes
+  useEffect(() => { onLapResultChange(result); }, [result]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Push effective layout up to App / TrackVisualiser overlay whenever it changes
+  useEffect(() => { onLayoutChange(effectiveLayout); }, [effectiveLayout]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleOptimise = () => {
     setOptimState({ status: 'running' });
     setTimeout(() => {
       try {
-        const res = optimiseSetup(params, layout, inpBuilder, OPTIMISE_BOUNDS);
+        const res = optimiseSetup(params, effectiveLayout, inpBuilder, OPTIMISE_BOUNDS);
         setOptimState({ status: 'done', result: res });
       } catch (e) {
         setOptimState({ status: 'error', message: String(e) });
@@ -129,9 +185,9 @@ export function LapTimePanel({ params, coeffs, onChange }: Props) {
     setRaceState({ status: 'running' });
     setTimeout(() => {
       try {
-        const inp = inpBuilder(params);
-        const result = simulateRace(
-          layout, inp,
+        const inp    = inpBuilder(params);
+        const raceResult = simulateRace(
+          effectiveLayout, inp,
           numLaps,
           params.fuelLoadKg ?? 45,
           params.fuelBurnRateKgPerLap ?? 2.5,
@@ -140,7 +196,9 @@ export function LapTimePanel({ params, coeffs, onChange }: Props) {
           params.tyreTempHalfWidthC,
           params.tyreTempFloorMu,
         );
-        setRaceState({ status: 'done', result });
+        setRaceState({ status: 'done', result: raceResult });
+        onRaceResultChange(raceResult);
+        onTriggerRaceAnim();
       } catch (e) {
         console.error(e);
         setRaceState({ status: 'error', message: String(e) });
@@ -148,8 +206,121 @@ export function LapTimePanel({ params, coeffs, onChange }: Props) {
     }, 0);
   };
 
+  // ── Track editor helpers ──────────────────────────────────────────────────
+
+  const updateSeg = (idx: number, patch: Partial<TrackSegment>) => {
+    setEditSegs(segs => segs.map((s, i) => i === idx ? { ...s, ...patch } : s));
+  };
+
+  const addSeg = () => {
+    setEditSegs(segs => [...segs, { type: 'straight', length: 200 }]);
+  };
+
+  const removeSeg = (idx: number) => {
+    setEditSegs(segs => segs.filter((_, i) => i !== idx));
+  };
+
+  const handleNewTrack = () => {
+    const id = `custom_${Date.now()}`;
+    const track: TrackLayout = {
+      name: 'My Track',
+      segments: [
+        { type: 'straight', length: 400 },
+        { type: 'corner',   length: 94, radius: 60, direction: 'left' },
+        { type: 'straight', length: 300 },
+        { type: 'corner',   length: 63, radius: 20, direction: 'left' },
+      ],
+    };
+    const updated = { ...customTracks, [id]: track };
+    setCustomTracks(updated);
+    saveCustomTracks(updated);
+    onTrackChange(id);
+  };
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const parsed = JSON.parse(ev.target?.result as string) as Partial<TrackLayout>;
+        if (!parsed.name || !Array.isArray(parsed.segments) || parsed.segments.length === 0) {
+          alert('Invalid track file — must have "name" and "segments" array.');
+          return;
+        }
+        const id = `custom_${Date.now()}`;
+        const track: TrackLayout = { name: parsed.name, segments: parsed.segments };
+        const updated = { ...customTracks, [id]: track };
+        setCustomTracks(updated);
+        saveCustomTracks(updated);
+        onTrackChange(id);
+      } catch {
+        alert('Failed to parse track file — must be valid JSON.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleExport = () => {
+    const json = JSON.stringify(effectiveLayout, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `${effectiveLayout.name.replace(/\s+/g, '_')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Auto-save edits to localStorage for custom tracks
+  useEffect(() => {
+    if (isBuiltin || isLocked || !trackKey.startsWith('custom_')) return;
+    const updated = { ...customTracks, [trackKey]: { name: editName, segments: editSegs } };
+    setCustomTracks(updated);
+    saveCustomTracks(updated);
+  }, [editSegs, editName]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const totalEditLength = editSegs.reduce((s, seg) => s + (seg.length || 0), 0);
+
+  const fmtLapTime = (sec: number) => {
+    const m = Math.floor(sec / 60);
+    const s = sec - m * 60;
+    return m > 0 ? `${m}:${s.toFixed(3).padStart(6, '0')}` : `${s.toFixed(3)}s`;
+  };
+
   return (
-    <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+
+      {/* ── Sticky ribbon ── */}
+      <div style={{
+        flexShrink: 0,
+        background: '#0e0e1a',
+        borderBottom: '2px solid var(--accent)',
+        padding: '6px 14px',
+        display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
+      }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent-text)', letterSpacing: '0.06em', textTransform: 'uppercase', minWidth: 80 }}>
+          {effectiveLayout.name}
+        </span>
+        <span style={{ fontSize: 9, color: 'var(--text-faint)' }}>
+          {(effectiveLayout.segments.reduce((s, seg) => s + seg.length, 0) / 1000).toFixed(3)} km
+        </span>
+        <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--accent-text)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>
+          {fmtLapTime(result.totalTimeSec)}
+        </span>
+        <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>
+          Top <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{result.maxSpeedKph.toFixed(0)} km/h</span>
+        </span>
+        <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>
+          Corner <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{result.minCornerKph.toFixed(0)} km/h</span>
+        </span>
+        <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>
+          Avg <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{result.avgSpeedKph.toFixed(1)} km/h</span>
+        </span>
+      </div>
+
+    <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto', flex: 1 }}>
 
       {/* Header + track selector */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -158,7 +329,7 @@ export function LapTimePanel({ params, coeffs, onChange }: Props) {
           <InfoTooltip text="Point-mass lap simulation. Max corner speed from Pacejka μ + aero grip. Straight speed from engine P/V curve minus drag. Braking zones computed backward from corner entry." />
         </span>
         <button
-          onClick={() => exportLapTimeCSV(layout.name, result, params, coeffs)}
+          onClick={() => exportLapTimeCSV(effectiveLayout.name, result, params, coeffs)}
           title="Export lap time + segment breakdown as CSV"
           style={{
             marginLeft: 'auto', padding: '3px 10px', fontSize: 10, fontWeight: 600,
@@ -170,7 +341,7 @@ export function LapTimePanel({ params, coeffs, onChange }: Props) {
         </button>
         <select
           value={trackKey}
-          onChange={e => setTrackKey(e.target.value)}
+          onChange={e => onTrackChange(e.target.value)}
           style={{
             background: 'var(--bg-panel)', border: '1px solid var(--border)',
             borderRadius: 5, color: 'var(--text-primary)', fontSize: 10,
@@ -188,6 +359,13 @@ export function LapTimePanel({ params, coeffs, onChange }: Props) {
               <option key={k} value={k}>{TRACK_PRESETS[k].name}</option>
             ))}
           </optgroup>
+          {Object.keys(customTracks).length > 0 && (
+            <optgroup label="My Circuits">
+              {Object.entries(customTracks).map(([id, t]) => (
+                <option key={id} value={id}>{t.name}</option>
+              ))}
+            </optgroup>
+          )}
         </select>
       </div>
 
@@ -204,11 +382,6 @@ export function LapTimePanel({ params, coeffs, onChange }: Props) {
           <span>·</span>
           <span>CL <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{params.aeroCL.toFixed(2)}</span></span>
         </>}
-      </div>
-
-      {/* Track map */}
-      <div style={{ background: 'var(--bg-panel)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '8px 10px' }}>
-        <TrackMapSVG layout={layout} result={result} />
       </div>
 
       {/* Summary row */}
@@ -270,7 +443,6 @@ export function LapTimePanel({ params, coeffs, onChange }: Props) {
           </span>
         </div>
 
-        {/* Controls row */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           <div>
             <div style={{ fontSize: 9, color: 'var(--text-faint)', marginBottom: 3 }}>
@@ -291,7 +463,6 @@ export function LapTimePanel({ params, coeffs, onChange }: Props) {
           </div>
         </div>
 
-        {/* Fuel display */}
         <div style={{ fontSize: 9, color: 'var(--text-muted)', display: 'flex', gap: 12 }}>
           <span>Fuel load: <span style={{ color: 'var(--text-secondary)' }}>{(params.fuelLoadKg ?? 45).toFixed(0)} kg</span></span>
           <span>Burn rate: <span style={{ color: 'var(--text-secondary)' }}>{(params.fuelBurnRateKgPerLap ?? 2.5).toFixed(1)} kg/lap</span></span>
@@ -324,19 +495,212 @@ export function LapTimePanel({ params, coeffs, onChange }: Props) {
         )}
       </div>
 
+      {/* Track Editor */}
+      <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 10, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 8 }}>
+
+        {/* Editor header + toolbar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            Track Editor
+          </span>
+
+          {/* Lock / Unlock */}
+          <button
+            onClick={() => setIsLocked(l => !l)}
+            title={isLocked ? 'Unlock to edit segments' : 'Lock (discard edits)'}
+            style={{
+              padding: '2px 8px', fontSize: 9, fontWeight: 600,
+              background: isLocked ? 'var(--bg-card)' : 'rgba(250,200,100,0.12)',
+              border: `1px solid ${isLocked ? 'var(--border)' : '#f59e0b'}`,
+              borderRadius: 4, color: isLocked ? 'var(--text-dim)' : '#f59e0b', cursor: 'pointer',
+            }}
+          >
+            {isLocked ? '🔒 Locked' : '🔓 Editing'}
+          </button>
+
+          {!isLocked && (
+            <>
+              <button onClick={addSeg} style={editorBtnStyle}>+ Segment</button>
+
+              <button onClick={handleNewTrack} style={editorBtnStyle} title="Create blank custom circuit">
+                New Track
+              </button>
+            </>
+          )}
+
+          {/* Import */}
+          <button
+            onClick={() => importRef.current?.click()}
+            style={editorBtnStyle}
+            title="Import circuit from JSON file"
+          >
+            Import JSON
+          </button>
+          <input ref={importRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
+
+          {/* Export */}
+          <button onClick={handleExport} style={editorBtnStyle} title="Export current circuit as JSON">
+            Export JSON
+          </button>
+
+          {/* Total distance */}
+          <span style={{ marginLeft: 'auto', fontSize: 9, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
+            {(totalEditLength / 1000).toFixed(3)} km
+          </span>
+        </div>
+
+        {/* Track name input (editable when unlocked) */}
+        {!isLocked && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 9, color: 'var(--text-faint)', minWidth: 40 }}>Name</span>
+            <input
+              value={editName}
+              onChange={e => setEditName(e.target.value)}
+              style={{
+                flex: 1, background: 'var(--bg-card)', border: '1px solid var(--border)',
+                borderRadius: 4, color: 'var(--text-primary)', fontSize: 10,
+                padding: '3px 7px', outline: 'none',
+              }}
+            />
+          </div>
+        )}
+
+        {/* Segment table header */}
+        <div style={{ display: 'grid', gridTemplateColumns: '22px 64px 70px 60px 60px 52px 24px', gap: 4, alignItems: 'center' }}>
+          {['#', 'Type', 'Label', 'R (m)', 'Len (m)', 'Dir', ''].map(h => (
+            <span key={h} style={{ fontSize: 8, color: 'var(--text-faint)', fontWeight: 700, textTransform: 'uppercase' }}>{h}</span>
+          ))}
+        </div>
+
+        {/* Segment rows */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 260, overflowY: 'auto' }}>
+          {editSegs.map((seg, i) => (
+            <SegmentEditorRow
+              key={i}
+              index={i}
+              seg={seg}
+              locked={isLocked}
+              onChange={patch => updateSeg(i, patch)}
+              onDelete={() => removeSeg(i)}
+            />
+          ))}
+        </div>
+
+        {isLocked && (
+          <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>
+            Unlock to edit segments. Changes affect lap time calculation live.
+          </span>
+        )}
+      </div>
+
       <div style={{ fontSize: 9, color: 'var(--text-dim)', lineHeight: 1.5, marginTop: 4 }}>
         Point-mass model — no gear shifts, no slip angle limits on straights.<br />
         Accuracy improves with Stage 3–6 parameters tuned to the actual vehicle.
       </div>
+    </div>
+    </div>
+  );
+}
+
+// ── Editor row ─────────────────────────────────────────────────────────────────
+
+const editorBtnStyle: React.CSSProperties = {
+  padding: '2px 8px', fontSize: 9, fontWeight: 600,
+  background: 'var(--bg-card)', border: '1px solid var(--border)',
+  borderRadius: 4, color: 'var(--text-secondary)', cursor: 'pointer',
+};
+
+function SegmentEditorRow({
+  index, seg, locked, onChange, onDelete,
+}: {
+  index:    number;
+  seg:      TrackSegment;
+  locked:   boolean;
+  onChange: (p: Partial<TrackSegment>) => void;
+  onDelete: () => void;
+}) {
+  const isCorner = seg.type === 'corner';
+  const inp: React.CSSProperties = {
+    width: '100%', background: locked ? 'transparent' : 'var(--bg-card)',
+    border: locked ? 'none' : '1px solid var(--border)',
+    borderRadius: 3, color: locked ? 'var(--text-muted)' : 'var(--text-primary)',
+    fontSize: 9, padding: '2px 4px', outline: 'none',
+  };
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '22px 64px 70px 60px 60px 52px 24px', gap: 4, alignItems: 'center' }}>
+      <span style={{ fontSize: 8, color: 'var(--text-dim)', textAlign: 'center' }}>{index + 1}</span>
+
+      {/* Type */}
+      <select
+        value={seg.type}
+        disabled={locked}
+        onChange={e => onChange({ type: e.target.value as 'corner' | 'straight', radius: e.target.value === 'straight' ? undefined : (seg.radius ?? 50) })}
+        style={{ ...inp, cursor: locked ? 'default' : 'pointer' }}
+      >
+        <option value="straight">Straight</option>
+        <option value="corner">Corner</option>
+      </select>
+
+      {/* Label */}
+      <input
+        type="text"
+        value={seg.label ?? ''}
+        disabled={locked}
+        placeholder="auto"
+        onChange={e => onChange({ label: e.target.value || undefined })}
+        style={inp}
+      />
+
+      {/* Radius */}
+      <input
+        type="number"
+        value={isCorner ? (seg.radius ?? '') : ''}
+        disabled={locked || !isCorner}
+        min={5}
+        onChange={e => onChange({ radius: parseFloat(e.target.value) || undefined })}
+        style={{ ...inp, color: isCorner ? (locked ? 'var(--text-muted)' : 'var(--text-primary)') : 'var(--text-dim)' }}
+        placeholder={isCorner ? '60' : '—'}
+      />
+
+      {/* Length */}
+      <input
+        type="number"
+        value={seg.length}
+        disabled={locked}
+        min={1}
+        onChange={e => onChange({ length: parseFloat(e.target.value) || 1 })}
+        style={inp}
+      />
+
+      {/* Direction */}
+      <select
+        value={seg.direction ?? 'left'}
+        disabled={locked || !isCorner}
+        onChange={e => onChange({ direction: e.target.value as 'left' | 'right' })}
+        style={{ ...inp, cursor: locked || !isCorner ? 'default' : 'pointer', color: isCorner ? (locked ? 'var(--text-muted)' : 'var(--text-primary)') : 'var(--text-dim)' }}
+      >
+        <option value="left">Left</option>
+        <option value="right">Right</option>
+      </select>
+
+      {/* Delete */}
+      {!locked ? (
+        <button
+          onClick={onDelete}
+          title="Remove segment"
+          style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: 12, padding: 0, lineHeight: 1 }}
+        >
+          ×
+        </button>
+      ) : <span />}
     </div>
   );
 }
 
 // ── Race result table ──────────────────────────────────────────────────────────
 
-function fmtSec(s: number): string {
-  return s.toFixed(3);
-}
+function fmtSec(s: number): string { return s.toFixed(3); }
 
 function RaceResultTable({ result }: { result: RaceResult }) {
   const { laps, fastestLapNum } = result;
@@ -346,8 +710,7 @@ function RaceResultTable({ result }: { result: RaceResult }) {
     letterSpacing: '0.04em', textAlign: 'right' as const, paddingBottom: 4,
   };
   const cellStyle: React.CSSProperties = {
-    fontSize: 9, textAlign: 'right' as const, fontVariantNumeric: 'tabular-nums',
-    padding: '2px 0',
+    fontSize: 9, textAlign: 'right' as const, fontVariantNumeric: 'tabular-nums', padding: '2px 0',
   };
 
   return (
@@ -383,12 +746,8 @@ function RaceResultTable({ result }: { result: RaceResult }) {
                 <td style={{ ...cellStyle, textAlign: 'left', color: isFastest ? 'var(--accent-text)' : 'var(--text-faint)', fontWeight: isFastest ? 700 : 400 }}>
                   {lap.lap}{isFastest ? ' ★' : ''}
                 </td>
-                <td style={{ ...cellStyle, color: timeColor, fontWeight: isFastest ? 700 : 400 }}>
-                  {fmtTime(lap.lapTimeSec)}
-                </td>
-                <td style={{ ...cellStyle, color: gapColor }}>
-                  {lap.gapToFastestSec < 0.001 ? '—' : `+${fmtSec(lap.gapToFastestSec)}`}
-                </td>
+                <td style={{ ...cellStyle, color: timeColor, fontWeight: isFastest ? 700 : 400 }}>{fmtTime(lap.lapTimeSec)}</td>
+                <td style={{ ...cellStyle, color: gapColor }}>{lap.gapToFastestSec < 0.001 ? '—' : `+${fmtSec(lap.gapToFastestSec)}`}</td>
                 <td style={{ ...cellStyle, color: 'var(--text-muted)' }}>{fmtSec(lap.s1Sec)}</td>
                 <td style={{ ...cellStyle, color: 'var(--text-muted)' }}>{fmtSec(lap.s2Sec)}</td>
                 <td style={{ ...cellStyle, color: 'var(--text-muted)' }}>{fmtSec(lap.s3Sec)}</td>
@@ -401,12 +760,8 @@ function RaceResultTable({ result }: { result: RaceResult }) {
         </tbody>
         <tfoot>
           <tr style={{ borderTop: '1px solid var(--border)' }}>
-            <td colSpan={2} style={{ ...cellStyle, textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 700, paddingTop: 4 }}>
-              Total
-            </td>
-            <td colSpan={7} style={{ ...cellStyle, color: 'var(--text-secondary)', fontWeight: 700, paddingTop: 4 }}>
-              {fmtTime(result.totalTimeSec)}
-            </td>
+            <td colSpan={2} style={{ ...cellStyle, textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 700, paddingTop: 4 }}>Total</td>
+            <td colSpan={7} style={{ ...cellStyle, color: 'var(--text-secondary)', fontWeight: 700, paddingTop: 4 }}>{fmtTime(result.totalTimeSec)}</td>
           </tr>
         </tfoot>
       </table>
@@ -414,276 +769,11 @@ function RaceResultTable({ result }: { result: RaceResult }) {
   );
 }
 
-// ── Track map SVG ─────────────────────────────────────────────────────────────
-
-interface TrackPathResult { d: string; viewBox: string }
-
-function buildTrackPath(layout: TrackLayout): TrackPathResult {
-  // Walk the track: straight = forward, corner = arc.
-  // heading 0 = +x direction. SVG y increases downward.
-  // direction 'left'  → heading increases (sweep-flag=1 in SVG)
-  // direction 'right' → heading decreases (sweep-flag=0 in SVG)
-  const SCALE = 0.4;   // pixels per metre
-  const PAD   = 20;    // viewBox padding (px)
-  let x = 0, y = 0, heading = 0;
-  const pts: string[] = ['M 0 0'];
-  const allX: number[] = [0];
-  const allY: number[] = [0];
-
-  for (const seg of layout.segments) {
-    if (seg.type === 'straight') {
-      const dx = Math.cos(heading) * seg.length * SCALE;
-      const dy = Math.sin(heading) * seg.length * SCALE;
-      x += dx; y += dy;
-      pts.push(`l ${dx.toFixed(1)} ${dy.toFixed(1)}`);
-      allX.push(x); allY.push(y);
-
-    } else if (seg.type === 'corner' && seg.radius) {
-      // SVG y-down convention: right turn = clockwise = heading increases
-      // turn: +1 for right (clockwise), -1 for left (counterclockwise)
-      const turn  = seg.direction === 'right' ? 1 : -1;
-      const sweep = seg.length / seg.radius;   // radians
-      const R     = seg.radius * SCALE;
-
-      // Arc centre: perpendicular right (+π/2) or left (-π/2) of current heading
-      const perpAngle = heading + turn * Math.PI / 2;
-      const cx = x + Math.cos(perpAngle) * R;
-      const cy = y + Math.sin(perpAngle) * R;
-
-      const newHeading = heading + turn * sweep;
-
-      // End point: from centre, opposite of new perpendicular direction
-      const nx = cx - Math.cos(newHeading + turn * Math.PI / 2) * R;
-      const ny = cy - Math.sin(newHeading + turn * Math.PI / 2) * R;
-
-      // Sample arc points for accurate bounding box
-      const steps = Math.max(4, Math.ceil(sweep / (Math.PI / 8)));
-      for (let s = 1; s <= steps; s++) {
-        const a  = heading + turn * sweep * (s / steps);
-        const px = cx - Math.cos(a + turn * Math.PI / 2) * R;
-        const py = cy - Math.sin(a + turn * Math.PI / 2) * R;
-        allX.push(px); allY.push(py);
-      }
-
-      const largeArc  = sweep > Math.PI ? 1 : 0;
-      // sweep-flag=1 → clockwise in SVG (right turn); 0 → counterclockwise (left turn)
-      const sweepFlag = turn === 1 ? 1 : 0;
-      pts.push(`A ${R.toFixed(1)} ${R.toFixed(1)} 0 ${largeArc} ${sweepFlag} ${nx.toFixed(1)} ${ny.toFixed(1)}`);
-      x = nx; y = ny;
-      heading = newHeading;
-    }
-  }
-  // No 'Z' — let the path end naturally; circuits that close will visually close,
-  // those that don't (Monaco, Suzuka) won't show a false diagonal closure line.
-
-  const minX = Math.min(...allX);
-  const minY = Math.min(...allY);
-  const maxX = Math.max(...allX);
-  const maxY = Math.max(...allY);
-  const vbW  = maxX - minX + 2 * PAD;
-  const vbH  = maxY - minY + 2 * PAD;
-
-  return {
-    d:       pts.join(' '),
-    viewBox: `${(minX - PAD).toFixed(1)} ${(minY - PAD).toFixed(1)} ${vbW.toFixed(1)} ${vbH.toFixed(1)}`,
-  };
-}
-
-// ── Animated dot state ─────────────────────────────────────────────────────────
-
-/** Total playback duration for one animated lap (ms). Fixed 5s for UX. */
-const PLAYBACK_MS = 5000;
-
-interface TrackMapSVGProps {
-  layout: TrackLayout;
-  result: import('../physics/laptime').LapResult;
-}
-
-function TrackMapSVG({ layout, result }: TrackMapSVGProps) {
-  // Determine path data and viewBox — prefer hardcoded svgPath for real circuits
-  const { d, viewBox } = useMemo(() => {
-    if (layout.svgPath && layout.svgViewBox) {
-      return { d: layout.svgPath, viewBox: layout.svgViewBox };
-    }
-    return buildTrackPath(layout);
-  }, [layout]);
-
-  // Scale S/F marker to viewBox
-  const [vbX, vbY, vbW, vbH] = viewBox.split(' ').map(Number);
-  const u = Math.min(vbW, vbH) * 0.06;
-
-  // The S/F point is the start of the SVG path — extract from first M command
-  const sfMatch = d.match(/M\s*([\d.+-]+)\s+([\d.+-]+)/);
-  const sfX = sfMatch ? parseFloat(sfMatch[1]) : vbX;
-  const sfY = sfMatch ? parseFloat(sfMatch[2]) : vbY;
-
-  // Build a cumulative time fraction table: maps [0..1] path-fraction → time-fraction
-  // This drives the dot to go faster on straights and slower at corners.
-  const timeFractions = useMemo(() => {
-    const total = result.totalTimeSec;
-    const segs = result.segments;
-    // Build array of { pathFrac, timeFrac } pairs at each segment boundary
-    let cumLen = 0;
-    let cumTime = 0;
-    const totalLen = result.totalLengthM;
-    const pts: Array<{ pathFrac: number; timeFrac: number }> = [{ pathFrac: 0, timeFrac: 0 }];
-    for (const seg of segs) {
-      cumLen  += seg.length;
-      cumTime += seg.timeSec;
-      pts.push({
-        pathFrac: cumLen  / totalLen,
-        timeFrac: cumTime / total,
-      });
-    }
-    return pts;
-  }, [result]);
-
-  // Animation state
-  const [playing, setPlaying] = useState(false);
-  const [dotPos, setDotPos]   = useState<{ x: number; y: number } | null>(null);
-  const pathRef   = useRef<SVGPathElement | null>(null);
-  const rafRef    = useRef<number | null>(null);
-  const startRef  = useRef<number | null>(null);
-
-  /** Map a time-fraction [0..1] → path-fraction [0..1] by inverting the timeFractions table. */
-  const timeFracToPathFrac = useCallback((tf: number): number => {
-    const pts = timeFractions;
-    // Linear search — table is small (~20 entries)
-    for (let i = 1; i < pts.length; i++) {
-      if (tf <= pts[i].timeFrac) {
-        const span = pts[i].timeFrac - pts[i - 1].timeFrac;
-        const t    = span > 0 ? (tf - pts[i - 1].timeFrac) / span : 0;
-        return pts[i - 1].pathFrac + t * (pts[i].pathFrac - pts[i - 1].pathFrac);
-      }
-    }
-    return 1;
-  }, [timeFractions]);
-
-  const stopAnimation = useCallback(() => {
-    if (rafRef.current !== null) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-    startRef.current = null;
-    setPlaying(false);
-    setDotPos(null);
-  }, []);
-
-  const tick = useCallback((timestamp: number) => {
-    if (!pathRef.current) return;
-    if (startRef.current === null) startRef.current = timestamp;
-
-    const elapsed   = timestamp - startRef.current;
-    const timeFrac  = (elapsed % PLAYBACK_MS) / PLAYBACK_MS;  // loops
-    const pathFrac  = timeFracToPathFrac(timeFrac);
-    const totalLen  = pathRef.current.getTotalLength();
-    const pt        = pathRef.current.getPointAtLength(pathFrac * totalLen);
-    setDotPos({ x: pt.x, y: pt.y });
-
-    rafRef.current = requestAnimationFrame(tick);
-  }, [timeFracToPathFrac]);
-
-  const startAnimation = useCallback(() => {
-    setPlaying(true);
-    rafRef.current = requestAnimationFrame(tick);
-  }, [tick]);
-
-  // Clean up on unmount or layout change
-  useEffect(() => {
-    return () => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    };
-  }, []);
-
-  // Stop animation when layout changes (different circuit selected)
-  useEffect(() => {
-    stopAnimation();
-  }, [layout, stopAnimation]);
-
-  const handlePlayStop = () => {
-    if (playing) {
-      stopAnimation();
-    } else {
-      startAnimation();
-    }
-  };
-
-  return (
-    <div style={{ position: 'relative' }}>
-      <svg
-        viewBox={viewBox}
-        width="100%"
-        style={{ maxHeight: 220, display: 'block' }}
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        {/* Game-style track map: thick outer stroke (kerb/edge) + thinner inner stroke (road surface) */}
-        <path
-          ref={pathRef}
-          d={d}
-          fill="none"
-          stroke="var(--border)"
-          strokeWidth="10"
-          vectorEffect="non-scaling-stroke"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-        <path
-          d={d}
-          fill="none"
-          stroke="var(--text-primary)"
-          strokeWidth="5"
-          vectorEffect="non-scaling-stroke"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-        {/* S/F marker — red dot + white bar (start/finish line style) */}
-        <circle cx={sfX} cy={sfY} r={u * 0.7} fill="#ef4444" />
-        <line
-          x1={sfX + u} y1={sfY - u * 0.8}
-          x2={sfX + u} y2={sfY + u * 0.8}
-          stroke="white" strokeWidth={u * 0.25}
-          strokeLinecap="round" vectorEffect="non-scaling-stroke"
-        />
-        {/* Animated lap position dot */}
-        {dotPos && (
-          <circle
-            cx={dotPos.x}
-            cy={dotPos.y}
-            r={u * 0.8}
-            fill="#ef4444"
-            stroke="white"
-            strokeWidth={u * 0.2}
-            vectorEffect="non-scaling-stroke"
-          />
-        )}
-      </svg>
-      {/* Play/Stop button overlaid bottom-right of the map */}
-      <button
-        onClick={handlePlayStop}
-        title={playing ? 'Stop lap animation' : 'Animate lap position (5s playback)'}
-        style={{
-          position: 'absolute', bottom: 4, right: 4,
-          padding: '3px 9px', fontSize: 10, fontWeight: 600,
-          background: playing ? 'var(--bg-active)' : 'var(--bg-card)',
-          border: `1px solid ${playing ? 'var(--accent)' : 'var(--border)'}`,
-          borderRadius: 5,
-          color: playing ? 'var(--accent-text)' : 'var(--text-secondary)',
-          cursor: 'pointer', lineHeight: 1.4,
-        }}
-      >
-        {playing ? '■ Stop' : '▶ Play'}
-      </button>
-    </div>
-  );
-}
+// ── OptimResultCard ────────────────────────────────────────────────────────────
 
 function OptimResultCard({
   result, baseParams, onApply,
-}: {
-  result:     OptimiseResult;
-  baseParams: VehicleParams;
-  onApply:    (r: OptimiseResult) => void;
-}) {
+}: { result: OptimiseResult; baseParams: VehicleParams; onApply: (r: OptimiseResult) => void }) {
   const improved = result.improvement > 0.05;
   return (
     <div style={{
@@ -691,7 +781,6 @@ function OptimResultCard({
       border: `1px solid ${improved ? 'var(--accent)' : 'var(--border-subtle)'}`,
       borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8,
     }}>
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         {improved ? (
           <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--accent-text)', fontVariantNumeric: 'tabular-nums' }}>
@@ -703,23 +792,16 @@ function OptimResultCard({
         <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
           {fmtTime(result.baseTimeSec)} → {fmtTime(result.bestTimeSec)}
         </span>
-        <span style={{ fontSize: 9, color: 'var(--text-dim)', marginLeft: 'auto' }}>
-          {result.iterations} iterations
-        </span>
+        <span style={{ fontSize: 9, color: 'var(--text-dim)', marginLeft: 'auto' }}>{result.iterations} iterations</span>
         {improved && (
           <button
             onClick={() => onApply(result)}
-            style={{
-              padding: '3px 10px', fontSize: 10, fontWeight: 600,
-              background: 'var(--accent)', border: 'none',
-              borderRadius: 5, color: 'var(--accent-text)', cursor: 'pointer',
-            }}
+            style={{ padding: '3px 10px', fontSize: 10, fontWeight: 600, background: 'var(--accent)', border: 'none', borderRadius: 5, color: 'var(--accent-text)', cursor: 'pointer' }}
           >
             Apply
           </button>
         )}
       </div>
-      {/* Parameter diff table */}
       {improved && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '2px 12px' }}>
           {OPTIMISABLE_KEYS.map(key => {
@@ -728,16 +810,10 @@ function OptimResultCard({
             const changed = Math.abs(nowVal - wasVal) > Math.abs(wasVal) * 0.005;
             return (
               <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6, fontSize: 10 }}>
-                <span style={{ color: 'var(--text-secondary)', fontWeight: changed ? 600 : 400 }}>
-                  {OPTIM_LABELS[key]}
-                </span>
+                <span style={{ color: 'var(--text-secondary)', fontWeight: changed ? 600 : 400 }}>{OPTIM_LABELS[key]}</span>
                 <span style={{ fontVariantNumeric: 'tabular-nums', color: changed ? 'var(--accent-text)' : 'var(--text-muted)' }}>
                   {fmtParamValue(key, nowVal)}
-                  {changed && (
-                    <span style={{ color: 'var(--text-dim)', fontSize: 9 }}>
-                      {' '}(was {fmtParamValue(key, wasVal)})
-                    </span>
-                  )}
+                  {changed && <span style={{ color: 'var(--text-dim)', fontSize: 9 }}>{' '}(was {fmtParamValue(key, wasVal)})</span>}
                 </span>
               </div>
             );
@@ -747,6 +823,8 @@ function OptimResultCard({
     </div>
   );
 }
+
+// ── SummaryCard ────────────────────────────────────────────────────────────────
 
 function SummaryCard({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
@@ -761,34 +839,28 @@ function SummaryCard({ label, value, accent }: { label: string; value: string; a
   );
 }
 
+// ── SegmentRow (breakdown display, read-only) ──────────────────────────────────
+
 function SegmentRow({ seg, totalTime }: { seg: import('../physics/laptime').SegmentResult; totalTime: number }) {
   const isCorner = seg.type === 'corner';
   const pct      = (seg.timeSec / totalTime) * 100;
   const color    = isCorner ? '#f87171' : '#60a5fa';
-
   return (
-    <div style={{
-      display: 'grid', gridTemplateColumns: '90px 48px 80px 1fr 48px',
-      alignItems: 'center', gap: 6, fontSize: 10,
-    }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '90px 48px 80px 1fr 48px', alignItems: 'center', gap: 6, fontSize: 10 }}>
       <span style={{ color: 'var(--text-secondary)', fontWeight: isCorner ? 600 : 400 }}>
         {seg.label}
+        {isCorner && seg.radius != null && (
+          <span style={{ color: 'var(--text-faint)', fontSize: 8, marginLeft: 4 }}>R={seg.radius}m</span>
+        )}
       </span>
-      <span style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-        {fmtTime(seg.timeSec)}
-      </span>
+      <span style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{fmtTime(seg.timeSec)}</span>
       <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', fontSize: 9 }}>
-        {isCorner
-          ? `${seg.minSpeedKph.toFixed(0)} km/h`
-          : `${seg.minSpeedKph.toFixed(0)}→${seg.maxSpeedKph.toFixed(0)} km/h`}
+        {isCorner ? `${seg.minSpeedKph.toFixed(0)} km/h` : `${seg.minSpeedKph.toFixed(0)}→${seg.maxSpeedKph.toFixed(0)} km/h`}
       </span>
-      {/* time share bar */}
       <div style={{ height: 3, background: 'var(--border-subtle)', borderRadius: 2, overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 2 }} />
       </div>
-      <span style={{ color: 'var(--text-faint)', fontSize: 9, textAlign: 'right' }}>
-        {pct.toFixed(1)}%
-      </span>
+      <span style={{ color: 'var(--text-faint)', fontSize: 9, textAlign: 'right' }}>{pct.toFixed(1)}%</span>
     </div>
   );
 }
