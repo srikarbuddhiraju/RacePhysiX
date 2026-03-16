@@ -8,7 +8,7 @@ interface Props {
 }
 
 const BALANCE_CONFIG = {
-  understeer: { label: 'UNDERSTEER', color: '#f97316' },
+  understeer: { label: 'UNDERSTEER', color: '#60a5fa' },  // blue = industry convention (MoTeC/Bosch)
   neutral:    { label: 'NEUTRAL',    color: '#4ade80' },
   oversteer:  { label: 'OVERSTEER',  color: '#f43f5e' },
 };
@@ -93,8 +93,8 @@ export function ResultsPanel({ result, pacejka }: Props) {
         <Metric
           label="Steer — kinematic"
           value={result.kinematicSteerAngleDeg.toFixed(3)}
-          sub="deg (L/R)"
-          tip="Pure geometry steer angle to follow this arc at zero speed — Ackermann steer angle. = wheelbase ÷ radius (in radians). Independent of speed and tyre properties."
+          sub="deg (each wheel)"
+          tip="Pure geometry steer angle to follow this arc at zero speed — Ackermann steer angle = wheelbase ÷ radius (rad). This is the angle at one front wheel. Independent of speed and tyre properties."
         />
         <Metric
           label="Dynamic correction"

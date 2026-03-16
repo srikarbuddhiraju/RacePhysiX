@@ -157,10 +157,39 @@ export function ParameterPanel({ params, onChange }: Props) {
         <PowerSliderRow powerKW={params.enginePowerKW} unit={powerUnit} onUnitChange={setPowerUnit} onKWChange={kw => onChange({ ...params, enginePowerKW: kw })} />
         <SliderRow cfg={{ label: 'Throttle', key: 'throttlePercent', min: 0, max: 100, step: 5, unit: '%', format: v => v.toFixed(0), tip: 'Fraction of maximum engine power applied. At 0% = coast. Throttle on driven axle → combined slip → reduced lateral grip.' }} params={params} set={set} />
         {(params.drivetrainType === 'AWD' || params.drivetrainType === 'AWD_TV') && (
-          <SliderRow cfg={{ label: 'AWD split', key: 'awdFrontBias', min: 0, max: 1, step: 0.05, unit: '%', format: v => `${(v*100).toFixed(0)}F / ${((1-v)*100).toFixed(0)}R`, tip: 'Torque split front/rear. 0.40 = 40F/60R typical.' }} params={params} set={set} />
+          <SliderRow cfg={{ label: 'AWD split', key: 'awdFrontBias', min: 0, max: 1, step: 0.05, unit: '', format: v => `${(v*100).toFixed(0)}F / ${((1-v)*100).toFixed(0)}R`, tip: 'Torque split front/rear. 0.40 = 40F/60R typical.' }} params={params} set={set} />
         )}
         <div className="param-derived">
           <DerivedRow label="Drive force" value={(() => { const vS = Math.max(speedMs,2); return `${((params.enginePowerKW*1000*params.throttlePercent/100)/vS/1000).toFixed(2)} kN`; })()} tip="F = P × throttle / V." />
+        </div>
+
+        <div className="param-section-label">Engine &amp; Gears (Stage 10)</div>
+        <SliderRow cfg={{ label: 'Gear count', key: 'gearCount', min: 4, max: 8, step: 1, unit: '', format: v => v.toFixed(0), tip: 'Number of forward gears. More gears = smaller ratio steps = engine stays closer to peak power RPM. Typical: 5–6 road, 6–8 motorsport.' }} params={params} set={set} />
+        <SliderRow cfg={{ label: '1st gear ratio', key: 'firstGearRatio', min: 2.0, max: 5.0, step: 0.1, unit: '', format: v => v.toFixed(2), tip: '1st gear ratio. Higher = more torque multiplication at low speed, lower max speed in 1st. Typical road: 3.0–3.5.' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Top gear ratio', key: 'topGearRatio', min: 0.5, max: 1.2, step: 0.01, unit: '', format: v => v.toFixed(2), tip: 'Top gear ratio. <1.0 = overdrive (engine spins slower than output). 1.0 = direct drive. 0.72 typical 6-speed OD.' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Final drive', key: 'finalDriveRatio', min: 2.5, max: 5.5, step: 0.1, unit: '', format: v => v.toFixed(2), tip: 'Differential/final drive ratio. Higher = more torque at wheels but lower top speed. Typical: 3.5–4.5 road, 4.0–5.0 track.' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Wheel radius', key: 'wheelRadiusM', min: 0.26, max: 0.38, step: 0.01, unit: 'm', format: v => v.toFixed(2), tip: 'Loaded tyre radius. Larger radius = higher top speed but less torque at wheels. 225/45R17 ≈ 0.32 m; 245/35R20 ≈ 0.33 m.' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Peak power RPM', key: 'enginePeakRpm', min: 3000, max: 18000, step: 100, unit: 'rpm', format: v => v.toFixed(0), tip: 'RPM at which peak power is reached. Below this = flat torque plateau. Above this = torque falls (constant power). 5500 rpm typical road; 15000+ rpm F1.' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Redline', key: 'engineRedlineRpm', min: 4000, max: 20000, step: 100, unit: 'rpm', format: v => v.toFixed(0), tip: 'Maximum engine RPM. Gears that would exceed redline at the current speed are skipped. Sets the top speed in each gear.' }} params={params} set={set} />
+        <div className="param-derived">
+          {(() => {
+            const omegaPeak = params.enginePeakRpm * 2 * Math.PI / 60;
+            const tPeak     = (params.enginePowerKW * 1000) / omegaPeak;
+            const omegaRed  = params.engineRedlineRpm * 2 * Math.PI / 60;
+            const vMax      = omegaRed * params.wheelRadiusM / (params.topGearRatio * params.finalDriveRatio);
+            // Geometric progression ratios
+            const n = params.gearCount;
+            const ratios: string[] = [];
+            for (let i = 0; i < n; i++) {
+              const r = params.firstGearRatio * Math.pow(params.topGearRatio / params.firstGearRatio, i / Math.max(n - 1, 1));
+              ratios.push(r.toFixed(2));
+            }
+            return <>
+              <DerivedRow label="Peak torque" value={`${tPeak.toFixed(0)} Nm`} tip="T_peak = P / ω_peak. Flat torque plateau below peak RPM." />
+              <DerivedRow label="Top speed" value={`${(vMax * 3.6).toFixed(0)} km/h`} tip="Max speed = redline × wheelRadius / (topGear × finalDrive). Assumes flat road, no drag limit." />
+              <DerivedRow label="Gear ratios" value={ratios.join(' / ')} tip="Geometric progression from 1st to top gear." />
+            </>;
+          })()}
         </div>
       </>}
 
@@ -201,7 +230,7 @@ export function ParameterPanel({ params, onChange }: Props) {
         <SliderRow cfg={{ label: 'Downforce CL', key: 'aeroCL', min: 0, max: 4.0, step: 0.05, unit: '', format: v => v.toFixed(2), tip: 'Downforce coefficient. F_down = ½ρV²A·CL. 0 = clean road car; 0.3 = mild aero; 1.5 = GT wing; 3.0+ = formula car. Increases grip at higher speeds.' }} params={params} set={set} />
         <SliderRow cfg={{ label: 'Drag CD',       key: 'aeroCD', min: 0.10, max: 1.50, step: 0.05, unit: '', format: v => v.toFixed(2), tip: 'Drag coefficient. F_drag = ½ρV²A·CD. 0.25 = slippery road car; 0.50 = GT; 0.80 = open wheel. Drag limits top speed and requires more engine power.' }} params={params} set={set} />
         <SliderRow cfg={{ label: 'Frontal area',  key: 'aeroReferenceArea', min: 0.8, max: 3.0, step: 0.1, unit: 'm²', format: v => v.toFixed(1), tip: 'Frontal reference area for aero calculations. 1.5 m² = formula car; 1.8 = sports car; 2.0 = road saloon; 2.5 = SUV.' }} params={params} set={set} />
-        <SliderRow cfg={{ label: 'Aero balance', key: 'aeroBalance', min: 0.30, max: 0.70, step: 0.01, unit: '%', format: v => `${(v*100).toFixed(0)}F / ${((1-v)*100).toFixed(0)}R`, tip: 'Fraction of total downforce acting on the front axle. <0.50 = rear-biased → oversteer at high speed. >0.50 = front-biased → understeer. Typical: 0.35–0.45F.' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Aero balance', key: 'aeroBalance', min: 0.30, max: 0.70, step: 0.01, unit: '', format: v => `${(v*100).toFixed(0)}F / ${((1-v)*100).toFixed(0)}R`, tip: 'Fraction of total downforce acting on the front axle. <0.50 = rear-biased → oversteer at high speed. >0.50 = front-biased → understeer. Typical: 0.35–0.45F.' }} params={params} set={set} />
         <div className="param-derived">
           {(() => {
             const q = 0.5 * 1.225 * speedMs * speedMs;
@@ -217,7 +246,7 @@ export function ParameterPanel({ params, onChange }: Props) {
 
         <div className="param-section-label">Braking</div>
         <SliderRow cfg={{ label: 'Braking',    key: 'brakingG',  min: 0, max: 1.5, step: 0.05, unit: 'g', format: v => v.toFixed(2), tip: 'Applied braking deceleration. 0 = coasting. 0.5g = gentle; 1.0g = firm; 1.5g = maximum ABS-limited stop. Shifts weight to front axle, reduces rear lateral grip.' }} params={params} set={set} />
-        <SliderRow cfg={{ label: 'Brake bias', key: 'brakeBias', min: 0.40, max: 0.90, step: 0.01, unit: '%', format: v => `${(v*100).toFixed(0)}F / ${((1-v)*100).toFixed(0)}R`, tip: 'Fraction of brake force on front axle. 0.65 = 65F/35R typical road. More front bias = stable but front tyres saturate early. More rear = faster yaw but rear lock risk.' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Brake bias', key: 'brakeBias', min: 0.40, max: 0.90, step: 0.01, unit: '', format: v => `${(v*100).toFixed(0)}F / ${((1-v)*100).toFixed(0)}R`, tip: 'Fraction of brake force on front axle. 0.65 = 65F/35R typical road. More front bias = stable but front tyres saturate early. More rear = faster yaw but rear lock risk.' }} params={params} set={set} />
         {params.brakingG > 0 && (
           <div className="param-derived">
             {(() => {
@@ -228,9 +257,45 @@ export function ParameterPanel({ params, onChange }: Props) {
         )}
       </>}
 
+        <div className="param-section-label">Tyre (Stage 9)</div>
+        <SliderRow cfg={{ label: 'Load sensitivity', key: 'tyreLoadSensitivity', min: 0, max: 0.30, step: 0.01, unit: '', format: v => v.toFixed(2), tip: 'Pacejka load sensitivity qFz: how much μ degrades as tyre load exceeds the nominal (static) value. 0 = linear (no sensitivity). 0.10 = typical road tyre. 0.20 = high sensitivity. At 1.5× nominal load and qFz=0.10, effective μ drops by ~5%. Increases slip angles and load-transfer penalty at high cornering loads.' }} params={params} set={set} />
+        <div className="param-derived">
+          {(() => {
+            const Fz0 = params.mass * 9.81 / 4;
+            const FzOuter = Fz0 * 1.5;   // approx outer tyre at ~0.8g lateral
+            const muEff = params.tyreLoadSensitivity > 0
+              ? (1 - params.tyreLoadSensitivity * (FzOuter / Fz0 - 1))
+              : 1.0;
+            return <DerivedRow label="μ @ 1.5× load" value={`${(muEff * 100).toFixed(0)}% of μ₀`} tip="Effective peak friction coefficient on the outside tyre when it's carrying 1.5× the static corner load. Shows the grip penalty from load sensitivity." />;
+          })()}
+        </div>
+
+        <div className="param-section-label">Tyre Temperature (Stage 11)</div>
+        <SliderRow cfg={{ label: 'Optimal temp', key: 'tyreOptTempC', min: 50, max: 150, step: 5, unit: '°C', format: v => v.toFixed(0), tip: 'Temperature at which the tyre reaches peak grip. Road tyre: ~80–90°C; track: ~95–110°C; motorsport: ~110–120°C. The bell curve peaks here.' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Half-width', key: 'tyreTempHalfWidthC', min: 10, max: 60, step: 5, unit: '°C', format: v => v.toFixed(0), tip: 'Grip drops 50% of the way to the floor at ±this many °C from optimal. Narrow = sensitive tyre (motorsport compound). Wide = forgiving (all-season).' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Current temp', key: 'tyreTempCurrentC', min: 0, max: 180, step: 5, unit: '°C', format: v => v.toFixed(0), tip: 'Current tyre operating temperature. Explore cold-tyre lap-start conditions (20–40°C), optimal window (70–120°C), or overheating scenarios (150°C+).' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Grip floor', key: 'tyreTempFloorMu', min: 0.40, max: 0.90, step: 0.05, unit: '', format: v => v.toFixed(2), tip: 'Minimum μ fraction at extreme temperatures (very cold or overheated). 0.60 = 60% of peak grip. Lower = more dangerous cold/hot tyre behaviour.' }} params={params} set={set} />
+        <div className="param-derived">
+          {(() => {
+            const { tyreTempCurrentC: T, tyreOptTempC: Topt, tyreTempHalfWidthC: hw, tyreTempFloorMu: floor } = params;
+            const k  = hw > 0 ? Math.LN2 / (hw * hw) : 0;
+            const dT = T - Topt;
+            const f  = Math.max(floor + (1 - floor) * Math.exp(-k * dT * dT), floor);
+            const status = f >= 0.97 ? 'Optimal' : f >= 0.85 ? 'Near optimal' : f >= 0.70 ? 'Cold / warming' : 'Very cold / overheated';
+            return <>
+              <DerivedRow label="μ fraction" value={`${(f * 100).toFixed(1)}%`} tip="f(T) — thermal grip multiplier on peakMu. 100% = at optimal temperature. Applied to all Pacejka force calculations." />
+              <DerivedRow label="Grip deficit" value={`−${((1 - f) * 100).toFixed(1)}%`} tip="Percentage of peak grip lost due to temperature offset. 0% = at optimal. Reduces tyre forces, slip angles, and handling limit." />
+              <DerivedRow label="Tyre status" value={status} tip="Simple classification based on current μ fraction." />
+            </>;
+          })()}
+        </div>
+
       <div className="param-note">
         Bicycle model — steady-state constant radius.<br />
-        Stages 3–6: load transfer · suspension · drivetrain · braking · aero
+        Stages 3–6: load transfer · suspension · drivetrain · braking · aero<br />
+        Stage 9: Pacejka load sensitivity (degressive μ with Fz)<br />
+        Stage 10: Gear model (torque curve · ratio progression · optimal gear selection)<br />
+        Stage 11: Tyre thermal model (bell-curve μ vs temperature)
       </div>
     </div>
   );

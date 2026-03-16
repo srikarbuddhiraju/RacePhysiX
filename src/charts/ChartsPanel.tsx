@@ -12,7 +12,8 @@ import { HandlingDiagram } from './HandlingDiagram';
 import { InfoTooltip }     from '../components/InfoTooltip';
 import type { PacejkaResult, PhysicsResult, PacejkaCoeffs, VehicleParams, VehicleClass } from '../physics/types';
 import './ChartsPanel.css';
-import { LapTimePanel } from '../components/LapTimePanel';
+import { LapTimePanel }       from '../components/LapTimePanel';
+import { TimeDomainPanel }   from '../components/TimeDomainPanel';
 
 // ─── Tyre presets ──────────────────────────────────────────────────────────────
 
@@ -154,7 +155,7 @@ export function ChartsPanel({
   coeffs, onCoeffsChange,
   params, onParamsChange,
 }: Props) {
-  const [activeTab, setActiveTab]       = useState<'presets' | 'advanced' | 'laptime'>('presets');
+  const [activeTab, setActiveTab]       = useState<'presets' | 'advanced' | 'laptime' | 'timedomain'>('presets');
   const [selectedPreset, setSelected]   = useState<string>('road-standard');
 
   const categoryToClass = (cat: TyrePreset['category']): VehicleClass =>
@@ -206,9 +207,15 @@ export function ChartsPanel({
           >
             Lap Time
           </button>
+          <button
+            className={`ctrl-tab ${activeTab === 'timedomain' ? 'active' : ''}`}
+            onClick={() => setActiveTab('timedomain')}
+          >
+            Time Domain
+          </button>
         </div>
 
-        {/* Tab content — hidden when Lap Time tab active (lap time takes full area) */}
+        {/* Tab content — hidden when Lap Time or Time Domain tab active */}
         {activeTab === 'presets' && (
           <PresetsTab
             presets={PRESETS}
@@ -231,9 +238,11 @@ export function ChartsPanel({
         )}
       </div>
 
-      {/* ── Charts or Lap Time ────────────────────────────────────────────── */}
+      {/* ── Charts, Lap Time, or Time Domain ────────────────────────────── */}
       {activeTab === 'laptime' ? (
         <LapTimePanel params={params} coeffs={coeffs} />
+      ) : activeTab === 'timedomain' ? (
+        <TimeDomainPanel params={params} coeffs={coeffs} />
       ) : (
         <div className="charts-grid">
           <TyreCurveChart result={pacejka} />
@@ -375,7 +384,7 @@ function AdvancedTab({
       <div className="adv-derived">
         <span>
           BCD = <b>{bcd}</b> × Fz
-          <InfoTooltip text="B × C × μ. Multiply by Fz (N) to get the initial cornering stiffness Cα at that load. Dimensionless × N = N/rad." />
+          <InfoTooltip text="B × C × μ. Multiply by Fz (N) to get the initial cornering stiffness Cα at that load. Units: dimensionless × N = N/rad (convert ÷57.3 for N/deg)." />
         </span>
         <span>
           Cα @ 4 kN = <b>{cα4kN}</b> N/deg

@@ -1,9 +1,9 @@
 # ApexSim — Project Overview
 
-**Created:** Mar 14, 2026
+**Created:** 2026-03-15
 **Repo:** https://github.com/srikarbuddhiraju/ApexSim
 **Local path:** `/home/srikarbuddhiraju/Srikar/Repo/ApexSim`
-**Status:** Active development — v0.1 in progress
+**Status:** v1 feature-complete — pending deployment
 
 ---
 
@@ -55,57 +55,40 @@ Not a game. A tool where you change parameters and see real-world vehicle behavi
 | Frontend | React |
 | Build tool | Vite |
 | 3D Visualisation | Three.js |
+| Charts | Recharts |
 | Physics engine | Pure TypeScript module (framework-agnostic) |
-| Hosting | Cloudflare Pages (tentative, free) — `apexsim.srikarbuddhiraju.com` |
+| Hosting | Cloudflare Pages — `apexsim.srikarbuddhiraju.com` |
 | License | MIT |
 
 ---
 
-## Physics Models — Complexity Ladder
+## Physics Models — v1 Complete
 
-Build and validate each stage before moving to the next.
-
-| Stage | Model | What It Captures |
+| Stage | Model | Status |
 |---|---|---|
-| 1 | Bicycle model | Yaw, understeer/oversteer, cornering response |
-| 2 | Pacejka Magic Formula | Realistic tyre lateral + longitudinal forces |
-| 3 | Quarter-car model | Suspension dynamics, ride, wheel hop |
-| 4 | Full 14-DOF | Complete vehicle, research-grade (long term) |
+| 1 | Bicycle model | ✅ done |
+| 2 | Pacejka Magic Formula | ✅ done |
+| 3 | Load transfer + drivetrain (FWD/RWD/AWD/AWD+TV) | ✅ done |
+| 4 | Suspension — roll stiffness, ARB | ✅ done |
+| 5 | Braking — brake bias, ABS clip | ✅ done |
+| 6 | Aerodynamics — downforce + drag | ✅ done |
+| 7 | Lap time estimator — 4 track presets | ✅ done |
+| 8 | Full 14-DOF | long term |
+
+All stages validated against Milliken & Milliken / Gillespie. 18 checks pass.
 
 ---
 
-## v0.1 — The Simplest Thing That Works
+## v1 Features
 
-**One scenario:** Car going around a constant radius corner.
-
-**User adjusts:**
-- Speed
-- Front/rear weight distribution (%)
-- Cornering stiffness (simplified tyre)
-
-**Output:**
-- Understeer / oversteer / neutral steer — and by how much
-- Top-down view of car with tyre force vectors shown
-
-**Goal:** Prove the physics engine is correct. One scenario, validated output, clean visual. Nothing more.
-
----
-
-## Parameters To Expose (v1 — Bicycle + Pacejka)
-
-**Vehicle:** total mass, front/rear weight split, CG height, wheelbase, track width
-**Tyres (Pacejka simplified):** peak lateral force coefficient, slip angle at peak, cornering stiffness
-**Inputs:** steering angle, speed, longitudinal acceleration
-
----
-
-## Visualisations (v1)
-
-- Top-down vehicle path with tyre slip angle indicators
-- Friction circle — tyre load usage per corner
-- Understeer/oversteer real-time gauge
-- Weight transfer bars — front/rear/left/right
-- Yaw rate vs lateral acceleration (handling diagram)
+- ParameterPanel: 3 tabs — Vehicle, Suspension, Aero & Braking
+- Aero presets: Road / Mild / GT / Formula
+- URL hash sharing: full params encoded in URL, shareable links
+- Export: CSV (all params + results) and SVG (charts)
+- Track map SVG: procedural per preset in LapTimePanel
+- Responsive layout: works at 1200px, 900px, mobile
+- Dark/light theme toggle
+- 3D top-down view (Three.js) with tyre force vectors
 
 ---
 
@@ -136,7 +119,6 @@ Build and validate each stage before moving to the next.
 - Milliken & Milliken — *Race Car Vehicle Dynamics* (the bible)
 - Pacejka — *Tyre and Vehicle Dynamics*
 - Gillespie — *Fundamentals of Vehicle Dynamics*
-- Publicly available Pacejka coefficients datasets (to be gathered)
 
 ---
 

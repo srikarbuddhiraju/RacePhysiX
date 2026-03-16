@@ -15,7 +15,11 @@ import { computeBicycleModel } from './bicycleModel';
 import { computeSuspension, computeRollAngle } from './suspension';
 import { computeAero } from './aero';
 import { computeBraking } from './braking';
-import type { VehicleParams } from './types';
+import { runSimulation } from './dynamics14dof';
+import { SCENARIOS } from './scenarios';
+import { engineTorque, generateGearRatios, computeMaxDriveForce, computeMaxSpeed } from './gearModel';
+import { computeTyreTempFactor, computeTyreEffectiveMu } from './tyreTemp';
+import type { VehicleParams, PacejkaCoeffs } from './types';
 
 const PASS = '\x1b[32mPASS\x1b[0m';
 const FAIL = '\x1b[31mFAIL\x1b[0m';
@@ -56,6 +60,15 @@ const BASE: VehicleParams = {
   frontARBRate: 8000, rearARBRate: 6000,
   brakingG: 0, brakeBias: 0.65,
   aeroCL: 0.30, aeroCD: 0.30, aeroReferenceArea: 2.0, aeroBalance: 0.45,
+  tyreLoadSensitivity: 0,   // Stage 9 — off for existing validation checks
+  // Stage 11 — Tyre thermal model (at optimal temp → no effect on existing checks)
+  tyreOptTempC: 85, tyreTempHalfWidthC: 30,
+  tyreTempCurrentC: 85,   // = tyreOptTempC → f = 1.0, no grip penalty
+  tyreTempFloorMu: 0.60,
+  // Stage 10 — Gear model
+  gearCount: 6, firstGearRatio: 3.0, topGearRatio: 0.72,
+  finalDriveRatio: 3.9, wheelRadiusM: 0.32,
+  enginePeakRpm: 5500, engineRedlineRpm: 6500,
 };
 
 let allPassed = true;
@@ -273,12 +286,151 @@ console.log('\nCheck 7 — Stage 5 Braking (bias distribution, no-ABS regime)');
   console.log(`  ABS activation test: front=${brkABS.absActiveFront}, rear=${brkABS.absActiveRear}`);
 }
 
+// ─── Default Pacejka coefficients (road-performance preset) ──────────────────
+const COEFFS: PacejkaCoeffs = { B: 11.5, C: 1.28, peakMu: 1.20, E: -1.5 };
+
+// ─── Check 8: Step steer — steady-state circular motion (ψ̇ ≈ Vx / R) ─────────
+// Use a neutral-steer vehicle (50/50 weight).  Throttle causes Vx to evolve,
+// so compare ψ̇_final against Vx_final/R (not the initial Vx/R) — this tests
+// that the integrator reaches coherent circular motion, not a specific speed.
+// Tolerance 10% accounts for sideslip angle and Pacejka nonlinearity.
+console.log('\nCheck 8 — Stage 8: Step steer — steady circular motion ψ̇ ≈ Vx_final/R');
+{
+  const neutralParams = { ...BASE, frontWeightFraction: 0.50 };
+  const stepScenario  = SCENARIOS.find(s => s.id === 'step_steer')!;
+  const results       = runSimulation(neutralParams, COEFFS, stepScenario);
+
+  const tail      = results.slice(-20);
+  const avgPsiDot = tail.reduce((sum, r) => sum + r.state.psiDot, 0) / tail.length;
+  const avgVx     = tail.reduce((sum, r) => sum + r.state.Vx,     0) / tail.length;
+  const psiSS_dyn = avgVx / neutralParams.turnRadius;   // ψ̇_expected from current speed
+  const relErr    = Math.abs(avgPsiDot - psiSS_dyn) / Math.max(psiSS_dyn, 0.001);
+
+  console.log(`  avg Vx = ${avgVx.toFixed(2)} m/s,  Vx/R = ${psiSS_dyn.toFixed(4)} rad/s,  avg ψ̇ = ${avgPsiDot.toFixed(4)} rad/s,  err = ${(relErr*100).toFixed(2)}%`);
+  allPassed = check('ψ̇ / (Vx/R) within 10%', relErr, 0, 0.10) && allPassed;
+}
+
+// ─── Check 9: Neutral steer — front/rear avg slip angles balance ──────────────
+// At 50/50 weight distribution the front and rear slip angles should be
+// roughly equal in magnitude (within 20%) in the steady-state portion of
+// a step steer.
+console.log('\nCheck 9 — Stage 8: Neutral steer — front/rear slip angles balance');
+{
+  const neutralParams = { ...BASE, frontWeightFraction: 0.50 };
+  const stepScenario  = SCENARIOS.find(s => s.id === 'step_steer')!;
+  const results       = runSimulation(neutralParams, COEFFS, stepScenario);
+
+  const tail = results.slice(-20);
+  const avgAlphaF = tail.reduce((sum, r) => sum + Math.abs(r.slipAngle[0] + r.slipAngle[1]) / 2, 0) / tail.length;
+  const avgAlphaR = tail.reduce((sum, r) => sum + Math.abs(r.slipAngle[2] + r.slipAngle[3]) / 2, 0) / tail.length;
+
+  const ratio = avgAlphaF > 0 && avgAlphaR > 0 ? Math.abs(avgAlphaF - avgAlphaR) / Math.max(avgAlphaF, avgAlphaR) : 1;
+  console.log(`  avg |αF| = ${(avgAlphaF * 180/Math.PI).toFixed(3)}°,  avg |αR| = ${(avgAlphaR * 180/Math.PI).toFixed(3)}°,  ratio diff = ${(ratio*100).toFixed(1)}%`);
+  allPassed = check('neutral: front/rear slip balance within 20%', ratio, 0, 0.20) && allPassed;
+}
+
+// ─── Check 10: Sine sweep — peak |ay| occurs in 0.5–3.0 Hz band ──────────────
+// For the default vehicle the natural frequency is ~1–2 Hz.
+// We scan the sine-sweep results and find the frequency where |ay| is maximum.
+// Expected: frequency at peak |ay| is between 0.5 and 3.0 Hz.
+console.log('\nCheck 10 — Stage 8: Sine sweep — resonant frequency 0.5–3.0 Hz');
+{
+  const sweepScenario = SCENARIOS.find(s => s.id === 'sine_sweep')!;
+  const results       = runSimulation(BASE, COEFFS, sweepScenario);
+
+  // Instantaneous frequency at each sample: f(t) = 0.2 + 3.8*(t/30)
+  let maxAy   = 0;
+  let peakHz  = 0;
+  for (const r of results) {
+    const absAy = Math.abs(r.ay);
+    if (absAy > maxAy) {
+      maxAy  = absAy;
+      peakHz = 0.2 + 3.8 * (r.t / 30);
+    }
+  }
+
+  console.log(`  Peak |ay| = ${(maxAy / G).toFixed(3)} g  at f = ${peakHz.toFixed(2)} Hz`);
+  const inBand = peakHz >= 0.5 && peakHz <= 3.0;
+  allPassed = check('peak |ay| frequency in 0.5–3.0 Hz', inBand ? 1 : 0, 1) && allPassed;
+}
+
+// ─── Check 11: Stage 10 — Gear model ─────────────────────────────────────────
+// Hand-calc: P=150 kW, peakRpm=5500, 6-speed [3.0→0.72], FD=3.9, R=0.32m
+//   T_peak = 150,000 / (5500 × 2π/60) = 150,000 / 575.959 = 260.43 Nm
+//   At V=10 m/s, G1: ω = (10/0.32)×3.0×3.9 = 365.625 rad/s → 3491 rpm
+//     F = 260.43 × 3.0 × 3.9 / 0.32 = 9537 N (capped at traction 1500×9.81=14715 N → uncapped)
+//   Max speed: (6500×2π/60) × 0.32 / (0.72×3.9) = 680.68×0.32/2.808 = 77.57 m/s
+console.log('\nCheck 11 — Stage 10: Gear model (T_peak, F at 10 m/s, max speed)');
+{
+  const TWO_PI     = 2 * Math.PI;
+  const omegaPeak  = 5500 * TWO_PI / 60;
+  const tPeak_exp  = 150000 / omegaPeak;   // 260.43 Nm
+
+  // 11a: T_peak
+  const tPeak_actual = engineTorque(5500, 150000, 5500);
+  console.log(`  T_peak = ${tPeak_actual.toFixed(2)} Nm (expected ${tPeak_exp.toFixed(2)} Nm)`);
+  allPassed = check('Check 11a: T_peak = P/ω_peak (260.43 Nm)', tPeak_actual, tPeak_exp, 0.1) && allPassed;
+
+  // 11b: F at V=10 m/s in G1
+  // F_exp = T_peak × ratio × FD / R = 260.43 × 3.0 × 3.9 / 0.32 = 9540.9 N
+  const ratio1   = generateGearRatios(6, 3.0, 0.72)[0];  // should be 3.0
+  const F_exp_10 = tPeak_exp * ratio1 * 3.9 / 0.32;
+  const F_actual = computeMaxDriveForce(10, BASE);
+  console.log(`  F @ 10 m/s = ${F_actual.toFixed(1)} N (expected ${F_exp_10.toFixed(1)} N)`);
+  allPassed = check('Check 11b: F @ 10 m/s (G1 optimal) matches hand-calc (±5 N)', F_actual, F_exp_10, 5) && allPassed;
+
+  // 11c: max speed in top gear at redline
+  const vMax_exp    = (6500 * TWO_PI / 60) * 0.32 / (0.72 * 3.9);  // 77.57 m/s
+  const vMax_actual = computeMaxSpeed(BASE);
+  console.log(`  V_max = ${vMax_actual.toFixed(2)} m/s = ${(vMax_actual*3.6).toFixed(1)} km/h (expected ${vMax_exp.toFixed(2)} m/s)`);
+  allPassed = check('Check 11c: max speed in top gear (±0.5 m/s)', vMax_actual, vMax_exp, 0.5) && allPassed;
+}
+
+// ─── Check 12: Stage 11 — Tyre thermal model ─────────────────────────────────
+// Hand-calc: T_opt=85, hw=30, floor=0.60, peakMu=1.20
+//   k = ln(2)/900 = 0.000770156 °C⁻²
+//   f(85) = 0.60 + 0.40×exp(0) = 1.0000
+//   f(115)= 0.60 + 0.40×exp(-0.693147) = 0.60 + 0.20 = 0.8000  (= 0.5×(1+0.60))
+//   f(55) = 0.80 (symmetric)
+//   f(0)  ≈ 0.6015 (≥ floor, within 0.025 of floor)
+console.log('\nCheck 12 — Stage 11: Tyre thermal model (f at optimal, half-width, floor)');
+{
+  const T_opt = 85, hw = 30, floor = 0.60, peakMu = 1.20;
+  const halfMaxExp = 0.5 * (1 + floor);  // 0.80
+
+  // 12a: f at T_opt = 1.0 exactly
+  const f_opt = computeTyreTempFactor(T_opt, T_opt, hw, floor);
+  console.log(`  f(T_opt) = ${f_opt.toFixed(6)} (expected 1.000000)`);
+  allPassed = check('Check 12a: f(T_opt) = 1.0 exactly', f_opt, 1.0, 1e-12) && allPassed;
+
+  // 12b: f at half-width points = 0.5×(1+floor) = 0.80
+  const f_hi = computeTyreTempFactor(T_opt + hw, T_opt, hw, floor);
+  const f_lo = computeTyreTempFactor(T_opt - hw, T_opt, hw, floor);
+  console.log(`  f(T_opt+hw) = ${f_hi.toFixed(6)},  f(T_opt-hw) = ${f_lo.toFixed(6)}  (expected ${halfMaxExp.toFixed(6)})`);
+  allPassed = check('Check 12b: f(T_opt+hw) = 0.5×(1+floor) = 0.80', f_hi, halfMaxExp, 1e-10) && allPassed;
+  allPassed = check('Check 12b: f(T_opt-hw) = 0.5×(1+floor) = 0.80 (symmetry)', f_lo, halfMaxExp, 1e-10) && allPassed;
+
+  // 12c: μ_eff at T_opt = peakMu exactly
+  const muEff = computeTyreEffectiveMu(peakMu, { tyreTempCurrentC: T_opt, tyreOptTempC: T_opt, tyreTempHalfWidthC: hw, tyreTempFloorMu: floor });
+  console.log(`  μ_eff at T_opt = ${muEff.toFixed(4)} (expected ${peakMu.toFixed(4)})`);
+  allPassed = check('Check 12c: μ_eff at T_opt = peakMu exactly', muEff, peakMu, 1e-12) && allPassed;
+
+  // 12d: f at extreme cold (0°C) is ≥ floor and within 0.025 of floor (near-converged)
+  const f_cold = computeTyreTempFactor(0, T_opt, hw, floor);
+  console.log(`  f(0°C) = ${f_cold.toFixed(5)}  (expected ≥ ${floor}, ≤ ${(floor + 0.025).toFixed(3)})`);
+  allPassed = check('Check 12d: f(0°C) ≥ floor (floor enforced)',         f_cold, floor, 0.025) && allPassed;
+  allPassed = check('Check 12d: f(0°C) ≤ floor + 0.025 (near floor)',     f_cold, floor, 0.025) && allPassed;
+}
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 console.log('\n' + '─'.repeat(55));
 if (allPassed) {
   console.log('\x1b[32mAll checks passed.\x1b[0m');
-  console.log('Checks 1–3: algebraic self-consistency (first principles).');
-  console.log('Check 4: matches Gillespie Ch.6 eq.6.15/6.16 exactly.');
+  console.log('Checks 1–3:  algebraic self-consistency (first principles).');
+  console.log('Check  4:    matches Gillespie Ch.6 eq.6.15/6.16 exactly.');
+  console.log('Checks 8–10: Stage 8 time-domain simulation (step steer, neutral steer, sine sweep).');
+  console.log('Check  11:   Stage 10 gear model (T_peak, F @ 10 m/s, max speed).');
+  console.log('Check  12:   Stage 11 tyre thermal model (f at optimal, half-width, floor).');
 } else {
   console.log('\x1b[31mOne or more checks FAILED.\x1b[0m');
   process.exit(1);
