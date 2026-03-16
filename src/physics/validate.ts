@@ -19,6 +19,8 @@ import { runSimulation } from './dynamics14dof';
 import { SCENARIOS } from './scenarios';
 import { engineTorque, generateGearRatios, computeMaxDriveForce, computeMaxSpeed } from './gearModel';
 import { computeTyreTempFactor, computeTyreEffectiveMu } from './tyreTemp';
+import { optimiseSetup, OPTIMISE_BOUNDS } from './optimise';
+import { TRACK_PRESETS } from './laptime';
 import type { VehicleParams, PacejkaCoeffs } from './types';
 
 const PASS = '\x1b[32mPASS\x1b[0m';
@@ -422,6 +424,61 @@ console.log('\nCheck 12 — Stage 11: Tyre thermal model (f at optimal, half-wid
   allPassed = check('Check 12d: f(0°C) ≤ floor + 0.025 (near floor)',     f_cold, floor, 0.025) && allPassed;
 }
 
+// ─── Check 13: Stage 12 — Setup optimiser improves a bad setup ───────────────
+// Bad setup: max stiffness (large load transfer penalty), no aero, max brake front bias.
+// Expected: optimiser finds a significantly faster setup (≥1 s improvement on club circuit).
+console.log('\nCheck 13 — Stage 12: Setup optimiser improves bad setup on club circuit');
+{
+  const RHO = 1.225;
+  const badSetup: VehicleParams = {
+    ...BASE,
+    frontSpringRate: 120_000, rearSpringRate: 120_000,  // max stiffness
+    frontARBRate:    0,        rearARBRate:    0,         // no ARB
+    aeroCL:          0,                                   // no downforce
+    aeroBalance:     0.50,
+    brakeBias:       0.90,                               // extreme front bias
+    tyreLoadSensitivity: 0.10,                           // load sensitivity on
+  };
+
+  const layout      = TRACK_PRESETS['club'];
+  const PEAK_MU_V13 = 1.20;
+
+  function inpBuilderV13(p: typeof BASE) {
+    const G13    = 9.81;
+    const tw2o2  = (p.trackWidth * p.trackWidth) / 2;
+    const kPhiF  = (p.frontSpringRate + p.frontARBRate) * tw2o2;
+    const kPhiR  = (p.rearSpringRate  + p.rearARBRate)  * tw2o2;
+    const kTot   = kPhiF + kPhiR;
+    const phiF   = kTot > 0 ? kPhiF / kTot : 0.5;
+    const FzS    = p.mass * G13 / 4;
+    const FzOut  = FzS + p.mass * G13 * p.cgHeight * phiF / p.trackWidth;
+    const qFz    = p.tyreLoadSensitivity;
+    const muFrac = qFz > 0 ? Math.max(0.5, 1 - qFz * (FzOut / FzS - 1)) : 1.0;
+    const peakMuEff = PEAK_MU_V13 * muFrac;
+    const brakingCapG = Math.max(p.brakingG, 0.9);
+    const dragForce   = (V: number) => 0.5 * RHO * V * V * p.aeroReferenceArea * p.aeroCD;
+    const driveForce  = (V: number) => computeMaxDriveForce(V, p);
+    return { mass: p.mass, peakMu: peakMuEff, brakingCapG, aeroCL: p.aeroCL, aeroCD: p.aeroCD, aeroReferenceArea: p.aeroReferenceArea, dragForce, driveForce };
+  }
+
+  const res = optimiseSetup(badSetup, layout, inpBuilderV13, OPTIMISE_BOUNDS);
+  console.log(`  Base (bad setup): ${res.baseTimeSec.toFixed(2)}s`);
+  console.log(`  Optimised:        ${res.bestTimeSec.toFixed(2)}s`);
+  console.log(`  Improvement:      ${res.improvement.toFixed(2)}s  (${res.iterations} iterations)`);
+
+  allPassed = check('Check 13a: optimised time < base time', res.bestTimeSec, res.baseTimeSec - res.improvement, 0.001) && allPassed;
+  allPassed = check('Check 13b: improvement ≥ 1.0 s (conservative floor)', res.improvement, 1.0, 99) && allPassed;
+
+  // 13c: all 7 params within bounds
+  let allInBounds = true;
+  for (const key of Object.keys(OPTIMISE_BOUNDS) as (keyof typeof OPTIMISE_BOUNDS)[]) {
+    const v = res.bestParams[key] as number;
+    const b = OPTIMISE_BOUNDS[key];
+    if (v < b.min - 1e-6 || v > b.max + 1e-6) allInBounds = false;
+  }
+  allPassed = check('Check 13c: all optimised params within bounds', allInBounds ? 1 : 0, 1) && allPassed;
+}
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 console.log('\n' + '─'.repeat(55));
 if (allPassed) {
@@ -431,6 +488,7 @@ if (allPassed) {
   console.log('Checks 8–10: Stage 8 time-domain simulation (step steer, neutral steer, sine sweep).');
   console.log('Check  11:   Stage 10 gear model (T_peak, F @ 10 m/s, max speed).');
   console.log('Check  12:   Stage 11 tyre thermal model (f at optimal, half-width, floor).');
+  console.log('Check  13:   Stage 12 setup optimiser (improves bad setup ≥ 1 s).');
 } else {
   console.log('\x1b[31mOne or more checks FAILED.\x1b[0m');
   process.exit(1);

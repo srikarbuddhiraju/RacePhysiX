@@ -4,6 +4,12 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
+## Session 10 — 2026-03-16  |  branch: `feature/stage12-setup-optimisation`
+
+### Status: IN PROGRESS — planning Stage 12 setup optimisation
+
+---
+
 ## Session 9 — 2026-03-16  |  branch: `feature/stage8-14dof-timedomain`
 
 ### Status: IN PROGRESS — Stages 10+11 implemented, browser verification pending

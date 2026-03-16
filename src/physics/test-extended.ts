@@ -21,6 +21,7 @@ import { computeBraking }                        from './braking';
 import { pacejkaFy, findPeakAlpha }              from './pacejka';
 import { computeLapTime, TRACK_PRESETS }         from './laptime';
 import { engineTorque, generateGearRatios, computeMaxDriveForce } from './gearModel';
+import { optimiseSetup, OPTIMISE_BOUNDS, OPTIMISABLE_KEYS } from './optimise';
 import { computeTyreTempFactor, computeTyreEffectiveMu, computeTyreGripCurve } from './tyreTemp';
 import type { VehicleParams, PacejkaCoeffs }     from './types';
 
@@ -737,6 +738,92 @@ const HALF_MAX = 0.5 * (1 + FLOOR);  // 0.80
   const fLowFloor  = computeTyreTempFactor(0, T_OPT, HW, 0.40);
   const fHighFloor = computeTyreTempFactor(0, T_OPT, HW, 0.80);
   checkBool('J8 Higher floorMu → higher f at extreme cold', fHighFloor > fLowFloor, true);
+}
+
+// =============================================================================
+// SECTION K — SETUP OPTIMISER (Stage 12)
+// =============================================================================
+
+section('K — Setup Optimiser (Stage 12)');
+
+const RHO_K = 1.225;
+const G_K   = 9.81;
+
+function makeOptimInpBuilder(peakMu: number) {
+  return (p: VehicleParams) => {
+    const tw2o2  = (p.trackWidth * p.trackWidth) / 2;
+    const kPhiF  = (p.frontSpringRate + p.frontARBRate) * tw2o2;
+    const kPhiR  = (p.rearSpringRate  + p.rearARBRate)  * tw2o2;
+    const kTot   = kPhiF + kPhiR;
+    const phiF   = kTot > 0 ? kPhiF / kTot : 0.5;
+    const FzS    = p.mass * G_K / 4;
+    const FzOut  = FzS + p.mass * G_K * p.cgHeight * phiF / p.trackWidth;
+    const qFz    = p.tyreLoadSensitivity;
+    const muFrac = qFz > 0 ? Math.max(0.5, 1 - qFz * (FzOut / FzS - 1)) : 1.0;
+    const brakingCapG = Math.max(p.brakingG, 0.9);
+    const dragForce   = (V: number) => 0.5 * RHO_K * V * V * p.aeroReferenceArea * p.aeroCD;
+    const driveForce  = (V: number) => computeMaxDriveForce(V, p);
+    return {
+      mass: p.mass, peakMu: peakMu * muFrac, brakingCapG,
+      aeroCL: p.aeroCL, aeroCD: p.aeroCD,
+      aeroReferenceArea: p.aeroReferenceArea, dragForce, driveForce,
+    };
+  };
+}
+
+const CLUB_LAYOUT  = TRACK_PRESETS['club'];
+const OPTIM_BUILDER = makeOptimInpBuilder(1.20);
+
+// K1: Nelder-Mead reflection step moves toward the minimum
+// f(x) = Σ(xi − 0.5)², minimum at x = [0.5,...,0.5].
+// Worst vertex at [0.8,...,0.8]. Non-worst centroid at [0.55,...,0.55].
+// Reflection: xr = 2×0.55 − 0.8 = [0.30,...] → f = 7×0.04 = 0.28 < f([0.8]) = 7×0.09 = 0.63
+{
+  const n = 7;
+  const bowl = (x: number[]) => x.reduce((s, v) => s + (v - 0.5) ** 2, 0);
+  const xw   = new Array(n).fill(0.8);    // worst: all 0.8
+  const c    = new Array(n).fill(0.55);   // centroid of non-worst: all 0.55
+  const xr   = c.map((cj, j) => cj + 1.0 * (cj - xw[j]));  // reflection
+  checkBool('K1 Reflection step: f(xr) < f(xworst)', bowl(xr) < bowl(xw), true);
+}
+
+// K2: All optimised params within bounds (bad setup → optimised)
+{
+  const badParams: VehicleParams = {
+    ...BASE, frontSpringRate: 120_000, rearSpringRate: 120_000,
+    frontARBRate: 0, rearARBRate: 0, aeroCL: 0, brakeBias: 0.90,
+    tyreLoadSensitivity: 0.10,
+  };
+  const res = optimiseSetup(badParams, CLUB_LAYOUT, OPTIM_BUILDER, OPTIMISE_BOUNDS);
+  let allInBounds = true;
+  for (const key of OPTIMISABLE_KEYS) {
+    const v = res.bestParams[key] as number;
+    const b = OPTIMISE_BOUNDS[key];
+    if (v < b.min - 1e-6 || v > b.max + 1e-6) allInBounds = false;
+  }
+  checkBool('K2 All optimised params within bounds', allInBounds, true);
+}
+
+// K3: Optimised lap time ≤ base lap time (never worse)
+{
+  const badParams: VehicleParams = {
+    ...BASE, frontSpringRate: 120_000, rearSpringRate: 120_000,
+    frontARBRate: 0, rearARBRate: 0, aeroCL: 0, brakeBias: 0.90,
+    tyreLoadSensitivity: 0.10,
+  };
+  const res = optimiseSetup(badParams, CLUB_LAYOUT, OPTIM_BUILDER, OPTIMISE_BOUNDS);
+  console.log(`  K3 bad→opt: ${res.baseTimeSec.toFixed(2)}s → ${res.bestTimeSec.toFixed(2)}s  (−${res.improvement.toFixed(2)}s)`);
+  checkBool('K3 Optimised time ≤ base time',         res.bestTimeSec <= res.baseTimeSec + 1e-6, true);
+  checkBool('K3 Improvement ≥ 0',                    res.improvement >= 0,                      true);
+  checkBool('K3 Improvement ≥ 1.0 s on bad setup',   res.improvement >= 1.0,                    true);
+}
+
+// K4: Converges in < 500 iterations from a reasonable starting point
+{
+  const res = optimiseSetup(BASE, CLUB_LAYOUT, OPTIM_BUILDER, OPTIMISE_BOUNDS);
+  console.log(`  K4 BASE→opt: iterations=${res.iterations}, improvement=${res.improvement.toFixed(2)}s`);
+  checkBool('K4 Converges in < 500 iterations', res.iterations < 500, true);
+  checkBool('K4 Iterations > 0',                res.iterations > 0,   true);
 }
 
 // =============================================================================
