@@ -23,12 +23,14 @@ export function computeBicycleModel(params: VehicleParams): PhysicsResult {
     wheelbase: L,
     frontWeightFraction,
     corneringStiffnessNPerDeg,
+    rearCorneringStiffnessNPerDeg,
     turnRadius: R,
     speedKph,
   } = params;
 
   const speedMs = speedKph / 3.6;
-  const Cα = corneringStiffnessNPerDeg / DEG_TO_RAD; // N/rad
+  const CαF = corneringStiffnessNPerDeg / DEG_TO_RAD;  // N/rad, front axle (Stage 13A)
+  const CαR = ((rearCorneringStiffnessNPerDeg ?? corneringStiffnessNPerDeg)) / DEG_TO_RAD;  // N/rad, rear axle
 
   // ── Geometry ──────────────────────────────────────────────────────────────
   // Wf/W = b/L  →  b = frontWeightFraction × L
@@ -37,11 +39,10 @@ export function computeBicycleModel(params: VehicleParams): PhysicsResult {
   const a = L - b;                     // m, CG to front axle
 
   // ── Understeer gradient ───────────────────────────────────────────────────
-  // Derived from δ = L/R + αf − αr, substituting αf = m·ay·b/(L·Cα), αr = m·ay·a/(L·Cα)
-  // → K = (m / L) × (b − a) / Cα   [rad/(m/s²)]
-  // Gillespie eq.6.15: K [deg/g] = Wf/Cαf − Wr/Cαr  — equivalent form.
+  // Gillespie eq.6.15: K = (m/L) × (b/CαF − a/CαR)  [rad/(m/s²)]
   // K > 0: understeer, K < 0: oversteer, K = 0: neutral
-  const K = (mass / L) * ((b - a) / Cα); // rad/(m/s²)
+  // Stage 13A: separate front/rear Cα. With equal Cα: reduces to (m/L)×(b−a)/Cα.
+  const K = (mass / L) * (b / CαF - a / CαR); // rad/(m/s²)
   const underSteerGradientDegPerG = K * G * RAD_TO_DEG;
 
   // ── Lateral acceleration (circular motion) ────────────────────────────────
@@ -58,8 +59,9 @@ export function computeBicycleModel(params: VehicleParams): PhysicsResult {
   const rearLateralForceN  = mass * lateralAccelerationMss * (a / L);
 
   // ── Slip angles (linear tyre: α = Fy / Cα) ───────────────────────────────
-  const frontSlipAngleDeg = (frontLateralForceN / Cα) * RAD_TO_DEG;
-  const rearSlipAngleDeg  = (rearLateralForceN  / Cα) * RAD_TO_DEG;
+  // Stage 13A: use per-axle stiffness
+  const frontSlipAngleDeg = (frontLateralForceN / CαF) * RAD_TO_DEG;
+  const rearSlipAngleDeg  = (rearLateralForceN  / CαR) * RAD_TO_DEG;
 
   // ── Steer angles (handling equation: δ = L/R + K·ay) ─────────────────────
   const kinematicSteerAngleDeg = (L / R) * RAD_TO_DEG;

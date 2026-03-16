@@ -50,11 +50,18 @@ const SLIDERS: SliderConfig[] = [
   },
   // ── Tyre / aero ───────────────────────────────────────────────────────────
   {
-    label: 'Cornering stiffness Cα',
+    label: 'Front Cα',
     key:   'corneringStiffnessNPerDeg',
     min:   100, max: 2000, step: 25,
     unit:  'N/deg',
-    tip:   'How steeply lateral force rises with slip angle in the linear range (Fy = Cα·α). Higher = stiffer tyre, sharper response. Applied to both axles (v0.1). Typical road tyre: 300–600 N/deg per axle.',
+    tip:   'Front axle cornering stiffness (Fy = Cα·α in linear range). Higher = stiffer front tyre. Stiffer front than rear → understeer. Stage 13A: separate front/rear. Typical road tyre: 300–600 N/deg per axle.',
+  },
+  {
+    label: 'Rear Cα',
+    key:   'rearCorneringStiffnessNPerDeg',
+    min:   100, max: 2000, step: 25,
+    unit:  'N/deg',
+    tip:   'Rear axle cornering stiffness. Lower rear Cα than front → rear slips more at same lateral g → oversteer (K < 0). Equal to front = symmetric. Stage 13A.',
   },
   // ── Weight distribution ───────────────────────────────────────────────────
   {
@@ -140,11 +147,23 @@ export function ParameterPanel({ params, onChange }: Props) {
           <DerivedRow label="Lateral accel." value={`${ay.toFixed(3)} g`} tip="ay = V²/R. If this exceeds ~0.4g the linear model is becoming inaccurate — switch attention to the Pacejka charts below." />
         </div>
 
-        <div className="param-section-label">Tyre (bicycle model)</div>
-        {SLIDERS.slice(2, 3).map(cfg => <SliderRow key={cfg.key} cfg={cfg} params={params} set={set} />)}
+        <div className="param-section-label">Tyres (bicycle model — Stage 13A)</div>
+        {SLIDERS.slice(2, 4).map(cfg => <SliderRow key={cfg.key} cfg={cfg} params={params} set={set} />)}
+        <div className="param-derived">
+          {(() => {
+            const DEG_TO_RAD = Math.PI / 180;
+            const CaF = params.corneringStiffnessNPerDeg / DEG_TO_RAD;
+            const CaR = (params.rearCorneringStiffnessNPerDeg ?? params.corneringStiffnessNPerDeg) / DEG_TO_RAD;
+            const bv = params.frontWeightFraction * params.wheelbase;
+            const av = params.wheelbase - bv;
+            const Kdegpg = (params.mass / params.wheelbase) * (bv / CaF - av / CaR) * 9.81 * (180 / Math.PI);
+            const bal = Kdegpg > 0.05 ? 'US' : Kdegpg < -0.05 ? 'OS' : 'Neutral';
+            return <DerivedRow label="Understeer grad K" value={`${Kdegpg.toFixed(3)} deg/g — ${bal}`} tip="K = (m/L)×(b/CαF − a/CαR)×g×(180/π). Positive = understeer, negative = oversteer. Stage 13A: uses separate front/rear Cα." />;
+          })()}
+        </div>
 
         <div className="param-section-label">Weight & geometry</div>
-        {SLIDERS.slice(3).map(cfg => <SliderRow key={cfg.key} cfg={cfg} params={params} set={set} />)}
+        {SLIDERS.slice(4).map(cfg => <SliderRow key={cfg.key} cfg={cfg} params={params} set={set} />)}
         <div className="param-derived">
           <DerivedRow label="CG→front (a)" value={`${a.toFixed(3)} m`} tip="a = wheelbase × (1 − front weight fraction)." />
           <DerivedRow label="CG→rear (b)"  value={`${b.toFixed(3)} m`} tip="b = wheelbase × front weight fraction." />

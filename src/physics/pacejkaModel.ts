@@ -65,9 +65,19 @@ function buildHandlingCurve(
   qFz: number,
   Fz0: number,
 ): HandlingPoint[] {
-  const { mass, wheelbase: L, frontWeightFraction, cgHeight: hCG, trackWidth: TW } = params;
+  const { mass, wheelbase: L, frontWeightFraction, cgHeight: hCG, trackWidth: TW,
+          corneringStiffnessNPerDeg, rearCorneringStiffnessNPerDeg } = params;
   const b = frontWeightFraction * L;
   const a = L - b;
+
+  // Stage 13A: derive per-axle B from cornering stiffness (B = Cα / (C × peakMu × Fz0))
+  // The passed-in B encodes the front Pacejka slider; override both with Cα-derived values
+  // for physical consistency with the bicycle model.
+  const CαF_Nrad = corneringStiffnessNPerDeg / DEG_TO_RAD;
+  const CαR_Nrad = ((rearCorneringStiffnessNPerDeg ?? corneringStiffnessNPerDeg)) / DEG_TO_RAD;
+  const B_front  = CαF_Nrad / (C * peakMu * Fz0);
+  const B_rear   = CαR_Nrad / (C * peakMu * Fz0);
+
   // Stage 9: limit is reduced when load sensitivity is active (μ_eff < μ₀ at high loads)
   const peakMuEff  = loadSensitiveMu(Fz0 * 1.5, Fz0, peakMu, qFz); // effective mu at ~1.5× nominal load
   const ayLimitMs2 = peakMuEff * G * 0.97;
@@ -82,8 +92,8 @@ function buildHandlingCurve(
     );
     const FyFReq = mass * ay_ms2 * (b / L);
     const FyRReq = mass * ay_ms2 * (a / L);
-    const aF = solveSlipAngleTyreAxle(FyFReq, lt.FzFR, lt.FzFL, FxFront_fixed, B, C, peakMu, E, qFz, Fz0);
-    const aR = solveSlipAngleTyreAxle(FyRReq, lt.FzRR, lt.FzRL, FxRear_fixed,  B, C, peakMu, E, qFz, Fz0);
+    const aF = solveSlipAngleTyreAxle(FyFReq, lt.FzFR, lt.FzFL, FxFront_fixed, B_front, C, peakMu, E, qFz, Fz0);
+    const aR = solveSlipAngleTyreAxle(FyRReq, lt.FzRR, lt.FzRL, FxRear_fixed,  B_rear,  C, peakMu, E, qFz, Fz0);
     const steerCorrDeg = (aF - aR) * RAD_TO_DEG;
     pts.push({ ayG: Math.round(ay_ms2 / G * 1000) / 1000, steerCorrDeg: Math.round(steerCorrDeg * 1e4) / 1e4 });
   }

@@ -20,7 +20,8 @@ import { SCENARIOS } from './scenarios';
 import { engineTorque, generateGearRatios, computeMaxDriveForce, computeMaxSpeed } from './gearModel';
 import { computeTyreTempFactor, computeTyreEffectiveMu } from './tyreTemp';
 import { optimiseSetup, OPTIMISE_BOUNDS } from './optimise';
-import { TRACK_PRESETS } from './laptime';
+import { computeLapTime, TRACK_PRESETS } from './laptime';
+import type { TrackLayout, LapSimInput } from './laptime';
 import type { VehicleParams, PacejkaCoeffs } from './types';
 
 const PASS = '\x1b[32mPASS\x1b[0m';
@@ -48,6 +49,7 @@ const BASE: VehicleParams = {
   wheelbase: 2.7,
   frontWeightFraction: 0.55,
   corneringStiffnessNPerDeg: 500,
+  rearCorneringStiffnessNPerDeg: 500,  // Stage 13A — equal to front = symmetric (no effect on existing checks)
   cgHeight: 0.55,
   trackWidth: 1.5,
   tyreSectionWidth: 0.205,
@@ -479,6 +481,80 @@ console.log('\nCheck 13 — Stage 12: Setup optimiser improves bad setup on club
   allPassed = check('Check 13c: all optimised params within bounds', allInBounds ? 1 : 0, 1) && allPassed;
 }
 
+// ─── Check 14a: Stage 13A — Separate front/rear Cα, understeer gradient ──────
+// Hand-calc: mass=1200kg, L=2.6m, b=1.3m (50/50), CαF=50000 N/rad, CαR=45000 N/rad
+//   K = (1200/2.6) × (1.3/50000 − 1.3/45000)
+//     = 461.538 × (2.600e-5 − 2.889e-5) = 461.538 × (−2.889e-6) = −1.3336e-3 rad/(m/s²)
+//   → oversteer (rear Cα softer than front)
+console.log('\nCheck 14a — Stage 13A: Separate front/rear Cα, understeer gradient');
+{
+  const DEG_TO_RAD14 = Math.PI / 180;
+  const mass14 = 1200, L14 = 2.6, b14 = 1.3, a14 = 1.3;
+  const CaF_Nrad = 50000, CaR_Nrad = 45000;
+  const K_expected = (mass14 / L14) * (b14 / CaF_Nrad - a14 / CaR_Nrad);  // rad/(m/s²)
+  const p14a: VehicleParams = {
+    ...BASE,
+    mass: mass14, wheelbase: L14, frontWeightFraction: b14 / L14,
+    corneringStiffnessNPerDeg:     CaF_Nrad * DEG_TO_RAD14,  // → 50000 N/rad after / DEG_TO_RAD
+    rearCorneringStiffnessNPerDeg: CaR_Nrad * DEG_TO_RAD14,  // → 45000 N/rad
+  };
+  const r14a = computeBicycleModel(p14a);
+  const K_actual = r14a.underSteerGradientDegPerG / (RAD_TO_DEG * G);  // convert back to rad/(m/s²)
+  console.log(`  K_expected = ${K_expected.toFixed(8)} rad/(m/s²), K_actual = ${K_actual.toFixed(8)}`);
+  allPassed = check('Check 14a: K = (m/L)×(b/CαF−a/CαR) matches (±1e-8)', K_actual, K_expected, 1e-8) && allPassed;
+  allPassed = check('Check 14a: K < 0 → oversteer (rear softer)', K_actual < 0 ? 1 : 0, 1) && allPassed;
+}
+
+// ─── Check 14b: Stage 13B — Combined slip corner speed reduction ──────────────
+// Hand-calc: combSlipBrakeFrac=0.4, brakingCapG=1.0, peakMu=1.2, no aero (R=100m)
+//   ay_max_g = sqrt(1.2² − (1.0×0.4)²) = sqrt(1.44 − 0.16) = sqrt(1.28) = 1.131371
+//   Without CS: ay_max_g = 1.2 g exactly.
+console.log('\nCheck 14b — Stage 13B: Combined slip — ay_max reduction at corner');
+{
+  const R14b = 100;  // m, corner radius
+  const singleCorner14b: TrackLayout = {
+    name: 'check14b',
+    segments: [{ type: 'corner', length: 2 * Math.PI * R14b, radius: R14b }],
+  };
+  const baseInp14b: LapSimInput = {
+    mass: 1500, peakMu: 1.2, brakingCapG: 1.0,
+    aeroCL: 0, aeroCD: 0.30, aeroReferenceArea: 2.0,
+    dragForce: () => 0, driveForce: () => 9000,
+    combSlipBrakeFrac: 0,
+  };
+  const csInp14b: LapSimInput = { ...baseInp14b, combSlipBrakeFrac: 0.4 };
+  const resNoCS = computeLapTime(singleCorner14b, baseInp14b);
+  const resCS   = computeLapTime(singleCorner14b, csInp14b);
+  const vNoCS   = resNoCS.segments[0].minSpeedKph / 3.6;
+  const vCS     = resCS.segments[0].minSpeedKph   / 3.6;
+  const ay_no_cs  = (vNoCS * vNoCS) / R14b / G;
+  const ay_cs     = (vCS   * vCS)   / R14b / G;
+  const ay_cs_exp = Math.sqrt(1.44 - 0.16);  // 1.131371
+  console.log(`  ay without CS = ${ay_no_cs.toFixed(6)} g (expected 1.200000)`);
+  console.log(`  ay with CS    = ${ay_cs.toFixed(6)} g (expected ${ay_cs_exp.toFixed(6)})`);
+  allPassed = check('Check 14b: ay_max without CS = 1.20 g (±0.0001)', ay_no_cs, 1.20, 1e-4) && allPassed;
+  allPassed = check('Check 14b: ay_max with CS = sqrt(1.28) (±0.001)', ay_cs, ay_cs_exp, 1e-3) && allPassed;
+}
+
+// ─── Check 14c: Stage 13C — Transient yaw penalty formula ────────────────────
+// Hand-calc: m=1200kg, V_entry=22.222 m/s (80kph), CαF+CαR=95000 N/rad
+//   τ = 1200 × 22.222 / (2 × 95000) = 26666.4 / 190000 = 0.14035 s
+//   V_corner=4.167 m/s (15kph) → (1−4.167/22.222)=0.8125 → penalty=0.14035×0.8125×0.5=0.05701 s
+console.log('\nCheck 14c — Stage 13C: Transient yaw penalty formula');
+{
+  const m14c = 1200, V_entry = 80 / 3.6;
+  const CaF14c = 50000, CaR14c = 45000;  // N/rad
+  const V_corner = 15 / 3.6;
+  const tau_expected    = m14c * V_entry / (2 * (CaF14c + CaR14c));
+  const penalty_expected = tau_expected * (1 - V_corner / V_entry) * 0.5;
+  const tau_actual    = m14c * V_entry / (2 * (CaF14c + CaR14c));
+  const penalty_actual = tau_actual * Math.max(0, 1 - V_corner / V_entry) * 0.5;
+  console.log(`  τ_yaw = ${tau_actual.toFixed(5)} s   (expected ${tau_expected.toFixed(5)} s)`);
+  console.log(`  penalty = ${penalty_actual.toFixed(5)} s  (expected ${penalty_expected.toFixed(5)} s)`);
+  allPassed = check('Check 14c: τ_yaw = m×V/(2×(CαF+CαR)) (±1e-6)', tau_actual, tau_expected, 1e-6) && allPassed;
+  allPassed = check('Check 14c: t_penalty = τ×(1−Vc/Ve)×0.5 (±1e-6)', penalty_actual, penalty_expected, 1e-6) && allPassed;
+}
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 console.log('\n' + '─'.repeat(55));
 if (allPassed) {
@@ -489,6 +565,7 @@ if (allPassed) {
   console.log('Check  11:   Stage 10 gear model (T_peak, F @ 10 m/s, max speed).');
   console.log('Check  12:   Stage 11 tyre thermal model (f at optimal, half-width, floor).');
   console.log('Check  13:   Stage 12 setup optimiser (improves bad setup ≥ 1 s).');
+  console.log('Checks 14a–c: Stage 13 — separate front/rear Cα, combined slip, yaw transient.');
 } else {
   console.log('\x1b[31mOne or more checks FAILED.\x1b[0m');
   process.exit(1);
