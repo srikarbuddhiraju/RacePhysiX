@@ -1,14 +1,36 @@
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { computeLapTime, TRACK_PRESETS } from '../physics/laptime';
 import { computeMaxDriveForce } from '../physics/gearModel';
+import { optimiseSetup, OPTIMISE_BOUNDS, OPTIMISABLE_KEYS } from '../physics/optimise';
+import type { OptimiseResult } from '../physics/optimise';
 import type { TrackLayout } from '../physics/laptime';
 import type { VehicleParams, PacejkaCoeffs } from '../physics/types';
 import { InfoTooltip } from './InfoTooltip';
 import { exportLapTimeCSV } from '../utils/export';
 
+const G = 9.81;
+
 interface Props {
-  params: VehicleParams;
-  coeffs: PacejkaCoeffs;
+  params:   VehicleParams;
+  coeffs:   PacejkaCoeffs;
+  onChange: (p: VehicleParams) => void;
+}
+
+/** Labels for the 7 optimisable params shown in the result card. */
+const OPTIM_LABELS: Record<string, string> = {
+  frontSpringRate: 'Front spring',
+  rearSpringRate:  'Rear spring',
+  frontARBRate:    'Front ARB',
+  rearARBRate:     'Rear ARB',
+  aeroCL:          'Aero CL',
+  aeroBalance:     'Aero balance',
+  brakeBias:       'Brake bias',
+};
+function fmtParamValue(key: string, v: number): string {
+  if (key === 'aeroCL')      return v.toFixed(2);
+  if (key === 'aeroBalance') return `${(v * 100).toFixed(0)}F/${((1 - v) * 100).toFixed(0)}R`;
+  if (key === 'brakeBias')   return `${(v * 100).toFixed(0)}F/${((1 - v) * 100).toFixed(0)}R`;
+  return `${(v / 1000).toFixed(1)}k N/m`;
 }
 
 const RHO_AIR = 1.225;
@@ -20,24 +42,72 @@ function fmtTime(sec: number): string {
   return m > 0 ? `${m}:${s.toFixed(1).padStart(4, '0')}` : `${s.toFixed(1)}s`;
 }
 
-export function LapTimePanel({ params, coeffs }: Props) {
-  const [trackKey, setTrackKey] = useState<string>('club');
+type OptimState =
+  | { status: 'idle' }
+  | { status: 'running' }
+  | { status: 'done'; result: OptimiseResult }
+  | { status: 'error'; message: string };
+
+export function LapTimePanel({ params, coeffs, onChange }: Props) {
+  const [trackKey,   setTrackKey]   = useState<string>('club');
+  const [optimState, setOptimState] = useState<OptimState>({ status: 'idle' });
   const layout = TRACK_PRESETS[trackKey];
 
-  const result = useMemo(() => {
-    const { mass, brakingG, aeroCL, aeroCD, aeroReferenceArea } = params;
-    const peakMu = coeffs.peakMu;
-    // Effective braking g: max of user setting and 0.9g default
+  /**
+   * Build a LapSimInput from candidate params.
+   * Computes effective peakMu accounting for suspension load transfer at 1g lateral:
+   *   higher roll stiffness ratio → more load on outer tyre → load sensitivity penalty.
+   * This makes spring and ARB rates meaningful in the optimiser objective.
+   */
+  const inpBuilder = useCallback((p: VehicleParams) => {
+    const { mass, brakingG, aeroCD, aeroReferenceArea, cgHeight, trackWidth,
+            tyreLoadSensitivity } = p;
+    const peakMu      = coeffs.peakMu;
     const brakingCapG = Math.max(brakingG, 0.9);
 
-    const dragForce  = (V: number) => 0.5 * RHO_AIR * V * V * aeroReferenceArea * aeroCD;
-    const driveForce = (V: number) => computeMaxDriveForce(V, params);
+    // Roll stiffness ratio at candidate setup
+    const tw2o2   = (trackWidth * trackWidth) / 2;
+    const kPhiF   = (p.frontSpringRate + p.frontARBRate) * tw2o2;
+    const kPhiR   = (p.rearSpringRate  + p.rearARBRate)  * tw2o2;
+    const kPhiTot = kPhiF + kPhiR;
+    const phiFront = kPhiTot > 0 ? kPhiF / kPhiTot : 0.5;
 
-    return computeLapTime(layout, {
-      mass, peakMu, brakingCapG,
-      aeroCL, aeroCD, aeroReferenceArea, dragForce, driveForce,
-    });
-  }, [params, coeffs, layout]);
+    // Lateral load transfer at representative 1g, front outer tyre
+    const FzStatic  = mass * G / 4;
+    const dFzOuter  = mass * G * cgHeight * phiFront / trackWidth;
+    const FzOuter   = FzStatic + dFzOuter;
+
+    // Load sensitivity: μ degrades on overloaded outer tyre
+    const qFz       = tyreLoadSensitivity;
+    const muFrac    = qFz > 0 ? Math.max(0.5, 1 - qFz * (FzOuter / FzStatic - 1)) : 1.0;
+    const peakMuEff = peakMu * muFrac;
+
+    const dragForce  = (V: number) => 0.5 * RHO_AIR * V * V * aeroReferenceArea * aeroCD;
+    const driveForce = (V: number) => computeMaxDriveForce(V, p);
+    return {
+      mass, peakMu: peakMuEff, brakingCapG,
+      aeroCL: p.aeroCL, aeroCD, aeroReferenceArea, dragForce, driveForce,
+    };
+  }, [coeffs]);
+
+  const result = useMemo(() => computeLapTime(layout, inpBuilder(params)), [params, layout, inpBuilder]);
+
+  const handleOptimise = () => {
+    setOptimState({ status: 'running' });
+    setTimeout(() => {
+      try {
+        const res = optimiseSetup(params, layout, inpBuilder, OPTIMISE_BOUNDS);
+        setOptimState({ status: 'done', result: res });
+      } catch (e) {
+        setOptimState({ status: 'error', message: String(e) });
+      }
+    }, 0);
+  };
+
+  const handleApply = (res: OptimiseResult) => {
+    onChange(res.bestParams);
+    setOptimState({ status: 'idle' });
+  };
 
   return (
     <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto', height: '100%' }}>
@@ -108,6 +178,38 @@ export function LapTimePanel({ params, coeffs }: Props) {
         <SummaryCard label="Top speed" value={`${result.maxSpeedKph.toFixed(1)} km/h`} />
         <SummaryCard label="Min corner" value={`${result.minCornerKph.toFixed(1)} km/h`} />
       </div>
+
+      {/* Setup optimiser */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          Setup Optimiser
+          <InfoTooltip text="Nelder-Mead optimisation over 7 setup parameters (springs, ARBs, aero, brake bias) to minimise lap time on the selected circuit. Spring/ARB effects are computed via load transfer → tyre load sensitivity → effective μ penalty." />
+        </span>
+        <button
+          onClick={handleOptimise}
+          disabled={optimState.status === 'running'}
+          style={{
+            padding: '3px 10px', fontSize: 10, fontWeight: 600,
+            background: 'var(--bg-card)', border: '1px solid var(--border)',
+            borderRadius: 5, color: 'var(--text-secondary)', cursor: optimState.status === 'running' ? 'default' : 'pointer',
+            opacity: optimState.status === 'running' ? 0.6 : 1,
+          }}
+        >
+          {optimState.status === 'running' ? 'Optimising…' : 'Optimise Setup'}
+        </button>
+        {optimState.status === 'idle' && (
+          <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>~1–2 s</span>
+        )}
+      </div>
+
+      {optimState.status === 'done' && (
+        <OptimResultCard result={optimState.result} baseParams={params} onApply={handleApply} />
+      )}
+      {optimState.status === 'error' && (
+        <div style={{ fontSize: 10, color: '#f87171', padding: '6px 8px', background: 'var(--bg-card)', borderRadius: 6, border: '1px solid #f87171' }}>
+          Optimisation failed: {optimState.message}
+        </div>
+      )}
 
       {/* Segment breakdown */}
       <div style={{ fontSize: 9, color: 'var(--text-faint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
@@ -386,6 +488,77 @@ function TrackMapSVG({ layout, result }: TrackMapSVGProps) {
       >
         {playing ? '■ Stop' : '▶ Play'}
       </button>
+    </div>
+  );
+}
+
+function OptimResultCard({
+  result, baseParams, onApply,
+}: {
+  result:     OptimiseResult;
+  baseParams: VehicleParams;
+  onApply:    (r: OptimiseResult) => void;
+}) {
+  const improved = result.improvement > 0.05;
+  return (
+    <div style={{
+      background: improved ? 'var(--bg-active)' : 'var(--bg-card)',
+      border: `1px solid ${improved ? 'var(--accent)' : 'var(--border-subtle)'}`,
+      borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8,
+    }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        {improved ? (
+          <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--accent-text)', fontVariantNumeric: 'tabular-nums' }}>
+            −{result.improvement.toFixed(1)}s
+          </span>
+        ) : (
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Already near-optimal</span>
+        )}
+        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+          {fmtTime(result.baseTimeSec)} → {fmtTime(result.bestTimeSec)}
+        </span>
+        <span style={{ fontSize: 9, color: 'var(--text-dim)', marginLeft: 'auto' }}>
+          {result.iterations} iterations
+        </span>
+        {improved && (
+          <button
+            onClick={() => onApply(result)}
+            style={{
+              padding: '3px 10px', fontSize: 10, fontWeight: 600,
+              background: 'var(--accent)', border: 'none',
+              borderRadius: 5, color: 'var(--accent-text)', cursor: 'pointer',
+            }}
+          >
+            Apply
+          </button>
+        )}
+      </div>
+      {/* Parameter diff table */}
+      {improved && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '2px 12px' }}>
+          {OPTIMISABLE_KEYS.map(key => {
+            const wasVal  = baseParams[key] as number;
+            const nowVal  = result.bestParams[key] as number;
+            const changed = Math.abs(nowVal - wasVal) > Math.abs(wasVal) * 0.005;
+            return (
+              <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6, fontSize: 10 }}>
+                <span style={{ color: 'var(--text-secondary)', fontWeight: changed ? 600 : 400 }}>
+                  {OPTIM_LABELS[key]}
+                </span>
+                <span style={{ fontVariantNumeric: 'tabular-nums', color: changed ? 'var(--accent-text)' : 'var(--text-muted)' }}>
+                  {fmtParamValue(key, nowVal)}
+                  {changed && (
+                    <span style={{ color: 'var(--text-dim)', fontSize: 9 }}>
+                      {' '}(was {fmtParamValue(key, wasVal)})
+                    </span>
+                  )}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

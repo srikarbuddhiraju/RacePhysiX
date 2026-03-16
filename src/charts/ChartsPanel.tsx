@@ -240,7 +240,7 @@ export function ChartsPanel({
 
       {/* ── Charts, Lap Time, or Time Domain ────────────────────────────── */}
       {activeTab === 'laptime' ? (
-        <LapTimePanel params={params} coeffs={coeffs} />
+        <LapTimePanel params={params} coeffs={coeffs} onChange={onParamsChange} />
       ) : activeTab === 'timedomain' ? (
         <TimeDomainPanel params={params} coeffs={coeffs} />
       ) : (
