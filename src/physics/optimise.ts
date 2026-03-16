@@ -82,7 +82,7 @@ function applyX(x: number[], base: VehicleParams): VehicleParams {
   const out = { ...base };
   for (let i = 0; i < N; i++) {
     const key = OPTIMISABLE_KEYS[i];
-    (out as Record<string, number>)[key] = xToParam(x[i], OPTIMISE_BOUNDS[key]);
+    (out as unknown as Record<string, number>)[key] = xToParam(x[i], OPTIMISE_BOUNDS[key]);
   }
   return out;
 }

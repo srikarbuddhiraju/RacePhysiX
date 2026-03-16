@@ -56,7 +56,7 @@ function buildCurveDataBoth(
 
 function buildHandlingCurve(
   params: VehicleParams,
-  B: number, C: number, peakMu: number, E: number,
+  _B: number, C: number, peakMu: number, E: number,
   FxFront_fixed: number,
   FxRear_fixed:  number,
   rollStiffRatio: number,
