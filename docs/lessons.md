@@ -70,10 +70,26 @@ Updated after every correction per CLAUDE.md Self-Improvement Loop.
 
 ## Production Builds
 
+### Always use `npm run build` as the final verification step — not just `tsc --noEmit`
+- **Rule**: After every implementation session, run `npm run build` (which runs `tsc -b && vite build`)
+  before committing. `tsc --noEmit` is more lenient than `tsc -b` — some errors only appear in build mode.
+- **Why**: Stage 13 — `tsc --noEmit` passed but `npm run build` failed with two errors:
+  a type assertion needing `unknown` intermediate, and an unused parameter. Black screen resulted.
+- **How to apply**: Final checklist: `npx tsc --noEmit` → `npm run build` → both must pass.
+
 ### Dev server ≠ production build
 - **Rule**: Any code that could behave differently in a production/minified build
   (tree-shaking, bundling, env vars) must be tested with a production build,
   not just the dev server.
+
+### Guard slider values against undefined to survive HMR state mismatch
+- **Rule**: Any component that reads `params[key]` as a number must guard against `undefined`:
+  `(params[key] as number) ?? fallback`. Use `min` as the fallback for sliders.
+- **Why**: When Vite HMR updates a component that renders a new `VehicleParams` key while React
+  preserves old state (which predates that key), the value is `undefined`. Calling `.toFixed()`
+  on `undefined` throws, React unmounts the tree, and the app shows a black screen.
+- **How to apply**: Already applied in `SliderRow`. Apply same pattern in any new component that
+  reads numeric params fields that may not exist in old serialised state (URL hash).
 
 ---
 
