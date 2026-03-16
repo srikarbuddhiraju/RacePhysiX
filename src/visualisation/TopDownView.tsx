@@ -35,11 +35,13 @@ import {
   CylinderGeometry,
   Camera,
 } from 'three';
-import type { VehicleParams, PhysicsResult, Balance, VehicleClass } from '../physics/types';
+import type { VehicleParams, PhysicsResult, Balance, VehicleClass, PacejkaResult, PacejkaCoeffs } from '../physics/types';
 
 interface Props {
-  params: VehicleParams;
-  result: PhysicsResult;
+  params:   VehicleParams;
+  result:   PhysicsResult;
+  pacejka?: PacejkaResult;
+  coeffs?:  PacejkaCoeffs;
   darkMode?: boolean;
 }
 
@@ -394,9 +396,63 @@ function add3DCarGeometry(
   ], 0x1e1e30));
 }
 
+// ── Suspension struts (colored by corner load relative to static) ─────────────
+
+function addSuspensionStruts(scene: Scene, params: VehicleParams, pacejka: PacejkaResult): void {
+  const { a, b, FzFL, FzFR, FzRL, FzRR } = pacejka;
+  const TW       = params.trackWidth;
+  const staticFz = (params.mass * 9.81) / 4;
+  const strutBot = WHEEL_RADIUS;
+  const strutTop = WHEEL_RADIUS + CAR_BODY_H * 0.85;
+
+  /** green = static, orange = compressed (outside), blue = extended (inside) */
+  function strutColor(fz: number): number {
+    const r = fz / staticFz;
+    if (r > 1.10) return lerp32(0x4ade80, 0xf97316, Math.min((r - 1.10) / 0.40, 1));
+    if (r < 0.90) return lerp32(0x4ade80, 0x60a5fa, Math.min((0.90 - r) / 0.40, 1));
+    return 0x4ade80;
+  }
+
+  const corners: Array<[number, number, number]> = [
+    [-TW / 2,  a,  FzFL],
+    [ TW / 2,  a,  FzFR],
+    [-TW / 2, -b,  FzRL],
+    [ TW / 2, -b,  FzRR],
+  ];
+
+  for (const [sx, sy, fz] of corners) {
+    const col = strutColor(fz);
+    scene.add(makeLine([new Vector3(sx, sy, strutBot), new Vector3(sx, sy, strutTop)], col, 0.85));
+    const cap = new Mesh(new CircleGeometry(0.055, 8), new MeshBasicMaterial({ color: col }));
+    cap.position.set(sx, sy, strutTop + 0.01);
+    scene.add(cap);
+  }
+}
+
+// ── Aerodynamic downforce arrows ──────────────────────────────────────────────
+
+function addDownforceArrows(scene: Scene, params: VehicleParams, pacejka: PacejkaResult): void {
+  const { a, b, FzAeroFront, FzAeroRear } = pacejka;
+  const SCALE   = 1 / 5000;    // m per N
+  const bodyTop = CAR_BODY_H + 0.55;
+  const downDir = new Vector3(0, 0, -1);
+  const col     = 0x818cf8;    // indigo
+  void params;                 // params provided for API symmetry; not needed here
+
+  const fLen = Math.max(0.22, FzAeroFront * SCALE);
+  const rLen = Math.max(0.22, FzAeroRear  * SCALE);
+  scene.add(new ArrowHelper(downDir, new Vector3(0,  a * 0.55, bodyTop), fLen, col, 0.15, 0.12));
+  scene.add(new ArrowHelper(downDir, new Vector3(0, -b * 0.55, bodyTop), rLen, col, 0.15, 0.12));
+}
+
 // ── Full scene: top-down layer (flat) + 3D layer ──────────────────────────────
 
-function buildScene(scene: Scene, params: VehicleParams, result: PhysicsResult): void {
+function buildScene(
+  scene:   Scene,
+  params:  VehicleParams,
+  result:  PhysicsResult,
+  pacejka: PacejkaResult | null = null,
+): void {
   const {
     wheelbase: L,
     trackWidth: TW,
@@ -527,6 +583,12 @@ function buildScene(scene: Scene, params: VehicleParams, result: PhysicsResult):
   // ── Axle lines ────────────────────────────────────────────────────────────
   scene.add(makeLine([new Vector3(-TW / 2 - 0.05, a,  0.02), new Vector3(TW / 2 + 0.05, a,  0.02)], 0x2a2a4a));
   scene.add(makeLine([new Vector3(-TW / 2 - 0.05, -b, 0.02), new Vector3(TW / 2 + 0.05, -b, 0.02)], 0x2a2a4a));
+
+  // ── Stage 3-6 visual enhancements (suspension struts + aero arrows) ────────
+  if (pacejka) {
+    addSuspensionStruts(scene, params, pacejka);
+    if (pacejka.aeroDownforceN > 100) addDownforceArrows(scene, params, pacejka);
+  }
 }
 
 // ── Camera definitions ────────────────────────────────────────────────────────
@@ -560,7 +622,7 @@ function computeViewports(w: number, h: number) {
 
 // ── React component ───────────────────────────────────────────────────────────
 
-export function TopDownView({ params, result, darkMode = true }: Props) {
+export function TopDownView({ params, result, pacejka, coeffs, darkMode = true }: Props) {
   const mountRef    = useRef<HTMLDivElement>(null);
   const stateRef    = useRef<{
     scene:    Scene;
@@ -641,14 +703,14 @@ export function TopDownView({ params, result, darkMode = true }: Props) {
     };
   }, []);
 
-  // Re-draw scene on params/result change
+  // Re-draw scene on params/result/pacejka change
   useEffect(() => {
     const st = stateRef.current;
     if (!st) return;
     clearScene(st.scene);
-    buildScene(st.scene, params, result);
+    buildScene(st.scene, params, result, pacejka ?? null);
     (st as any)._render?.(st);
-  }, [params, result]);
+  }, [params, result, pacejka]);
 
   // Update scene background on theme change
   useEffect(() => {
@@ -658,7 +720,7 @@ export function TopDownView({ params, result, darkMode = true }: Props) {
     (st as any)._render?.(st);
   }, [darkMode]);
 
-  const fyFrontColor = result.balance === 'understeer' ? '#f97316' : '#4ade80';
+  const fyFrontColor = result.balance === 'understeer' ? '#60a5fa' : '#4ade80';  // blue=understeer (MoTeC convention)
   const fyRearColor  = result.balance === 'oversteer'  ? '#f43f5e' : '#4ade80';
 
   return (
@@ -669,6 +731,13 @@ export function TopDownView({ params, result, darkMode = true }: Props) {
       {/* View labels */}
       <ViewLabel text="Top View"   left="8px"  top="6px" />
       <ViewLabel text="Chase View" left="62%"  top="6px" />
+
+      {/* ── Top-down panel overlays (confined to left 60% so Chase View stays clear) ── */}
+      <div style={{ position: 'absolute', top: 0, left: 0, width: '60%', height: '100%', pointerEvents: 'none' }}>
+        {coeffs  && <TyreCompoundBadge mu={coeffs.peakMu} />}
+        {pacejka && pacejka.aeroDownforceN > 50 && <AeroOverlay pacejka={pacejka} />}
+        {pacejka && <CornerLoadGauges pacejka={pacejka} params={params} />}
+      </div>
 
       {/* Vertical divider */}
       <div style={{
@@ -688,8 +757,8 @@ function ViewLabel({ text, left, top }: { text: string; left: string; top: strin
   return (
     <div style={{
       position: 'absolute', left, top, pointerEvents: 'none',
-      fontSize: 9, fontWeight: 700, letterSpacing: '0.10em',
-      textTransform: 'uppercase', color: 'var(--text-dim)',
+      fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
+      textTransform: 'uppercase', color: 'var(--text-muted)',
     }}>
       {text}
     </div>
@@ -709,6 +778,30 @@ function DotSvg({ color }: { color: string }) {
   return (
     <svg width="10" height="10" viewBox="0 0 10 10" style={{ flexShrink: 0 }}>
       <circle cx="5" cy="5" r="4" fill={color} />
+    </svg>
+  );
+}
+
+/** Suspension strut icon: vertical bar with spring coil indicator */
+function StrutSvg({ color }: { color: string }) {
+  return (
+    <svg width="10" height="16" viewBox="0 0 10 16" style={{ flexShrink: 0 }}>
+      <line x1="5" y1="0" x2="5" y2="4"  stroke={color} strokeWidth="2" />
+      <line x1="5" y1="4" x2="2" y2="6"  stroke={color} strokeWidth="1.2" />
+      <line x1="2" y1="6" x2="8" y2="8"  stroke={color} strokeWidth="1.2" />
+      <line x1="8" y1="8" x2="2" y2="10" stroke={color} strokeWidth="1.2" />
+      <line x1="2" y1="10" x2="5" y2="12" stroke={color} strokeWidth="1.2" />
+      <line x1="5" y1="12" x2="5" y2="16" stroke={color} strokeWidth="2" />
+    </svg>
+  );
+}
+
+/** Downforce arrow icon: vertical arrow pointing downward */
+function DownforceSvg({ color }: { color: string }) {
+  return (
+    <svg width="10" height="16" viewBox="0 0 10 16" style={{ flexShrink: 0 }}>
+      <line x1="5" y1="0" x2="5" y2="10" stroke={color} strokeWidth="1.8" />
+      <polygon points="1,9 5,16 9,9" fill={color} />
     </svg>
   );
 }
@@ -736,11 +829,13 @@ function ViewLegend({ fyFrontColor, fyRearColor, balance, darkMode = true }: {
       </span>
       <LegendItem icon={<ArrowSvg color="#22d3ee" />} label="Wheel heading" />
       <LegendItem icon={<ArrowSvg color="#fde68a" />} label="Contact velocity (gap = α)" />
-      <LegendItem icon={<ArrowSvg color={fyFrontColor} />} label={`Front Fy (${balanceNote})`} />
+      <LegendItem icon={<ArrowSvg color={fyFrontColor} />} label={`Front Fy (${balanceNote}) · blue=US red=OS`} />
       <LegendItem icon={<ArrowSvg color={fyRearColor}  />} label="Rear Fy" />
       <LegendItem icon={<ArrowSvg color="#60a5fa" />} label="Speed" />
       <LegendItem icon={<DotSvg   color="#facc15" />} label="CG" />
       <LegendItem icon={<DotSvg   color="#3a607a" />} label="Turn centre" />
+      <LegendItem icon={<StrutSvg  color="#a78bfa" />} label="Suspension strut (colour = Fz load)" />
+      <LegendItem icon={<DownforceSvg color="#34d399" />} label="Downforce arrow (aero > 100 N)" />
     </div>
   );
 }
@@ -750,6 +845,136 @@ function LegendItem({ icon, label }: { icon: React.ReactNode; label: string }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
       {icon}
       <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>{label}</span>
+    </div>
+  );
+}
+
+// ── Right-panel overlay components ────────────────────────────────────────────
+
+/** Small SVG tyre cross-section icon */
+function TyreIcon({ color }: { color: string }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 22 22" style={{ flexShrink: 0 }}>
+      <circle cx="11" cy="11" r="8.5" fill="none" stroke={color} strokeWidth="3.8" />
+      <circle cx="11" cy="11" r="4.0" fill="none" stroke={color} strokeWidth="1"   opacity="0.55" />
+      {([0, 90, 180, 270] as number[]).map(deg => {
+        const r  = deg * Math.PI / 180;
+        const x1 = 11 + Math.cos(r) * 4.5, y1 = 11 + Math.sin(r) * 4.5;
+        const x2 = 11 + Math.cos(r) * 6.0, y2 = 11 + Math.sin(r) * 6.0;
+        return <line key={deg} x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth="1" opacity="0.45" />;
+      })}
+    </svg>
+  );
+}
+
+function TyreCompoundBadge({ mu }: { mu: number }) {
+  const compound =
+    mu >= 1.45 ? { name: 'Slick',        color: '#dc2626' } :
+    mu >= 1.25 ? { name: 'Semi-Slick',   color: '#f97316' } :
+    mu >= 1.05 ? { name: 'Sport UHP',    color: '#f59e0b' } :
+    mu >= 0.90 ? { name: 'Road Sport',   color: '#38bdf8' } :
+                 { name: 'All-Season',   color: '#22d3ee' };
+
+  const surface =
+    mu >= 1.20 ? 'Dry track' :
+    mu >= 0.95 ? 'Dry asphalt' :
+    mu >= 0.75 ? 'Damp surface' :
+                 'Wet / winter';
+
+  return (
+    <div style={{ position: 'absolute', top: 26, right: 8, display: 'flex', flexDirection: 'column', gap: 3, pointerEvents: 'none' }}>
+      {/* Tyre compound badge */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        background: 'rgba(10,10,18,0.82)', border: `1px solid ${compound.color}40`,
+        borderRadius: 5, padding: '4px 8px',
+      }}>
+        <TyreIcon color={compound.color} />
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: compound.color, letterSpacing: '0.04em' }}>
+            {compound.name}
+          </div>
+          <div style={{ fontSize: 8, color: 'var(--text-faint)', marginTop: 1 }}>
+            peak &mu; = {mu.toFixed(2)}
+          </div>
+        </div>
+      </div>
+      {/* Road surface */}
+      <div style={{
+        background: 'rgba(10,10,18,0.72)', border: '1px solid var(--border-subtle)',
+        borderRadius: 4, padding: '3px 7px',
+        fontSize: 8, color: 'var(--text-faint)', letterSpacing: '0.04em',
+      }}>
+        Road: {surface}
+      </div>
+    </div>
+  );
+}
+
+function AeroOverlay({ pacejka }: { pacejka: PacejkaResult }) {
+  const { aeroDownforceN, aeroDragN } = pacejka;
+  const ld = aeroDragN > 0 ? (aeroDownforceN / aeroDragN).toFixed(2) : '—';
+  return (
+    <div style={{
+      position: 'absolute', top: 108, right: 8, pointerEvents: 'none',
+      background: 'rgba(10,10,18,0.80)', border: '1px solid rgba(129,140,248,0.35)',
+      borderRadius: 5, padding: '5px 8px', minWidth: 96,
+    }}>
+      <div style={{ fontSize: 8, color: '#818cf8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
+        Aero
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {[
+          { label: 'DF',   value: `${(aeroDownforceN / 1000).toFixed(2)} kN` },
+          { label: 'Drag', value: `${(aeroDragN       / 1000).toFixed(2)} kN` },
+          { label: 'L/D',  value: ld },
+        ].map(({ label, value }) => (
+          <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 9 }}>
+            <span style={{ color: 'var(--text-faint)' }}>{label}</span>
+            <span style={{ color: '#c7d2fe', fontVariantNumeric: 'tabular-nums' }}>{value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CornerBar({ label, fz, max, staticFz }: { label: string; fz: number; max: number; staticFz: number }) {
+  const pct   = (fz / max) * 100;
+  const ratio = fz / staticFz;
+  const color = ratio > 1.10 ? '#f97316' : ratio < 0.90 ? '#60a5fa' : '#4ade80';
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, marginBottom: 2 }}>
+        <span style={{ color: 'var(--text-faint)' }}>{label}</span>
+        <span style={{ color, fontVariantNumeric: 'tabular-nums' }}>{(fz / 1000).toFixed(2)}k</span>
+      </div>
+      <div style={{ height: 3, background: 'var(--border-subtle)', borderRadius: 2, overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 2 }} />
+      </div>
+    </div>
+  );
+}
+
+function CornerLoadGauges({ pacejka, params }: { pacejka: PacejkaResult; params: VehicleParams }) {
+  const { FzFL, FzFR, FzRL, FzRR } = pacejka;
+  const staticFz = (params.mass * 9.81) / 4;
+  const maxFz    = Math.max(FzFL, FzFR, FzRL, FzRR, staticFz * 1.4);
+  return (
+    <div style={{
+      position: 'absolute', bottom: 8, right: 8, pointerEvents: 'none',
+      background: 'rgba(10,10,18,0.82)', border: '1px solid var(--border-subtle)',
+      borderRadius: 6, padding: '6px 8px', minWidth: 112,
+    }}>
+      <div style={{ fontSize: 8, color: 'var(--text-faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>
+        Corner loads
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px 10px' }}>
+        <CornerBar label="FL" fz={FzFL} max={maxFz} staticFz={staticFz} />
+        <CornerBar label="FR" fz={FzFR} max={maxFz} staticFz={staticFz} />
+        <CornerBar label="RL" fz={FzRL} max={maxFz} staticFz={staticFz} />
+        <CornerBar label="RR" fz={FzRR} max={maxFz} staticFz={staticFz} />
+      </div>
     </div>
   );
 }

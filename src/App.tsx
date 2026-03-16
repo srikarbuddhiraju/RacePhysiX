@@ -44,6 +44,21 @@ const DEFAULT_PARAMS: VehicleParams = {
   aeroCD:            0.30,
   aeroReferenceArea: 2.0,
   aeroBalance:       0.45,
+  // Stage 9 — Tyre load sensitivity
+  tyreLoadSensitivity: 0.10,
+  // Stage 11 — Tyre thermal model
+  tyreOptTempC:       85,
+  tyreTempHalfWidthC: 30,
+  tyreTempCurrentC:   85,   // start at optimal — no grip penalty
+  tyreTempFloorMu:    0.60,
+  // Stage 10 — Gear model
+  gearCount:        6,
+  firstGearRatio:   3.0,
+  topGearRatio:     0.72,
+  finalDriveRatio:  3.9,
+  wheelRadiusM:     0.32,
+  enginePeakRpm:    5500,
+  engineRedlineRpm: 6500,
 };
 
 function loadInitialParams(): VehicleParams {
@@ -81,7 +96,7 @@ export function App() {
       <div className="app-main">
         <ParameterPanel params={params} onChange={setParams} />
         <div className="canvas-area">
-          <TopDownView params={params} result={bicycle} darkMode={darkMode} />
+          <TopDownView params={params} result={bicycle} pacejka={pacejka} coeffs={coeffs} darkMode={darkMode} />
           <button
             className="theme-toggle"
             onClick={() => setDarkMode(d => !d)}

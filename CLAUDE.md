@@ -4,7 +4,7 @@
 A browser-based, physics-accurate vehicle dynamics simulator.
 - **Purpose**: Educational (v1) → Setup tool (v2)
 - **Platform**: Web (browser-first, no install)
-- **Tech Stack**: TBD — see Tech Stack section below
+- **Status**: v1 feature-complete — Stages 1–7 implemented and validated
 
 ## Owner
 Srikar Buddhiraju. MEng Automotive Engineering, University of Leeds (2019).
@@ -21,28 +21,42 @@ Srikar can and will catch incorrect physics — accuracy is non-negotiable.
    Milliken & Milliken (textbook reference) AND real-world data (actuality).
    Accuracy beats simplicity when it comes to the physics.
 
-## Tech Stack
-*(Pending discussion — will be locked here once decided. Do not re-question once settled.)*
+## Tech Stack (settled — do not re-question)
 - Language: TypeScript
 - Frontend: React
+- Build tool: Vite
 - 3D Visualisation: Three.js
+- Charts: Recharts
 - Physics engine: Pure TypeScript module (framework-agnostic)
-- Build tool: TBD
-- Hosting: Cloudflare Pages (tentative, free) — `apexsim.srikarbuddhiraju.com` subdomain
+- Hosting: Cloudflare Pages — `apexsim.srikarbuddhiraju.com`
+- License: MIT
 
 ## Physics Model Roadmap
-Build and validate each stage before moving to the next.
 
 | Stage | Model | Status | What It Captures |
 |---|---|---|---|
 | 1 | Bicycle model | ✅ done | Yaw, understeer/oversteer, cornering response |
 | 2 | Pacejka Magic Formula | ✅ done | Realistic tyre lateral + longitudinal forces |
 | 3 | Load transfer + drivetrain | ✅ done | Per-corner Fz, combined slip, FWD/RWD/AWD/AWD+TV |
-| 4 | Suspension (roll stiffness) | 🔄 next | Roll angle, ARB, accurate load transfer split |
-| 5 | Braking model | planned | Brake bias, longitudinal decel, combined braking+cornering |
-| 6 | Aerodynamics | planned | Speed-dependent downforce + drag |
-| 7 | Lap time estimator | planned | Min-time solve over corner+straight track segments |
-| 8 | Full 14-DOF | long term | Research-grade complete vehicle |
+| 4 | Suspension (roll stiffness) | ✅ done | Roll angle, ARB, accurate load transfer split |
+| 5 | Braking model | ✅ done | Brake bias, longitudinal decel, ABS clip, combined braking+cornering |
+| 6 | Aerodynamics | ✅ done | Speed-dependent downforce + drag, axle splits |
+| 7 | Lap time estimator | ✅ done | Point-mass sim over corner+straight segments, real circuits |
+| 8 | 14-DOF time-domain | ✅ done | Step steer / sine sweep / brake-in-turn ISO scenarios, RK4 ODE |
+| 9 | Tyre load sensitivity | 🔲 next | Pacejka B/C/E vary with Fz — degressive grip at high load, realistic load transfer penalty |
+| 10 | Gear model + powertrain | 🔲 next | Gear ratios, shift points, rev-limited P/V curve — accurate straight-line speeds |
+| 11 | Thermal tyre model | 🔲 next | Tyre temperature affects μ — warm-up, degradation, optimal operating window |
+| 12 | Setup optimisation | 🔲 next | Auto-find spring/ARB/aero for minimum lap time on a chosen circuit |
+| 13 | Full nonlinear | 🔲 next | Separate front/rear Cα, Stage 8 transients feeding lap sim, combined slip in estimator |
+
+## Validation
+`src/physics/validate.ts` — run with `npx tsx src/physics/validate.ts`
+- Checks 1–4: Bicycle model (Gillespie Ch.6 eq.6.15/6.16)
+- Check 5: Stage 4 suspension (KΦ, roll angle — RCVD Ch.16)
+- Check 6: Stage 6 aero (q, downforce, drag, axle splits)
+- Check 7: Stage 5 braking (bias distribution, ABS activation)
+- Checks 8–10: Stage 8 time-domain (step steer, neutral steer, sine sweep)
+- **All 18 checks pass. Extended suite: 178/178 pass.**
 
 ## Physics Reference Docs
 All physics knowledge lives in `docs/physics-reference/`. Read relevant file before

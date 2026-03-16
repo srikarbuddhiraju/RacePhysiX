@@ -384,7 +384,7 @@ function AdvancedTab({
       <div className="adv-derived">
         <span>
           BCD = <b>{bcd}</b> × Fz
-          <InfoTooltip text="B × C × μ. Multiply by Fz (N) to get the initial cornering stiffness Cα at that load. Dimensionless × N = N/rad." />
+          <InfoTooltip text="B × C × μ. Multiply by Fz (N) to get the initial cornering stiffness Cα at that load. Units: dimensionless × N = N/rad (convert ÷57.3 for N/deg)." />
         </span>
         <span>
           Cα @ 4 kN = <b>{cα4kN}</b> N/deg

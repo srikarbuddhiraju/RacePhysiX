@@ -74,3 +74,63 @@ Updated after every correction per CLAUDE.md Self-Improvement Loop.
 - **Rule**: Any code that could behave differently in a production/minified build
   (tree-shaking, bundling, env vars) must be tested with a production build,
   not just the dev server.
+
+---
+
+## Circuit / Track Data
+
+### Corner arc lengths must satisfy arc = R × θ
+- **Rule**: When entering real circuit data, NEVER use physical segment lengths (e.g., 90m for a chicane).
+  Use arc = R × θ. Typical angles: hairpin ~180°, chicane corner ~75–80°, medium ~90°, fast sweeper ~120–130°.
+- **Why**: A 90m arc at R=14m = 6.43 rad = 368° — more than a full loop. Breaks the track map SVG renderer.
+- **How to apply**: After entering any real circuit corners, spot-check: if `length / radius > π` (>180°) and
+  it's not meant to be a hairpin, it's almost certainly wrong. Recompute.
+- **Fix pattern**: After correcting all arcs, adjust one "filler straight" per circuit to maintain the correct
+  total track distance.
+
+### Direction tags: circuit handedness convention
+- **Rule**: `direction: 'left'` = SVG sweep CW (y-down), `direction: 'right'` = CCW.
+  CW circuits (Monza) → standalone corners use `'left'`. CCW circuits (Monaco/Spa/Silverstone/Suzuka) → `'right'`.
+  Chicane pairs: T1 goes against the primary direction, T2 returns to it.
+- **Why**: Wrong direction tags make the track map trace in the opposite circuit direction.
+
+---
+
+## Test Infrastructure
+
+### Always write a test script alongside physics models
+- **Rule**: For every physics module, `test-extended.ts` must include at least: zero/identity case,
+  Newton's law check (forces sum correctly), directionality check (sign convention correct),
+  and one numerical spot-check vs hand calculation.
+- **Why**: `validate.ts` only covers the happy path. Edge cases (zero speed, extreme ay, zero stiffness)
+  catch bugs that only show up at parameter extremes.
+
+### Verify test formulas before running
+- **Rule**: When writing a test that checks a theoretical property (e.g., characteristic speed V_ch),
+  re-derive the formula from scratch in comments before coding it. Never copy from memory.
+- **Why**: V_ch formula error in Session 5 — used sqrt(g×L/K) instead of sqrt(L/K_rad).
+  The correct derivation (δ = L/R + K×V²/R, set δ = 2×L/R) is 3 lines. Write them first.
+
+### Sub-agents: use for parallel independent test phases
+- **Rule**: Physics tests (validate, extended, build, code review, engineering analysis) are independent.
+  Launch all as parallel sub-agents. Collect and synthesise. Do not run sequentially.
+- **Why**: Reduces session time significantly. Each phase takes 10–30s. Sequential = 5× slower.
+
+---
+
+## Agent Output Verification
+
+### Always verify agent arithmetic before applying data fixes
+- **Rule**: When an agent reports a numerical discrepancy (e.g., "circuit X is Y metres short"), verify with a one-line node calculation before making any change.
+- **Why**: Session 6 — code review agent reported Spa was 1000m short (6004m vs 7004m). Manual `node -e` verified the original was already 7004m. Agent made an arithmetic error. A fix was applied and then immediately reverted, wasting 2 edits.
+- **How to apply**: `node -e "const segs=[...]; console.log(segs.reduce((a,b)=>a+b,0))"` takes 5 seconds and prevents incorrect changes.
+
+---
+
+## Skills / Commands
+
+### Create project-level skills for recurring tasks
+- **Rule**: Any task run more than once (test suite, session start, branch creation) should have a
+  `.claude/commands/<name>.md` skill file in the project root.
+- **Why**: Reduces friction. Skill is self-documenting. New sessions pick it up automatically.
+- **Skill locations**: Global skills → `~/.claude/commands/`. Project skills → `.claude/commands/` in repo root.

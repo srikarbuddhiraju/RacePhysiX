@@ -12,12 +12,13 @@
  *  7. Roll angle, utilisation, chart data
  */
 
-import { pacejkaFy, solveSlipAngleTyreAxle } from './pacejka';
+import { pacejkaFy, solveSlipAngleTyreAxle, loadSensitiveMu } from './pacejka';
 import { computeLoadTransfer }                from './loadTransfer';
 import { computeDrivetrain }                  from './drivetrain';
 import { computeSuspension, computeRollAngle } from './suspension';
 import { computeAero }                        from './aero';
 import { computeBraking }                     from './braking';
+import { computeTyreEffectiveMu }             from './tyreTemp';
 import type { VehicleParams, PacejkaCoeffs, PacejkaResult, TyreCurvePoint, HandlingPoint } from './types';
 
 const G          = 9.81;
@@ -37,16 +38,17 @@ function buildCurveDataBoth(
   FzFO: number, FzFI: number,
   FzRO: number, FzRI: number,
   B: number, C: number, peakMu: number, E: number,
+  qFz: number, Fz0: number,
 ): TyreCurvePoint[] {
   const pts: TyreCurvePoint[] = [];
   for (let alphaDeg = -15; alphaDeg <= 15.001; alphaDeg += 0.2) {
     const alpha_rad = alphaDeg * DEG_TO_RAD;
     pts.push({
       alphaDeg:  Math.round(alphaDeg * 10) / 10,
-      FyFrontKN: (pacejkaFy(alpha_rad, FzFO, B, C, peakMu, E) +
-                  pacejkaFy(alpha_rad, FzFI, B, C, peakMu, E)) / 1000,
-      FyRearKN:  (pacejkaFy(alpha_rad, FzRO, B, C, peakMu, E) +
-                  pacejkaFy(alpha_rad, FzRI, B, C, peakMu, E)) / 1000,
+      FyFrontKN: (pacejkaFy(alpha_rad, FzFO, B, C, peakMu, E, qFz, Fz0) +
+                  pacejkaFy(alpha_rad, FzFI, B, C, peakMu, E, qFz, Fz0)) / 1000,
+      FyRearKN:  (pacejkaFy(alpha_rad, FzRO, B, C, peakMu, E, qFz, Fz0) +
+                  pacejkaFy(alpha_rad, FzRI, B, C, peakMu, E, qFz, Fz0)) / 1000,
     });
   }
   return pts;
@@ -60,11 +62,15 @@ function buildHandlingCurve(
   rollStiffRatio: number,
   FzBoostFront: number,
   FzBoostRear:  number,
+  qFz: number,
+  Fz0: number,
 ): HandlingPoint[] {
   const { mass, wheelbase: L, frontWeightFraction, cgHeight: hCG, trackWidth: TW } = params;
   const b = frontWeightFraction * L;
   const a = L - b;
-  const ayLimitMs2 = peakMu * G * 0.97;
+  // Stage 9: limit is reduced when load sensitivity is active (μ_eff < μ₀ at high loads)
+  const peakMuEff  = loadSensitiveMu(Fz0 * 1.5, Fz0, peakMu, qFz); // effective mu at ~1.5× nominal load
+  const ayLimitMs2 = peakMuEff * G * 0.97;
   const ax_ms2     = (FxFront_fixed + FxRear_fixed) / mass;
   const pts: HandlingPoint[] = [];
 
@@ -76,8 +82,8 @@ function buildHandlingCurve(
     );
     const FyFReq = mass * ay_ms2 * (b / L);
     const FyRReq = mass * ay_ms2 * (a / L);
-    const aF = solveSlipAngleTyreAxle(FyFReq, lt.FzFR, lt.FzFL, FxFront_fixed, B, C, peakMu, E);
-    const aR = solveSlipAngleTyreAxle(FyRReq, lt.FzRR, lt.FzRL, FxRear_fixed,  B, C, peakMu, E);
+    const aF = solveSlipAngleTyreAxle(FyFReq, lt.FzFR, lt.FzFL, FxFront_fixed, B, C, peakMu, E, qFz, Fz0);
+    const aR = solveSlipAngleTyreAxle(FyRReq, lt.FzRR, lt.FzRL, FxRear_fixed,  B, C, peakMu, E, qFz, Fz0);
     const steerCorrDeg = (aF - aR) * RAD_TO_DEG;
     pts.push({ ayG: Math.round(ay_ms2 / G * 1000) / 1000, steerCorrDeg: Math.round(steerCorrDeg * 1e4) / 1e4 });
   }
@@ -86,7 +92,14 @@ function buildHandlingCurve(
 
 export function computePacejkaModel(params: VehicleParams, coeffs: PacejkaCoeffs): PacejkaResult {
   const { mass, wheelbase: L, frontWeightFraction, turnRadius: R, speedKph, cgHeight: hCG, trackWidth: TW } = params;
-  const { B, C, peakMu, E } = coeffs;
+  const { B, C, E } = coeffs;
+  // Stage 11 — apply thermal correction to peakMu before any force calculation.
+  // tyreTempCurrentC = tyreOptTempC → f = 1.0 → no change. Flows through all Pacejka calls.
+  const peakMu = computeTyreEffectiveMu(coeffs.peakMu, params);
+
+  // Stage 9 — load sensitivity reference load = static corner load (mass/4 × g)
+  const Fz0  = mass * G / 4;
+  const qFz  = params.tyreLoadSensitivity ?? 0;
 
   const speedMs = speedKph / 3.6;
   const b = frontWeightFraction * L;
@@ -139,8 +152,8 @@ export function computePacejkaModel(params: VehicleParams, coeffs: PacejkaCoeffs
   // Quick slip estimate for TV control
   const FyFReq0 = mass * ay_ms2 * (b / L);
   const FyRReq0 = mass * ay_ms2 * (a / L);
-  const aF0 = solveSlipAngleTyreAxle(FyFReq0, lt0.FzFR, lt0.FzFL, dt0.FxFront, B, C, peakMu, E);
-  const aR0 = solveSlipAngleTyreAxle(FyRReq0, lt0.FzRR, lt0.FzRL, dt0.FxRear,  B, C, peakMu, E);
+  const aF0 = solveSlipAngleTyreAxle(FyFReq0, lt0.FzFR, lt0.FzFL, dt0.FxFront, B, C, peakMu, E, qFz, Fz0);
+  const aR0 = solveSlipAngleTyreAxle(FyRReq0, lt0.FzRR, lt0.FzRL, dt0.FxRear,  B, C, peakMu, E, qFz, Fz0);
   const slipDiff0 = (aF0 - aR0) * RAD_TO_DEG;
 
   // ── Drive Pass 1: refined Fx + TV with updated Fz + slip diff ──────────────
@@ -172,8 +185,8 @@ export function computePacejkaModel(params: VehicleParams, coeffs: PacejkaCoeffs
   // ── Final slip angles ──────────────────────────────────────────────────────
   const FyFrontReq = mass * ay_ms2 * (b / L);
   const FyRearReq  = mass * ay_ms2 * (a / L);
-  const frontSlipAngleRad = solveSlipAngleTyreAxle(FyFrontReq, lt.FzFR, lt.FzFL, Math.abs(FxFrontNet), B, C, peakMu, E);
-  const rearSlipAngleRad  = solveSlipAngleTyreAxle(FyRearReq,  lt.FzRR, lt.FzRL, Math.abs(FxRearNet),  B, C, peakMu, E);
+  const frontSlipAngleRad = solveSlipAngleTyreAxle(FyFrontReq, lt.FzFR, lt.FzFL, Math.abs(FxFrontNet), B, C, peakMu, E, qFz, Fz0);
+  const rearSlipAngleRad  = solveSlipAngleTyreAxle(FyRearReq,  lt.FzRR, lt.FzRL, Math.abs(FxRearNet),  B, C, peakMu, E, qFz, Fz0);
 
   const frontSlipAngleDeg = frontSlipAngleRad * RAD_TO_DEG;
   const rearSlipAngleDeg  = rearSlipAngleRad  * RAD_TO_DEG;
@@ -197,9 +210,9 @@ export function computePacejkaModel(params: VehicleParams, coeffs: PacejkaCoeffs
     Math.abs(FxRearNet)  / Math.max(peakMu * lt.FzRearAxle, 1),
   ));
 
-  const curveData     = buildCurveDataBoth(lt.FzFR, lt.FzFL, lt.FzRR, lt.FzRL, B, C, peakMu, E);
+  const curveData     = buildCurveDataBoth(lt.FzFR, lt.FzFL, lt.FzRR, lt.FzRL, B, C, peakMu, E, qFz, Fz0);
   const handlingCurve = buildHandlingCurve(params, B, C, peakMu, E, dt.FxFront, dt.FxRear,
-    susp.rollStiffRatio, aero.FzBoostFront, aero.FzBoostRear);
+    susp.rollStiffRatio, aero.FzBoostFront, aero.FzBoostRear, qFz, Fz0);
 
   return {
     a, b,

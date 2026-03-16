@@ -34,6 +34,21 @@ export interface VehicleParams {
   aeroCD:            number;         // drag coefficient
   aeroReferenceArea: number;         // m², frontal reference area
   aeroBalance:       number;         // 0–1, fraction of downforce on front axle
+  // ── Stage 9 — Tyre load sensitivity ─────────────────────────────────────
+  tyreLoadSensitivity: number;       // qFz: degressive μ factor (0 = off, 0.1 typical road, 0.2 max)
+  // ── Stage 11 — Tyre thermal model ───────────────────────────────────────
+  tyreOptTempC:        number;       // °C — optimal tyre temperature (peak grip)
+  tyreTempHalfWidthC:  number;       // °C — half-width at half-maximum (grip drops 50% at ±this from opt)
+  tyreTempCurrentC:    number;       // °C — current tyre temperature (user-controlled)
+  tyreTempFloorMu:     number;       // 0–1 — minimum μ fraction at extreme temperatures (e.g. 0.60)
+  // ── Stage 10 — Gear model ────────────────────────────────────────────────
+  gearCount:            number;      // number of forward gears (4–8)
+  firstGearRatio:       number;      // 1st gear ratio (e.g. 3.0 for sports, 3.5 for road)
+  topGearRatio:         number;      // top gear ratio (e.g. 0.72 for OD, 1.0 for direct)
+  finalDriveRatio:      number;      // final drive ratio (e.g. 3.9)
+  wheelRadiusM:         number;      // loaded tyre radius (m) — e.g. 0.32m for 225/45R17
+  enginePeakRpm:        number;      // RPM at peak power (e.g. 5500)
+  engineRedlineRpm:     number;      // rev limit (e.g. 6500)
 }
 
 export type Balance = 'understeer' | 'neutral' | 'oversteer';

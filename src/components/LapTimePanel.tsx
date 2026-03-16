@@ -1,11 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { computeLapTime, TRACK_PRESETS } from '../physics/laptime';
+import { computeMaxDriveForce } from '../physics/gearModel';
 import type { TrackLayout } from '../physics/laptime';
 import type { VehicleParams, PacejkaCoeffs } from '../physics/types';
 import { InfoTooltip } from './InfoTooltip';
-import { exportParamsAndResultsCSV } from '../utils/export';
-import { computeBicycleModel } from '../physics/bicycleModel';
-import { computePacejkaModel } from '../physics/pacejkaModel';
+import { exportLapTimeCSV } from '../utils/export';
 
 interface Props {
   params: VehicleParams;
@@ -15,9 +14,10 @@ interface Props {
 const RHO_AIR = 1.225;
 
 function fmtTime(sec: number): string {
-  const m   = Math.floor(sec / 60);
-  const s   = sec - m * 60;
-  return m > 0 ? `${m}:${s.toFixed(3).padStart(6, '0')}` : `${s.toFixed(3)}s`;
+  const m = Math.floor(sec / 60);
+  const s = sec - m * 60;
+  // 1 decimal place — matches estimator precision. mm:ss.s for lap totals, ss.ss for segments.
+  return m > 0 ? `${m}:${s.toFixed(1).padStart(4, '0')}` : `${s.toFixed(1)}s`;
 }
 
 export function LapTimePanel({ params, coeffs }: Props) {
@@ -25,16 +25,17 @@ export function LapTimePanel({ params, coeffs }: Props) {
   const layout = TRACK_PRESETS[trackKey];
 
   const result = useMemo(() => {
-    const { mass, enginePowerKW, brakingG, aeroCL, aeroCD, aeroReferenceArea } = params;
+    const { mass, brakingG, aeroCL, aeroCD, aeroReferenceArea } = params;
     const peakMu = coeffs.peakMu;
     // Effective braking g: max of user setting and 0.9g default
     const brakingCapG = Math.max(brakingG, 0.9);
 
-    const dragForce = (V: number) => 0.5 * RHO_AIR * V * V * aeroReferenceArea * aeroCD;
+    const dragForce  = (V: number) => 0.5 * RHO_AIR * V * V * aeroReferenceArea * aeroCD;
+    const driveForce = (V: number) => computeMaxDriveForce(V, params);
 
     return computeLapTime(layout, {
-      mass, peakMu, enginePowerKW, brakingCapG,
-      aeroCL, aeroCD, aeroReferenceArea, dragForce,
+      mass, peakMu, brakingCapG,
+      aeroCL, aeroCD, aeroReferenceArea, dragForce, driveForce,
     });
   }, [params, coeffs, layout]);
 
@@ -48,12 +49,8 @@ export function LapTimePanel({ params, coeffs }: Props) {
           <InfoTooltip text="Point-mass lap simulation. Max corner speed from Pacejka μ + aero grip. Straight speed from engine P/V curve minus drag. Braking zones computed backward from corner entry." />
         </span>
         <button
-          onClick={() => {
-            const bicycle = computeBicycleModel(params);
-            const pacejka = computePacejkaModel(params, coeffs);
-            exportParamsAndResultsCSV(params, bicycle, pacejka);
-          }}
-          title="Export params + results as CSV"
+          onClick={() => exportLapTimeCSV(layout.name, result, params, coeffs)}
+          title="Export lap time + segment breakdown as CSV"
           style={{
             marginLeft: 'auto', padding: '3px 10px', fontSize: 10, fontWeight: 600,
             background: 'var(--bg-card)', border: '1px solid var(--border)',
@@ -71,15 +68,37 @@ export function LapTimePanel({ params, coeffs }: Props) {
             padding: '4px 8px', cursor: 'pointer', outline: 'none',
           }}
         >
-          {Object.entries(TRACK_PRESETS).map(([k, v]) => (
-            <option key={k} value={k}>{v.name}</option>
-          ))}
+          <optgroup label="Generic">
+            {['club', 'karting', 'gt_circuit', 'formula_test'].map(k => (
+              <option key={k} value={k}>{TRACK_PRESETS[k].name}</option>
+            ))}
+          </optgroup>
+          <optgroup label="Real Circuits">
+            {['monza', 'monaco', 'spa', 'silverstone', 'suzuka'].map(k => (
+              <option key={k} value={k}>{TRACK_PRESETS[k].name}</option>
+            ))}
+          </optgroup>
         </select>
       </div>
 
+      {/* Vehicle identity strip */}
+      <div style={{ display: 'flex', gap: 14, fontSize: 10, color: 'var(--text-muted)', alignItems: 'center', flexWrap: 'wrap' }}>
+        <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{params.mass} kg</span>
+        <span>·</span>
+        <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{params.enginePowerKW} kW</span>
+        <span>·</span>
+        <span>μ <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{coeffs.peakMu.toFixed(2)}</span></span>
+        <span>·</span>
+        <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{params.drivetrainType}</span>
+        {params.aeroCL > 0.05 && <>
+          <span>·</span>
+          <span>CL <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{params.aeroCL.toFixed(2)}</span></span>
+        </>}
+      </div>
+
       {/* Track map */}
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '8px 10px' }}>
-        <TrackMapSVG layout={layout} />
+      <div style={{ background: 'var(--bg-panel)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '8px 10px' }}>
+        <TrackMapSVG layout={layout} result={result} />
       </div>
 
       {/* Summary row */}
@@ -110,11 +129,19 @@ export function LapTimePanel({ params, coeffs }: Props) {
 
 // ── Track map SVG ─────────────────────────────────────────────────────────────
 
-function buildTrackPath(layout: TrackLayout): string {
-  // Walk the track: straight = forward, corner = arc turn (always left-hand circuit)
-  const SCALE = 0.4;  // pixels per metre
-  let x = 0, y = 0, heading = 0;  // heading in radians, 0 = right (+x)
-  const pts: string[] = [`M 0 0`];
+interface TrackPathResult { d: string; viewBox: string }
+
+function buildTrackPath(layout: TrackLayout): TrackPathResult {
+  // Walk the track: straight = forward, corner = arc.
+  // heading 0 = +x direction. SVG y increases downward.
+  // direction 'left'  → heading increases (sweep-flag=1 in SVG)
+  // direction 'right' → heading decreases (sweep-flag=0 in SVG)
+  const SCALE = 0.4;   // pixels per metre
+  const PAD   = 20;    // viewBox padding (px)
+  let x = 0, y = 0, heading = 0;
+  const pts: string[] = ['M 0 0'];
+  const allX: number[] = [0];
+  const allY: number[] = [0];
 
   for (const seg of layout.segments) {
     if (seg.type === 'straight') {
@@ -122,44 +149,244 @@ function buildTrackPath(layout: TrackLayout): string {
       const dy = Math.sin(heading) * seg.length * SCALE;
       x += dx; y += dy;
       pts.push(`l ${dx.toFixed(1)} ${dy.toFixed(1)}`);
+      allX.push(x); allY.push(y);
+
     } else if (seg.type === 'corner' && seg.radius) {
-      // Arc: sweep angle = arcLength / radius (radians), always turning left
-      const sweep = seg.length / seg.radius;  // radians
-      const R = seg.radius * SCALE;
-      // Centre of arc: perpendicular left of current heading
-      const cx = x + Math.cos(heading - Math.PI / 2) * R;
-      const cy = y + Math.sin(heading - Math.PI / 2) * R;
-      // New end point on arc
-      const newHeading = heading + sweep;
-      const nx = cx + Math.cos(newHeading + Math.PI / 2) * R;
-      const ny = cy + Math.sin(newHeading + Math.PI / 2) * R;
-      // SVG arc: large-arc-flag=0 (sweep < π), sweep-flag=1 (clockwise in SVG coords)
-      const largeArc = sweep > Math.PI ? 1 : 0;
-      pts.push(`A ${R.toFixed(1)} ${R.toFixed(1)} 0 ${largeArc} 1 ${nx.toFixed(1)} ${ny.toFixed(1)}`);
+      // SVG y-down convention: right turn = clockwise = heading increases
+      // turn: +1 for right (clockwise), -1 for left (counterclockwise)
+      const turn  = seg.direction === 'right' ? 1 : -1;
+      const sweep = seg.length / seg.radius;   // radians
+      const R     = seg.radius * SCALE;
+
+      // Arc centre: perpendicular right (+π/2) or left (-π/2) of current heading
+      const perpAngle = heading + turn * Math.PI / 2;
+      const cx = x + Math.cos(perpAngle) * R;
+      const cy = y + Math.sin(perpAngle) * R;
+
+      const newHeading = heading + turn * sweep;
+
+      // End point: from centre, opposite of new perpendicular direction
+      const nx = cx - Math.cos(newHeading + turn * Math.PI / 2) * R;
+      const ny = cy - Math.sin(newHeading + turn * Math.PI / 2) * R;
+
+      // Sample arc points for accurate bounding box
+      const steps = Math.max(4, Math.ceil(sweep / (Math.PI / 8)));
+      for (let s = 1; s <= steps; s++) {
+        const a  = heading + turn * sweep * (s / steps);
+        const px = cx - Math.cos(a + turn * Math.PI / 2) * R;
+        const py = cy - Math.sin(a + turn * Math.PI / 2) * R;
+        allX.push(px); allY.push(py);
+      }
+
+      const largeArc  = sweep > Math.PI ? 1 : 0;
+      // sweep-flag=1 → clockwise in SVG (right turn); 0 → counterclockwise (left turn)
+      const sweepFlag = turn === 1 ? 1 : 0;
+      pts.push(`A ${R.toFixed(1)} ${R.toFixed(1)} 0 ${largeArc} ${sweepFlag} ${nx.toFixed(1)} ${ny.toFixed(1)}`);
       x = nx; y = ny;
       heading = newHeading;
     }
   }
-  pts.push('Z');
-  return pts.join(' ');
+  // No 'Z' — let the path end naturally; circuits that close will visually close,
+  // those that don't (Monaco, Suzuka) won't show a false diagonal closure line.
+
+  const minX = Math.min(...allX);
+  const minY = Math.min(...allY);
+  const maxX = Math.max(...allX);
+  const maxY = Math.max(...allY);
+  const vbW  = maxX - minX + 2 * PAD;
+  const vbH  = maxY - minY + 2 * PAD;
+
+  return {
+    d:       pts.join(' '),
+    viewBox: `${(minX - PAD).toFixed(1)} ${(minY - PAD).toFixed(1)} ${vbW.toFixed(1)} ${vbH.toFixed(1)}`,
+  };
 }
 
-function TrackMapSVG({ layout }: { layout: TrackLayout }) {
-  const path = useMemo(() => buildTrackPath(layout), [layout]);
+// ── Animated dot state ─────────────────────────────────────────────────────────
 
-  // Fit to a viewBox by measuring bounding box of the path (approx via a temp SVG element)
-  const W = 220, H = 120;
+/** Total playback duration for one animated lap (ms). Fixed 5s for UX. */
+const PLAYBACK_MS = 5000;
+
+interface TrackMapSVGProps {
+  layout: TrackLayout;
+  result: import('../physics/laptime').LapResult;
+}
+
+function TrackMapSVG({ layout, result }: TrackMapSVGProps) {
+  // Determine path data and viewBox — prefer hardcoded svgPath for real circuits
+  const { d, viewBox } = useMemo(() => {
+    if (layout.svgPath && layout.svgViewBox) {
+      return { d: layout.svgPath, viewBox: layout.svgViewBox };
+    }
+    return buildTrackPath(layout);
+  }, [layout]);
+
+  // Scale S/F marker to viewBox
+  const [vbX, vbY, vbW, vbH] = viewBox.split(' ').map(Number);
+  const u = Math.min(vbW, vbH) * 0.06;
+
+  // The S/F point is the start of the SVG path — extract from first M command
+  const sfMatch = d.match(/M\s*([\d.+-]+)\s+([\d.+-]+)/);
+  const sfX = sfMatch ? parseFloat(sfMatch[1]) : vbX;
+  const sfY = sfMatch ? parseFloat(sfMatch[2]) : vbY;
+
+  // Build a cumulative time fraction table: maps [0..1] path-fraction → time-fraction
+  // This drives the dot to go faster on straights and slower at corners.
+  const timeFractions = useMemo(() => {
+    const total = result.totalTimeSec;
+    const segs = result.segments;
+    // Build array of { pathFrac, timeFrac } pairs at each segment boundary
+    let cumLen = 0;
+    let cumTime = 0;
+    const totalLen = result.totalLengthM;
+    const pts: Array<{ pathFrac: number; timeFrac: number }> = [{ pathFrac: 0, timeFrac: 0 }];
+    for (const seg of segs) {
+      cumLen  += seg.length;
+      cumTime += seg.timeSec;
+      pts.push({
+        pathFrac: cumLen  / totalLen,
+        timeFrac: cumTime / total,
+      });
+    }
+    return pts;
+  }, [result]);
+
+  // Animation state
+  const [playing, setPlaying] = useState(false);
+  const [dotPos, setDotPos]   = useState<{ x: number; y: number } | null>(null);
+  const pathRef   = useRef<SVGPathElement | null>(null);
+  const rafRef    = useRef<number | null>(null);
+  const startRef  = useRef<number | null>(null);
+
+  /** Map a time-fraction [0..1] → path-fraction [0..1] by inverting the timeFractions table. */
+  const timeFracToPathFrac = useCallback((tf: number): number => {
+    const pts = timeFractions;
+    // Linear search — table is small (~20 entries)
+    for (let i = 1; i < pts.length; i++) {
+      if (tf <= pts[i].timeFrac) {
+        const span = pts[i].timeFrac - pts[i - 1].timeFrac;
+        const t    = span > 0 ? (tf - pts[i - 1].timeFrac) / span : 0;
+        return pts[i - 1].pathFrac + t * (pts[i].pathFrac - pts[i - 1].pathFrac);
+      }
+    }
+    return 1;
+  }, [timeFractions]);
+
+  const stopAnimation = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    startRef.current = null;
+    setPlaying(false);
+    setDotPos(null);
+  }, []);
+
+  const tick = useCallback((timestamp: number) => {
+    if (!pathRef.current) return;
+    if (startRef.current === null) startRef.current = timestamp;
+
+    const elapsed   = timestamp - startRef.current;
+    const timeFrac  = (elapsed % PLAYBACK_MS) / PLAYBACK_MS;  // loops
+    const pathFrac  = timeFracToPathFrac(timeFrac);
+    const totalLen  = pathRef.current.getTotalLength();
+    const pt        = pathRef.current.getPointAtLength(pathFrac * totalLen);
+    setDotPos({ x: pt.x, y: pt.y });
+
+    rafRef.current = requestAnimationFrame(tick);
+  }, [timeFracToPathFrac]);
+
+  const startAnimation = useCallback(() => {
+    setPlaying(true);
+    rafRef.current = requestAnimationFrame(tick);
+  }, [tick]);
+
+  // Clean up on unmount or layout change
+  useEffect(() => {
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  // Stop animation when layout changes (different circuit selected)
+  useEffect(() => {
+    stopAnimation();
+  }, [layout, stopAnimation]);
+
+  const handlePlayStop = () => {
+    if (playing) {
+      stopAnimation();
+    } else {
+      startAnimation();
+    }
+  };
+
   return (
-    <svg
-      viewBox={`-20 -20 ${W} ${H}`}
-      width="100%"
-      style={{ maxHeight: 110, display: 'block' }}
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path d={path} fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-      {/* Start/finish marker */}
-      <circle cx="0" cy="0" r="3.5" fill="var(--accent-text)" />
-    </svg>
+    <div style={{ position: 'relative' }}>
+      <svg
+        viewBox={viewBox}
+        width="100%"
+        style={{ maxHeight: 220, display: 'block' }}
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        {/* Game-style track map: thick outer stroke (kerb/edge) + thinner inner stroke (road surface) */}
+        <path
+          ref={pathRef}
+          d={d}
+          fill="none"
+          stroke="var(--border)"
+          strokeWidth="10"
+          vectorEffect="non-scaling-stroke"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+        <path
+          d={d}
+          fill="none"
+          stroke="var(--text-primary)"
+          strokeWidth="5"
+          vectorEffect="non-scaling-stroke"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+        {/* S/F marker — red dot + white bar (start/finish line style) */}
+        <circle cx={sfX} cy={sfY} r={u * 0.7} fill="#ef4444" />
+        <line
+          x1={sfX + u} y1={sfY - u * 0.8}
+          x2={sfX + u} y2={sfY + u * 0.8}
+          stroke="white" strokeWidth={u * 0.25}
+          strokeLinecap="round" vectorEffect="non-scaling-stroke"
+        />
+        {/* Animated lap position dot */}
+        {dotPos && (
+          <circle
+            cx={dotPos.x}
+            cy={dotPos.y}
+            r={u * 0.8}
+            fill="#ef4444"
+            stroke="white"
+            strokeWidth={u * 0.2}
+            vectorEffect="non-scaling-stroke"
+          />
+        )}
+      </svg>
+      {/* Play/Stop button overlaid bottom-right of the map */}
+      <button
+        onClick={handlePlayStop}
+        title={playing ? 'Stop lap animation' : 'Animate lap position (5s playback)'}
+        style={{
+          position: 'absolute', bottom: 4, right: 4,
+          padding: '3px 9px', fontSize: 10, fontWeight: 600,
+          background: playing ? 'var(--bg-active)' : 'var(--bg-card)',
+          border: `1px solid ${playing ? 'var(--accent)' : 'var(--border)'}`,
+          borderRadius: 5,
+          color: playing ? 'var(--accent-text)' : 'var(--text-secondary)',
+          cursor: 'pointer', lineHeight: 1.4,
+        }}
+      >
+        {playing ? '■ Stop' : '▶ Play'}
+      </button>
+    </div>
   );
 }
 

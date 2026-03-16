@@ -2,10 +2,12 @@
  * Export utilities — Item 5.
  *
  * exportParamsAndResultsCSV: serialises vehicle params + key results to CSV.
+ * exportLapTimeCSV: serialises lap time + segment breakdown for a chosen circuit.
  * exportChartAsSVG: grabs an SVG element from the DOM and downloads it.
  */
 
-import type { VehicleParams, PhysicsResult, PacejkaResult } from '../physics/types';
+import type { VehicleParams, PhysicsResult, PacejkaResult, PacejkaCoeffs } from '../physics/types';
+import type { LapResult } from '../physics/laptime';
 
 // ── Internal helper ───────────────────────────────────────────────────────────
 
@@ -83,6 +85,66 @@ export function exportParamsAndResultsCSV(
 
   const csv = rows.map(([k, v]) => `"${k}","${v}"`).join('\n');
   downloadBlob(new Blob([csv], { type: 'text/csv' }), 'apexsim_export.csv');
+}
+
+// ── Lap time CSV export ───────────────────────────────────────────────────────
+
+function fmtTimeCsv(sec: number): string {
+  const m = Math.floor(sec / 60);
+  const s = sec - m * 60;
+  return m > 0 ? `${m}:${s.toFixed(3).padStart(6, '0')}` : `${s.toFixed(3)}s`;
+}
+
+/** Exports lap time summary + per-segment breakdown for the chosen circuit. */
+export function exportLapTimeCSV(
+  circuitName: string,
+  result: LapResult,
+  params: VehicleParams,
+  coeffs: PacejkaCoeffs,
+): void {
+  const headerRows = [
+    ['ApexSim Lap Time Export', new Date().toISOString()],
+    ['', ''],
+    ['--- Circuit ---', ''],
+    ['circuit',       circuitName],
+    ['total_length_m', result.totalLengthM.toFixed(0)],
+    ['', ''],
+    ['--- Vehicle (summary) ---', ''],
+    ['mass_kg',        String(params.mass)],
+    ['engine_power_kW',String(params.enginePowerKW)],
+    ['drivetrain',     params.drivetrainType],
+    ['peak_mu',        coeffs.peakMu.toFixed(2)],
+    ['aero_CL',        params.aeroCL.toFixed(2)],
+    ['aero_CD',        params.aeroCD.toFixed(2)],
+    ['', ''],
+    ['--- Lap summary ---', ''],
+    ['lap_time',        fmtTimeCsv(result.totalTimeSec)],
+    ['lap_time_sec',    result.totalTimeSec.toFixed(3)],
+    ['avg_speed_kph',   result.avgSpeedKph.toFixed(1)],
+    ['top_speed_kph',   result.maxSpeedKph.toFixed(1)],
+    ['min_corner_kph',  result.minCornerKph.toFixed(1)],
+    ['', ''],
+    ['--- Segment breakdown ---', ''],
+  ];
+
+  const segmentHeader = ['segment', 'type', 'length_m', 'time_sec', 'entry_kph', 'exit_kph', 'min_kph', 'max_kph', 'time_pct'];
+
+  const csv =
+    headerRows.map(r => r.map(v => `"${v}"`).join(',')).join('\n') + '\n' +
+    segmentHeader.map(v => `"${v}"`).join(',') + '\n' +
+    result.segments.map(seg => {
+      const pct = (seg.timeSec / result.totalTimeSec * 100).toFixed(1);
+      return [
+        seg.label, seg.type, seg.length.toFixed(0),
+        seg.timeSec.toFixed(3),
+        seg.entrySpeedKph.toFixed(1), seg.exitSpeedKph.toFixed(1),
+        seg.minSpeedKph.toFixed(1), seg.maxSpeedKph.toFixed(1),
+        pct,
+      ].map(v => `"${v}"`).join(',');
+    }).join('\n');
+
+  const safeCircuit = circuitName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+  downloadBlob(new Blob([csv], { type: 'text/csv' }), `apexsim_laptime_${safeCircuit}.csv`);
 }
 
 // ── SVG export ────────────────────────────────────────────────────────────────

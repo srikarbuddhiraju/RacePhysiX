@@ -1,15 +1,34 @@
 /**
- * Pacejka Magic Formula — pure lateral (v0.1)
+ * Pacejka Magic Formula — pure lateral (v0.1), with Stage 9 load sensitivity.
  *
  * Reference: docs/physics-reference/tyre-pacejka.md §2, §7, §8
  *
  * Limitations (v0.1):
  *  1. Pure lateral only — Fx = 0 (no braking/traction combined slip)
  *  2. Full friction circle available for Fy at all times
- *  3. B, C, E held constant with Fz — only D varies (D = peakMu × Fz, linear scaling)
+ *  3. Stage 9: D = peakMu × Fz × (1 − qFz × (Fz/Fz0 − 1)) — degressive with load
  *  4. No camber thrust
  *  5. No aligning moment Mz
  */
+
+/**
+ * Stage 9 — Load-sensitive peak friction.
+ *
+ * D = μ₀ × Fz × (1 − qFz × (Fz/Fz₀ − 1))
+ *
+ * Physics: rubber contact patch grows sub-linearly with Fz (Hertzian deformation),
+ * so normalised grip Fy/Fz decreases as load rises.
+ * Reference: Pacejka TVSB §4.2.2; RCVD §2.3.
+ *
+ * @param Fz   Current tyre load [N]
+ * @param Fz0  Nominal tyre load [N] (= mass × g / 4 for a symmetric car at rest)
+ * @param mu0  Peak friction coefficient at Fz0
+ * @param qFz  Load sensitivity factor (0 = off, 0.10 = typical road, 0.20 = high sensitivity)
+ */
+export function loadSensitiveMu(Fz: number, Fz0: number, mu0: number, qFz: number): number {
+  if (qFz === 0 || Fz0 <= 0) return mu0;
+  return mu0 * Math.max(1 - qFz * (Fz / Fz0 - 1), 0.1);
+}
 
 /**
  * Compute Pacejka lateral force Fy.
@@ -18,8 +37,10 @@
  * @param Fz         Normal load [N], must be > 0
  * @param B          Stiffness factor [1/rad] — BCD equals the cornering stiffness Cα
  * @param C          Shape factor [-] — ~1.3 for lateral force
- * @param peakMu     Peak friction coefficient [-] — D = peakMu × Fz
+ * @param peakMu     Peak friction coefficient [-] — D = peakMu_eff × Fz
  * @param E          Curvature factor [-] — governs transition into saturation, typically < 0
+ * @param qFz        Load sensitivity factor (Stage 9); 0 = off (default)
+ * @param Fz0        Nominal load [N] for load sensitivity reference; ignored if qFz = 0
  * @returns          Lateral force [N], same sign as alpha
  */
 export function pacejkaFy(
@@ -29,8 +50,11 @@ export function pacejkaFy(
   C: number,
   peakMu: number,
   E: number,
+  qFz = 0,
+  Fz0 = Fz,
 ): number {
-  const D  = peakMu * Fz;
+  const muEff = loadSensitiveMu(Fz, Fz0, peakMu, qFz);
+  const D  = muEff * Fz;
   const Bx = B * alpha_rad;
   return D * Math.sin(C * Math.atan(Bx - E * (Bx - Math.atan(Bx))));
 }
@@ -45,12 +69,14 @@ export function findPeakAlpha(
   C: number,
   peakMu: number,
   E: number,
+  qFz = 0,
+  Fz0 = Fz,
 ): number {
   const STEP = 0.002; // ~0.11 deg
   let maxFy    = 0;
   let peakAlpha = STEP;
   for (let alpha = STEP; alpha <= 0.45; alpha += STEP) {
-    const Fy = pacejkaFy(alpha, Fz, B, C, peakMu, E);
+    const Fy = pacejkaFy(alpha, Fz, B, C, peakMu, E, qFz, Fz0);
     if (Fy > maxFy) { maxFy = Fy; peakAlpha = alpha; }
     else if (Fy < maxFy - 50) break; // well past peak — stop scanning
   }
@@ -71,9 +97,11 @@ export function solveSlipAngle(
   C: number,
   peakMu: number,
   E: number,
+  qFz = 0,
+  Fz0 = Fz,
 ): number {
-  const peakAlpha = findPeakAlpha(Fz, B, C, peakMu, E);
-  const FyPeak    = pacejkaFy(peakAlpha, Fz, B, C, peakMu, E);
+  const peakAlpha = findPeakAlpha(Fz, B, C, peakMu, E, qFz, Fz0);
+  const FyPeak    = pacejkaFy(peakAlpha, Fz, B, C, peakMu, E, qFz, Fz0);
 
   if (Fy_required >= FyPeak) return peakAlpha; // tyre saturated
 
@@ -82,7 +110,7 @@ export function solveSlipAngle(
   let hi = peakAlpha;
   for (let i = 0; i < 50; i++) {
     const mid   = (lo + hi) * 0.5;
-    const FyMid = pacejkaFy(mid, Fz, B, C, peakMu, E);
+    const FyMid = pacejkaFy(mid, Fz, B, C, peakMu, E, qFz, Fz0);
     if (FyMid < Fy_required) lo = mid;
     else                     hi = mid;
   }
@@ -106,6 +134,8 @@ export function solveSlipAngle(
  * @param FzOuter      Normal load on the outside (higher-loaded) tyre [N]
  * @param FzInner      Normal load on the inside (lighter) tyre [N]
  * @param FxAxle       Total longitudinal drive/brake force on this axle [N]
+ * @param qFz          Load sensitivity factor (Stage 9); 0 = off
+ * @param Fz0          Nominal load [N] for load sensitivity reference
  * @returns            Slip angle [rad]
  */
 export function solveSlipAngleTyreAxle(
@@ -117,18 +147,21 @@ export function solveSlipAngleTyreAxle(
   C: number,
   peakMu: number,
   E: number,
+  qFz = 0,
+  Fz0 = (FzOuter + FzInner) / 2,
 ): number {
   const FxPerTyre = FxAxle / 2;
 
-  // Effective peak mu after friction ellipse for each tyre
+  // Effective peak mu: load sensitivity first, then friction ellipse
   const ellipseScale = (Fz: number) => {
-    const FxMax = Math.max(peakMu * Fz, 1);   // avoid /0
+    const muLS  = loadSensitiveMu(Fz, Fz0, peakMu, qFz);
+    const FxMax = Math.max(muLS * Fz, 1);   // avoid /0
     const ratio = Math.min(Math.abs(FxPerTyre) / FxMax, 0.98);
-    return Math.sqrt(1 - ratio * ratio);
+    return muLS * Math.sqrt(1 - ratio * ratio);
   };
 
-  const peakMuOuter = peakMu * ellipseScale(FzOuter);
-  const peakMuInner = peakMu * ellipseScale(FzInner);
+  const peakMuOuter = ellipseScale(FzOuter);
+  const peakMuInner = ellipseScale(FzInner);
 
   // Combined Fy for this axle at a given slip angle
   const getFyAxle = (alpha: number): number =>
