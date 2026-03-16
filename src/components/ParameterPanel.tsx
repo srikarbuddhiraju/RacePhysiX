@@ -332,7 +332,7 @@ function SliderRow({
   set: (key: keyof VehicleParams, v: number) => void;
 }) {
   const { label, key, min, max, step, unit, format, tip } = cfg;
-  const raw     = params[key] as number;
+  const raw     = (params[key] as number) ?? min;   // guard: undefined during HMR state mismatch
   const display = format ? format(raw) : raw < 10 ? raw.toFixed(2) : raw.toFixed(0);
 
   return (
