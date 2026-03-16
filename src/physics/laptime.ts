@@ -276,6 +276,185 @@ export const TRACK_PRESETS: Record<string, TrackLayout> = {
       { type: 'straight', length: 1256, label: 'Main straight approach'                                       },
     ],
   },
+
+  // ── Additional real-world circuits (GPS-derived from TUMFTM Racetrack Database) ──
+  // Attribution: TU Munich, Institute of Automotive Technology (FTM)
+  // Source: https://github.com/TUMFTM/racetrack-database (LGPL-3.0)
+  // Circumradius segmentation algorithm applied to x_m/y_m coordinates.
+
+  nurburgring_gp: {
+    name: 'Nürburgring GP (5.148 km)',
+    // GPS-derived from TUMFTM Racetrack Database (LGPL-3.0) https://github.com/TUMFTM/racetrack-database
+    segments: [
+      { type: 'straight', length: 375 },
+      { type: 'corner',   length: 60,  radius: 57,  direction: 'right' },
+      { type: 'straight', length: 110 },
+      { type: 'corner',   length: 120, radius: 66,  direction: 'left'  },
+      { type: 'straight', length: 110 },
+      { type: 'corner',   length: 215, radius: 59,  direction: 'left'  },
+      { type: 'straight', length: 425 },
+      { type: 'corner',   length: 95,  radius: 84,  direction: 'left'  },
+      { type: 'straight', length: 85  },
+      { type: 'corner',   length: 80,  radius: 51,  direction: 'right' },
+      { type: 'straight', length: 503 },
+      { type: 'corner',   length: 125, radius: 47,  direction: 'right' },
+      { type: 'straight', length: 300 },
+      { type: 'corner',   length: 80,  radius: 122, direction: 'left'  },
+      { type: 'straight', length: 50  },
+      { type: 'corner',   length: 50,  radius: 137, direction: 'right' },
+      { type: 'straight', length: 385 },
+      { type: 'corner',   length: 55,  radius: 62,  direction: 'left'  },
+      { type: 'straight', length: 140 },
+      { type: 'corner',   length: 100, radius: 74,  direction: 'right' },
+      { type: 'straight', length: 360 },
+      { type: 'corner',   length: 50,  radius: 148, direction: 'right' },
+      { type: 'straight', length: 440 },
+      { type: 'corner',   length: 20,  radius: 78,  direction: 'left'  },
+      { type: 'straight', length: 45  },
+      { type: 'corner',   length: 45,  radius: 86,  direction: 'right' },
+      { type: 'straight', length: 145 },
+      { type: 'corner',   length: 125, radius: 73,  direction: 'right' },
+      { type: 'straight', length: 455 },
+    ],
+  },
+
+  bahrain: {
+    name: 'Bahrain International Circuit (5.412 km)',
+    // GPS-derived from TUMFTM Racetrack Database (LGPL-3.0) https://github.com/TUMFTM/racetrack-database
+    segments: [
+      { type: 'straight', length: 730 },
+      { type: 'corner',   length: 35,  radius: 58,  direction: 'right' },
+      { type: 'straight', length: 65  },
+      { type: 'corner',   length: 20,  radius: 132, direction: 'left'  },
+      { type: 'straight', length: 100 },
+      { type: 'corner',   length: 20,  radius: 137, direction: 'right' },
+      { type: 'straight', length: 555 },
+      { type: 'corner',   length: 60,  radius: 74,  direction: 'right' },
+      { type: 'straight', length: 220 },
+      { type: 'corner',   length: 15,  radius: 178, direction: 'left'  },
+      { type: 'straight', length: 60  },
+      { type: 'corner',   length: 50,  radius: 69,  direction: 'right' },
+      { type: 'straight', length: 70  },
+      { type: 'corner',   length: 55,  radius: 83,  direction: 'left'  },
+      { type: 'straight', length: 195 },
+      { type: 'corner',   length: 59,  radius: 43,  direction: 'right' },
+      { type: 'straight', length: 300 },
+      { type: 'corner',   length: 75,  radius: 111, direction: 'left'  },
+      { type: 'straight', length: 45  },
+      { type: 'corner',   length: 15,  radius: 68,  direction: 'left'  },
+      { type: 'straight', length: 700 },
+      { type: 'corner',   length: 214, radius: 118, direction: 'left'  },
+      { type: 'straight', length: 95  },
+      { type: 'corner',   length: 140, radius: 133, direction: 'right' },
+      { type: 'straight', length: 160 },
+      { type: 'corner',   length: 15,  radius: 129, direction: 'right' },
+      { type: 'straight', length: 45  },
+      { type: 'corner',   length: 80,  radius: 71,  direction: 'right' },
+      { type: 'straight', length: 1134 },
+    ],
+  },
+
+  barcelona: {
+    name: 'Circuit de Barcelona-Catalunya (4.655 km)',
+    // GPS-derived from TUMFTM Racetrack Database (LGPL-3.0) https://github.com/TUMFTM/racetrack-database
+    segments: [
+      { type: 'straight', length: 822 },
+      { type: 'corner',   length: 150, radius: 81,  direction: 'right' },
+      { type: 'straight', length: 105 },
+      { type: 'corner',   length: 250, radius: 125, direction: 'right' },
+      { type: 'straight', length: 365 },
+      { type: 'corner',   length: 219, radius: 80,  direction: 'right' },
+      { type: 'straight', length: 190 },
+      { type: 'corner',   length: 85,  radius: 43,  direction: 'left'  },
+      { type: 'straight', length: 165 },
+      { type: 'corner',   length: 10,  radius: 191, direction: 'right' },
+      { type: 'straight', length: 170 },
+      { type: 'corner',   length: 60,  radius: 59,  direction: 'left'  },
+      { type: 'straight', length: 40  },
+      { type: 'corner',   length: 35,  radius: 116, direction: 'right' },
+      { type: 'straight', length: 195 },
+      { type: 'corner',   length: 120, radius: 98,  direction: 'right' },
+      { type: 'straight', length: 490 },
+      { type: 'corner',   length: 50,  radius: 41,  direction: 'left'  },
+      { type: 'straight', length: 165 },
+      { type: 'corner',   length: 170, radius: 64,  direction: 'right' },
+      { type: 'straight', length: 155 },
+      { type: 'corner',   length: 30,  radius: 73,  direction: 'right' },
+      { type: 'straight', length: 110 },
+      { type: 'corner',   length: 59,  radius: 142, direction: 'right' },
+      { type: 'straight', length: 75  },
+      { type: 'corner',   length: 120, radius: 98,  direction: 'right' },
+      { type: 'straight', length: 250 },
+    ],
+  },
+
+  hungaroring: {
+    name: 'Hungaroring (4.381 km)',
+    // GPS-derived from TUMFTM Racetrack Database (LGPL-3.0) https://github.com/TUMFTM/racetrack-database
+    segments: [
+      { type: 'straight', length: 601 },
+      { type: 'corner',   length: 85,  radius: 52,  direction: 'right' },
+      { type: 'straight', length: 405 },
+      { type: 'corner',   length: 130, radius: 62,  direction: 'left'  },
+      { type: 'straight', length: 110 },
+      { type: 'corner',   length: 30,  radius: 90,  direction: 'right' },
+      { type: 'straight', length: 430 },
+      { type: 'corner',   length: 45,  radius: 89,  direction: 'left'  },
+      { type: 'straight', length: 170 },
+      { type: 'corner',   length: 140, radius: 71,  direction: 'right' },
+      { type: 'straight', length: 235 },
+      { type: 'corner',   length: 55,  radius: 65,  direction: 'right' },
+      { type: 'straight', length: 150 },
+      { type: 'corner',   length: 50,  radius: 72,  direction: 'left'  },
+      { type: 'straight', length: 70  },
+      { type: 'corner',   length: 70,  radius: 61,  direction: 'right' },
+      { type: 'straight', length: 150 },
+      { type: 'corner',   length: 50,  radius: 115, direction: 'left'  },
+      { type: 'straight', length: 115 },
+      { type: 'corner',   length: 80,  radius: 88,  direction: 'right' },
+      { type: 'straight', length: 365 },
+      { type: 'corner',   length: 30,  radius: 51,  direction: 'right' },
+      { type: 'straight', length: 175 },
+      { type: 'corner',   length: 130, radius: 51,  direction: 'left'  },
+      { type: 'straight', length: 145 },
+      { type: 'corner',   length: 185, radius: 69,  direction: 'right' },
+      { type: 'straight', length: 180 },
+    ],
+  },
+
+  montreal: {
+    name: 'Circuit Gilles Villeneuve (4.361 km)',
+    // GPS-derived from TUMFTM Racetrack Database (LGPL-3.0) https://github.com/TUMFTM/racetrack-database
+    segments: [
+      { type: 'straight', length: 245 },
+      { type: 'corner',   length: 175, radius: 57,  direction: 'right' },
+      { type: 'straight', length: 115 },
+      { type: 'corner',   length: 10,  radius: 192, direction: 'right' },
+      { type: 'straight', length: 170 },
+      { type: 'corner',   length: 25,  radius: 74,  direction: 'right' },
+      { type: 'straight', length: 45  },
+      { type: 'corner',   length: 15,  radius: 91,  direction: 'left'  },
+      { type: 'straight', length: 125 },
+      { type: 'corner',   length: 20,  radius: 153, direction: 'left'  },
+      { type: 'straight', length: 45  },
+      { type: 'corner',   length: 25,  radius: 116, direction: 'right' },
+      { type: 'straight', length: 40  },
+      { type: 'corner',   length: 25,  radius: 161, direction: 'right' },
+      { type: 'straight', length: 165 },
+      { type: 'corner',   length: 35,  radius: 42,  direction: 'left'  },
+      { type: 'straight', length: 45  },
+      { type: 'corner',   length: 90,  radius: 81,  direction: 'right' },
+      { type: 'straight', length: 609 },
+      { type: 'corner',   length: 95,  radius: 74,  direction: 'left'  },
+      { type: 'straight', length: 565 },
+      { type: 'corner',   length: 49,  radius: 30,  direction: 'right' },
+      { type: 'straight', length: 85  },
+      { type: 'corner',   length: 25,  radius: 157, direction: 'left'  },
+      { type: 'straight', length: 1068 },
+      { type: 'corner',   length: 35,  radius: 59,  direction: 'right' },
+      { type: 'straight', length: 415 },
+    ],
+  },
 };
 
 // ── Vehicle capability inputs ─────────────────────────────────────────────────
@@ -469,4 +648,147 @@ export function computeLapTime(layout: TrackLayout, inp: LapSimInput): LapResult
   const minCornerKph = Math.min(...segResults.filter(s => s.type === 'corner').map(s => s.minSpeedKph));
 
   return { totalTimeSec: totalTime, totalLengthM: totalLength, avgSpeedKph, maxSpeedKph, minCornerKph, segments: segResults };
+}
+
+// ── Race simulation ───────────────────────────────────────────────────────────
+
+export interface LapData {
+  lap:               number;
+  lapTimeSec:        number;
+  s1Sec:             number;    // sector 1 time (first 1/3 of track distance)
+  s2Sec:             number;    // sector 2 time (middle 1/3)
+  s3Sec:             number;    // sector 3 time (final 1/3)
+  tyreTempC:         number;    // tyre temperature at end of lap
+  muFraction:        number;    // effective μ fraction vs optimal (1.0 = perfect)
+  fuelMassKg:        number;    // fuel remaining at start of this lap
+  gapToFastestSec:   number;    // delta to fastest lap (0 for the fastest lap itself)
+}
+
+export interface RaceResult {
+  laps:           LapData[];
+  fastestLapSec:  number;
+  fastestLapNum:  number;       // 1-based
+  totalTimeSec:   number;
+}
+
+/**
+ * Multi-lap race simulation.
+ *
+ * Per-lap evolution:
+ *   Tyre temperature: exponential warmup toward optTyreTempC (time-constant 2.5 laps),
+ *   then linear drift (degradation, ~1.5°C/lap) beyond optimum.
+ *   μ fraction: Gaussian bell curve centred at optTyreTempC.
+ *   Fuel mass: decreases by fuelBurnRateKgPerLap each lap (lighter car = faster).
+ *
+ * Sectors: split at 1/3 and 2/3 of cumulative track distance (arbitrary sectors,
+ *   not the actual circuit sector boundaries).
+ */
+export function simulateRace(
+  layout:                  TrackLayout,
+  baseInp:                 LapSimInput,
+  numLaps:                 number,
+  fuelLoadKg:              number,   // total fuel at race start (kg)
+  fuelBurnRateKgPerLap:    number,   // kg consumed per lap
+  startTyreTempC:          number,   // tyre temperature at lap 1 (cold, e.g. 30°C)
+  optTyreTempC:            number,   // optimal tyre temperature (peak μ)
+  halfWidthC:              number,   // Gaussian half-width (°C) — μ drops 60% at ±halfWidth
+  floorMu:                 number,   // minimum μ fraction at extreme temperatures
+): RaceResult {
+  const WARMUP_TC   = 2.5;    // laps (time constant for exponential warmup)
+  const DEG_RATE    = 1.5;    // °C per lap drift above optimal temperature
+
+  const laps: LapData[] = [];
+  let tyreTempC = startTyreTempC;
+
+  for (let lap = 1; lap <= numLaps; lap++) {
+    // Tyre temperature evolution (before lap starts — affects this lap's μ)
+    if (tyreTempC < optTyreTempC) {
+      tyreTempC += (optTyreTempC - tyreTempC) * (1 - Math.exp(-1 / WARMUP_TC));
+    } else {
+      tyreTempC += DEG_RATE;
+    }
+
+    // μ fraction: Gaussian bell centred at optTyreTempC
+    const dt = tyreTempC - optTyreTempC;
+    const muFraction = floorMu + (1 - floorMu) * Math.exp(-(dt * dt) / (2 * halfWidthC * halfWidthC));
+
+    // Fuel remaining at START of this lap (lap 1 = full load)
+    const fuelMassKg = Math.max(0, fuelLoadKg - (lap - 1) * fuelBurnRateKgPerLap);
+
+    // Effective vehicle mass: base mass already contains initial fuel;
+    // subtract burned fuel to get current mass.
+    const lapMass = baseInp.mass - fuelLoadKg + fuelMassKg;
+
+    const lapInp: LapSimInput = {
+      ...baseInp,
+      mass:    Math.max(lapMass, baseInp.mass * 0.5),  // safety floor
+      peakMu:  baseInp.peakMu * muFraction,
+    };
+
+    const lapResult = computeLapTime(layout, lapInp);
+
+    // Sector splits at 1/3 and 2/3 of total distance
+    const totalLen  = lapResult.totalLengthM;
+    const s1End     = totalLen / 3;
+    const s2End     = totalLen * 2 / 3;
+    let s1Sec = 0, s2Sec = 0, s3Sec = 0;
+    let cumLen = 0;
+    let sector = 1;
+
+    for (const seg of lapResult.segments) {
+      const segStart = cumLen;
+      cumLen += seg.length;
+
+      if (sector === 1) {
+        if (cumLen <= s1End) {
+          s1Sec += seg.timeSec;
+        } else {
+          const frac = seg.length > 0 ? (s1End - segStart) / seg.length : 0;
+          s1Sec += seg.timeSec * frac;
+          // The rest might cross s2End in the same segment — handle below
+          const rem = seg.timeSec * (1 - frac);
+          const remLen = seg.length * (1 - frac);
+          if (cumLen <= s2End) {
+            s2Sec += rem;
+            sector = 2;
+          } else {
+            const frac2 = remLen > 0 ? (s2End - s1End) / remLen : 0;
+            s2Sec += rem * frac2;
+            s3Sec += rem * (1 - frac2);
+            sector = 3;
+          }
+        }
+      } else if (sector === 2) {
+        if (cumLen <= s2End) {
+          s2Sec += seg.timeSec;
+        } else {
+          const frac = seg.length > 0 ? (s2End - segStart) / seg.length : 0;
+          s2Sec += seg.timeSec * frac;
+          s3Sec += seg.timeSec * (1 - frac);
+          sector = 3;
+        }
+      } else {
+        s3Sec += seg.timeSec;
+      }
+    }
+
+    laps.push({
+      lap, lapTimeSec: lapResult.totalTimeSec,
+      s1Sec, s2Sec, s3Sec,
+      tyreTempC, muFraction, fuelMassKg,
+      gapToFastestSec: 0,  // filled below
+    });
+  }
+
+  // Fill gap-to-fastest
+  const fastestLapSec = Math.min(...laps.map(l => l.lapTimeSec));
+  const fastestLapNum = laps.findIndex(l => l.lapTimeSec === fastestLapSec) + 1;
+  for (const l of laps) l.gapToFastestSec = l.lapTimeSec - fastestLapSec;
+
+  return {
+    laps,
+    fastestLapSec,
+    fastestLapNum,
+    totalTimeSec: laps.reduce((s, l) => s + l.lapTimeSec, 0),
+  };
 }

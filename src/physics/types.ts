@@ -50,6 +50,9 @@ export interface VehicleParams {
   wheelRadiusM:         number;      // loaded tyre radius (m) — e.g. 0.32m for 225/45R17
   enginePeakRpm:        number;      // RPM at peak power (e.g. 5500)
   engineRedlineRpm:     number;      // rev limit (e.g. 6500)
+  // ── Race simulation ──────────────────────────────────────────────────────────
+  fuelLoadKg:              number;   // kg — fuel mass at race start (e.g. 45 for road, 2 for short sprint)
+  fuelBurnRateKgPerLap:    number;   // kg/lap — fuel consumed per lap (e.g. 2.5 road, 1.7 F1)
 }
 
 export type Balance = 'understeer' | 'neutral' | 'oversteer';

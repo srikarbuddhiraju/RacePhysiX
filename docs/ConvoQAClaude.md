@@ -4,6 +4,23 @@ Running log. Most recent session at top.
 
 ---
 
+## Session 11 — 2026-03-16
+
+### Decisions Made
+- **5 new circuits**: Added nurburgring_gp, bahrain, barcelona, hungaroring, montreal. GPS-derived from TUMFTM Racetrack Database (LGPL-3.0). Circumradius segmentation: 3-point circumradius → rolling-mean smooth (w=9) → threshold 200m → merge consecutive same-type segments → harmonic-mean radius per corner. Lengths accurate to ≤9m; corrected by adjusting largest straight. Attribution comment in every circuit block.
+- **TUMFTM CSV filenames**: Nuerburgring.csv, Sakhir.csv (not Bahrain), Catalunya.csv, Budapest.csv, Montreal.csv.
+- **Assetto Corsa tracks**: CANNOT be used — EULA explicitly prohibits public/educational use.
+- **Race simulation**: `simulateRace()` added to laptime.ts. Tyre model: exponential warmup (TC=2.5 laps) then linear drift (1.5°C/lap); μ = Gaussian bell. Fuel model: mass decreases per lap. Sectors split at 1/3 and 2/3 distance (not circuit-specific sector markers).
+- **Fuel params**: Added to VehicleParams (`fuelLoadKg`, `fuelBurnRateKgPerLap`). Defaults: 45 kg load, 2.5 kg/lap burn.
+- **Race UI**: Race Simulation section in LapTimePanel. Num-laps slider, start-temp slider, "Simulate Race" button, results table. Fastest lap marked with ★.
+
+### Open Questions
+- [ ] Browser verify: race sim tyre warmup visible in first 3 laps; degradation after ~10 laps
+- [ ] Track editor: user-editable segment table with live SVG preview (next feature)
+- [ ] Deploy to Cloudflare Pages — pending browser verify
+
+---
+
 ## Session 6 — 2026-03-15
 
 ### Decisions Made
