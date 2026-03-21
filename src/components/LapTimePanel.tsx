@@ -63,7 +63,7 @@ type RaceSimState =
 
 // ── localStorage for custom circuits ─────────────────────────────────────────
 
-const STORAGE_KEY = 'apexsim_custom_tracks';
+const STORAGE_KEY = 'racephysix_custom_tracks';
 
 function loadCustomTracks(): Record<string, TrackLayout> {
   try {

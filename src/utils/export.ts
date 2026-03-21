@@ -29,7 +29,7 @@ export function exportParamsAndResultsCSV(
   pacejka: PacejkaResult,
 ): void {
   const rows: [string, string | number][] = [
-    ['ApexSim export', new Date().toISOString()],
+    ['RacePhysiX export', new Date().toISOString()],
     ['', ''],
     ['--- Vehicle parameters ---', ''],
     ['mass_kg',                  params.mass],
@@ -84,7 +84,7 @@ export function exportParamsAndResultsCSV(
   ];
 
   const csv = rows.map(([k, v]) => `"${k}","${v}"`).join('\n');
-  downloadBlob(new Blob([csv], { type: 'text/csv' }), 'apexsim_export.csv');
+  downloadBlob(new Blob([csv], { type: 'text/csv' }), 'racephysix_export.csv');
 }
 
 // ── Lap time CSV export ───────────────────────────────────────────────────────
@@ -103,7 +103,7 @@ export function exportLapTimeCSV(
   coeffs: PacejkaCoeffs,
 ): void {
   const headerRows = [
-    ['ApexSim Lap Time Export', new Date().toISOString()],
+    ['RacePhysiX Lap Time Export', new Date().toISOString()],
     ['', ''],
     ['--- Circuit ---', ''],
     ['circuit',       circuitName],
@@ -144,7 +144,7 @@ export function exportLapTimeCSV(
     }).join('\n');
 
   const safeCircuit = circuitName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-  downloadBlob(new Blob([csv], { type: 'text/csv' }), `apexsim_laptime_${safeCircuit}.csv`);
+  downloadBlob(new Blob([csv], { type: 'text/csv' }), `racephysix_laptime_${safeCircuit}.csv`);
 }
 
 // ── SVG export ────────────────────────────────────────────────────────────────

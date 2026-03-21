@@ -1,15 +1,15 @@
-# ApexSim — Free Browser-Based Vehicle Dynamics & Lap Time Simulator
+# RacePhysiX — Free Browser-Based Vehicle Dynamics & Lap Time Simulator
 
 A physics-accurate car setup and lap time simulation tool that runs entirely in the browser.
 No install, no login. Designed for motorsport engineers, racing enthusiasts, and students learning vehicle dynamics.
 
-**Live:** [apexsim.srikarbuddhiraju.com](https://apexsim.srikarbuddhiraju.com)
+**Live:** [racephysix.srikarbuddhiraju.com](https://racephysix.srikarbuddhiraju.com)
 
 ---
 
-## What is ApexSim?
+## What is RacePhysiX?
 
-ApexSim is an open-source vehicle dynamics simulator covering the full physics stack from tyre model
+RacePhysiX is an open-source vehicle dynamics simulator covering the full physics stack from tyre model
 to lap time estimation. Adjust any parameter — suspension stiffness, brake bias, downforce, tyre compound —
 and immediately see the effect on handling balance, cornering speed, braking distances, and predicted lap time
 across 19 real-world circuits.
@@ -85,7 +85,7 @@ Laguna Seca, Imola, Le Mans, Mugello, Sebring
 
 ## Disclaimers
 
-- **Educational tool only.** ApexSim is not a certified engineering tool. Lap time predictions are
+- **Educational tool only.** RacePhysiX is not a certified engineering tool. Lap time predictions are
   indicative, not race-engineer-grade. Do not use outputs for real vehicle setup decisions.
 - **Point-mass model.** The lap time simulator uses a simplified point-mass vehicle model. It does not
   simulate transient dynamics (weight transfer timing, tyre warm-up laps, traction control intervention).
@@ -131,7 +131,7 @@ licensed under the [Open Database Licence (ODbL)](https://opendatacommons.org/li
 
 ## License
 
-ApexSim application code: [MIT](LICENSE)
+RacePhysiX application code: [MIT](LICENSE)
 
 Circuit GPS data:
 - TUMFTM circuits: [LGPL-3.0](https://www.gnu.org/licenses/lgpl-3.0.txt)

@@ -123,7 +123,7 @@ export function ParameterPanel({ params, onChange }: Props) {
 
   return (
     <div className="param-panel">
-      <div className="param-title">ApexSim</div>
+      <div className="param-title">RacePhysiX</div>
       <div className="param-subtitle">Vehicle Dynamics Simulator</div>
 
       {/* ── Tab bar ────────────────────────────────────────────────────────── */}
