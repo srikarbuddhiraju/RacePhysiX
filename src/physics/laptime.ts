@@ -434,6 +434,159 @@ export const TRACK_PRESETS: Record<string, TrackLayout> = {
       { type: 'straight', length: 415 },
     ],
   },
+
+  // ── GT / Endurance circuits (schematic — correct radii, verified arc lengths) ──
+
+  laguna_seca: {
+    name: 'Laguna Seca (3.602 km)',
+    segments: [
+      { type: 'straight', length: 400,  label: 'Start/Finish straight'       },
+      { type: 'corner',   length: 125,  radius: 130, direction: 'right', label: 'T1'                   },  // fast right — 55°
+      { type: 'straight', length: 80                                          },
+      { type: 'corner',   length: 58,   radius: 55,  direction: 'right', label: 'T2'                   },  // right — 60°
+      { type: 'straight', length: 300                                         },
+      { type: 'corner',   length: 47,   radius: 60,  direction: 'right', label: 'T3'                   },  // right — 45°
+      { type: 'corner',   length: 63,   radius: 60,  direction: 'right', label: 'T4'                   },  // right — 60°
+      { type: 'straight', length: 220                                         },
+      { type: 'corner',   length: 131,  radius: 150, direction: 'right', label: 'T5 fast right'        },  // fast right — 50°
+      { type: 'straight', length: 80                                          },
+      { type: 'corner',   length: 43,   radius: 35,  direction: 'left',  label: 'T6'                   },  // left — 70°
+      { type: 'straight', length: 550,  label: 'Uphill to Corkscrew'         },
+      { type: 'corner',   length: 21,   radius: 15,  direction: 'left',  label: 'Corkscrew T8a'        },  // Corkscrew entry left — 80°
+      { type: 'corner',   length: 16,   radius: 12,  direction: 'right', label: 'Corkscrew T8b'        },  // Corkscrew exit right — 75°
+      { type: 'straight', length: 150,  label: 'Downhill exit'               },
+      { type: 'corner',   length: 52,   radius: 18,  direction: 'right', label: 'T9 hairpin'           },  // hairpin right — 165°
+      { type: 'straight', length: 280                                         },
+      { type: 'corner',   length: 38,   radius: 40,  direction: 'right', label: 'T10'                  },  // right — 55°
+      { type: 'straight', length: 55                                          },
+      { type: 'corner',   length: 134,  radius: 90,  direction: 'right', label: 'T11 Rainey Corner'    },  // sweeping right — 85°
+      { type: 'straight', length: 759,  label: 'Return to S/F'               },
+    ],
+  },
+
+  imola: {
+    name: 'Imola (4.909 km)',
+    segments: [
+      { type: 'straight', length: 650,  label: 'Start/Finish straight'                   },
+      { type: 'corner',   length: 71,   radius: 90,  direction: 'right', label: 'Tamburello T1'        },  // chicane right — 45°
+      { type: 'straight', length: 50                                                      },
+      { type: 'corner',   length: 63,   radius: 80,  direction: 'left',  label: 'Tamburello T2'        },  // chicane left — 45°
+      { type: 'straight', length: 280                                                     },
+      { type: 'corner',   length: 98,   radius: 70,  direction: 'right', label: 'Villeneuve'           },  // right — 80°
+      { type: 'straight', length: 400                                                     },
+      { type: 'corner',   length: 63,   radius: 22,  direction: 'right', label: 'Tosa hairpin'         },  // tight right — 165°
+      { type: 'straight', length: 400                                                     },
+      { type: 'corner',   length: 141,  radius: 90,  direction: 'left',  label: 'Piratella'            },  // fast left — 90°
+      { type: 'straight', length: 180                                                     },
+      { type: 'corner',   length: 42,   radius: 40,  direction: 'right', label: 'Acque Minerali T1'    },  // right — 60°
+      { type: 'straight', length: 70                                                      },
+      { type: 'corner',   length: 37,   radius: 35,  direction: 'left',  label: 'Acque Minerali T2'    },  // left — 60°
+      { type: 'straight', length: 380                                                     },
+      { type: 'corner',   length: 43,   radius: 45,  direction: 'right', label: 'Variante Alta T1'     },  // right — 55°
+      { type: 'straight', length: 55                                                      },
+      { type: 'corner',   length: 38,   radius: 40,  direction: 'left',  label: 'Variante Alta T2'     },  // left — 55°
+      { type: 'straight', length: 935,  label: 'Long back straight'                      },
+      { type: 'corner',   length: 96,   radius: 55,  direction: 'left',  label: 'Rivazza 1'            },  // left — 100°
+      { type: 'straight', length: 100                                                     },
+      { type: 'corner',   length: 63,   radius: 45,  direction: 'left',  label: 'Rivazza 2'            },  // left — 80°
+      { type: 'straight', length: 202                                                     },
+      { type: 'corner',   length: 53,   radius: 55,  direction: 'right', label: 'Variante Bassa T1'    },  // right — 55°
+      { type: 'straight', length: 55                                                      },
+      { type: 'corner',   length: 44,   radius: 50,  direction: 'left',  label: 'Variante Bassa T2'    },  // left — 50°
+      { type: 'straight', length: 300                                                     },
+    ],
+  },
+
+  le_mans: {
+    name: 'Le Mans (13.626 km)',
+    segments: [
+      { type: 'straight', length: 1500, label: 'Start/Finish straight'                   },
+      { type: 'corner',   length: 58,   radius: 55,  direction: 'right', label: 'Dunlop T1'            },  // chicane right — 60°
+      { type: 'straight', length: 25                                                      },
+      { type: 'corner',   length: 48,   radius: 50,  direction: 'left',  label: 'Dunlop T2'            },  // chicane left — 55°
+      { type: 'straight', length: 100                                                     },
+      { type: 'corner',   length: 168,  radius: 120, direction: 'right', label: 'Esses'                },  // fast right sweeper — 80°
+      { type: 'straight', length: 1000                                                    },
+      { type: 'corner',   length: 118,  radius: 75,  direction: 'right', label: 'Tertre Rouge'         },  // sweeping right — 90°
+      { type: 'straight', length: 200                                                     },
+      { type: 'straight', length: 3000, label: 'Mulsanne straight'                       },
+      { type: 'corner',   length: 62,   radius: 65,  direction: 'right', label: 'Mulsanne chicane 1 T1' }, // right — 55°
+      { type: 'straight', length: 50                                                      },
+      { type: 'corner',   length: 58,   radius: 60,  direction: 'left',  label: 'Mulsanne chicane 1 T2' }, // left — 55°
+      { type: 'straight', length: 2000                                                    },
+      { type: 'corner',   length: 62,   radius: 65,  direction: 'right', label: 'Mulsanne chicane 2 T1' }, // right — 55°
+      { type: 'straight', length: 50                                                      },
+      { type: 'corner',   length: 58,   radius: 60,  direction: 'left',  label: 'Mulsanne chicane 2 T2' }, // left — 55°
+      { type: 'straight', length: 1000                                                    },
+      { type: 'corner',   length: 112,  radius: 40,  direction: 'right', label: 'Mulsanne corner'      },  // right — 160°
+      { type: 'straight', length: 500                                                     },
+      { type: 'corner',   length: 98,   radius: 80,  direction: 'right', label: 'Indianapolis'         },  // right — 70°
+      { type: 'straight', length: 1200                                                    },
+      { type: 'corner',   length: 84,   radius: 30,  direction: 'right', label: 'Arnage'               },  // tight right — 160°
+      { type: 'straight', length: 500                                                     },
+      { type: 'corner',   length: 110,  radius: 90,  direction: 'right', label: 'Porsche S1'           },  // right — 70°
+      { type: 'straight', length: 100                                                     },
+      { type: 'corner',   length: 104,  radius: 85,  direction: 'left',  label: 'Porsche S2'           },  // left — 70°
+      { type: 'straight', length: 80                                                      },
+      { type: 'corner',   length: 94,   radius: 90,  direction: 'right', label: 'Porsche S3'           },  // right — 60°
+      { type: 'straight', length: 200                                                     },
+      { type: 'corner',   length: 43,   radius: 45,  direction: 'right', label: 'Ford chicane T1'      },  // right — 55°
+      { type: 'straight', length: 30                                                      },
+      { type: 'corner',   length: 38,   radius: 40,  direction: 'left',  label: 'Ford chicane T2'      },  // left — 55°
+      { type: 'straight', length: 776,  label: 'Return to S/F'                           },
+    ],
+  },
+
+  sebring: {
+    name: 'Sebring (4.702 km)',
+    segments: [
+      { type: 'straight', length: 700,  label: 'Start/Finish straight'       },
+      { type: 'corner',   length: 72,   radius: 25,  direction: 'right', label: 'T1 hairpin'           },  // tight right — 165°
+      { type: 'straight', length: 400                                         },
+      { type: 'corner',   length: 67,   radius: 55,  direction: 'right', label: 'T3'                   },  // right — 70°
+      { type: 'straight', length: 500                                         },
+      { type: 'corner',   length: 98,   radius: 70,  direction: 'left',  label: 'T5'                   },  // left — 80°
+      { type: 'straight', length: 350                                         },
+      { type: 'corner',   length: 101,  radius: 35,  direction: 'left',  label: 'T7 hairpin'           },  // left hairpin — 165°
+      { type: 'straight', length: 550                                         },
+      { type: 'corner',   length: 98,   radius: 80,  direction: 'left',  label: 'T10'                  },  // fast left — 70°
+      { type: 'straight', length: 80                                          },
+      { type: 'corner',   length: 42,   radius: 40,  direction: 'right', label: 'T11'                  },  // right — 60°
+      { type: 'straight', length: 350                                         },
+      { type: 'corner',   length: 63,   radius: 22,  direction: 'left',  label: 'T13 hairpin'          },  // left hairpin — 165°
+      { type: 'straight', length: 400                                         },
+      { type: 'corner',   length: 67,   radius: 55,  direction: 'right', label: 'T15'                  },  // right — 70°
+      { type: 'straight', length: 200                                         },
+      { type: 'corner',   length: 84,   radius: 30,  direction: 'right', label: 'T17 hairpin'          },  // right — 160°
+      { type: 'straight', length: 480,  label: 'Return to S/F'               },
+    ],
+  },
+
+  mugello: {
+    name: 'Mugello (5.245 km)',
+    segments: [
+      { type: 'straight', length: 1100, label: 'Start/Finish straight'       },
+      { type: 'corner',   length: 112,  radius: 40,  direction: 'right', label: 'San Donato'           },  // tight right — 160°
+      { type: 'straight', length: 150                                         },
+      { type: 'corner',   length: 102,  radius: 65,  direction: 'right', label: 'Luco / Poggio Secco'  },  // right sweeper — 90°
+      { type: 'straight', length: 100                                         },
+      { type: 'corner',   length: 49,   radius: 35,  direction: 'right', label: 'Materassi'            },  // right — 80°
+      { type: 'straight', length: 300                                         },
+      { type: 'corner',   length: 98,   radius: 80,  direction: 'left',  label: 'Borgo San Lorenzo'    },  // left — 70°
+      { type: 'straight', length: 500                                         },
+      { type: 'corner',   length: 173,  radius: 110, direction: 'right', label: 'Casanova-Savelli'     },  // fast right — 90°
+      { type: 'straight', length: 600                                         },
+      { type: 'corner',   length: 168,  radius: 80,  direction: 'right', label: 'Arrabbiata 1+2'       },  // right sweeper — 120°
+      { type: 'straight', length: 150                                         },
+      { type: 'corner',   length: 42,   radius: 40,  direction: 'left',  label: 'Scarperia T1'         },  // chicane left — 60°
+      { type: 'straight', length: 30                                          },
+      { type: 'corner',   length: 42,   radius: 40,  direction: 'right', label: 'Scarperia T2'         },  // chicane right — 60°
+      { type: 'straight', length: 300                                         },
+      { type: 'corner',   length: 110,  radius: 70,  direction: 'right', label: 'Correntaio / Bucine'  },  // right — 90°
+      { type: 'straight', length: 1119, label: 'Return to S/F'               },
+    ],
+  },
+
 };
 
 // ── Vehicle capability inputs ─────────────────────────────────────────────────

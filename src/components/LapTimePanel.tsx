@@ -80,6 +80,7 @@ const BUILTIN_KEYS = new Set([
   'club', 'karting', 'gt_circuit', 'formula_test',
   'monza', 'spa', 'silverstone', 'suzuka',
   'nurburgring_gp', 'bahrain', 'barcelona', 'hungaroring', 'montreal',
+  'laguna_seca', 'imola', 'le_mans', 'sebring', 'mugello',
 ]);
 
 // ── Main component ─────────────────────────────────────────────────────────────
@@ -320,9 +321,14 @@ export function LapTimePanel({
               <option key={k} value={k}>{TRACK_PRESETS[k].name}</option>
             ))}
           </optgroup>
-          <optgroup label="Real Circuits">
+          <optgroup label="F1 / DTM">
             {['monza', 'spa', 'silverstone', 'suzuka',
               'nurburgring_gp', 'bahrain', 'barcelona', 'hungaroring', 'montreal'].map(k => (
+              <option key={k} value={k}>{TRACK_PRESETS[k].name}</option>
+            ))}
+          </optgroup>
+          <optgroup label="GT / Endurance">
+            {['laguna_seca', 'imola', 'le_mans', 'sebring', 'mugello'].map(k => (
               <option key={k} value={k}>{TRACK_PRESETS[k].name}</option>
             ))}
           </optgroup>
