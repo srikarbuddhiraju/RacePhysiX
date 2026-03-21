@@ -9,6 +9,7 @@ import { TrackVisualiser }  from './components/TrackVisualiser';
 import { TRACK_PRESETS } from './physics/laptime';
 import type { LapResult, RaceResult, TrackLayout } from './physics/laptime';
 import type { VehicleParams, PacejkaCoeffs } from './physics/types';
+import { buildLapSimInput } from './physics/vehicleInput';
 import './App.css';
 
 // ── URL hash persistence ──────────────────────────────────────────────────────
@@ -105,8 +106,9 @@ export function App() {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
   }, [darkMode]);
 
-  const bicycle = useMemo(() => computeBicycleModel(params),         [params]);
-  const pacejka = useMemo(() => computePacejkaModel(params, coeffs), [params, coeffs]);
+  const bicycle      = useMemo(() => computeBicycleModel(params),            [params]);
+  const pacejka      = useMemo(() => computePacejkaModel(params, coeffs),    [params, coeffs]);
+  const lapSimInput  = useMemo(() => buildLapSimInput(params, coeffs),       [params, coeffs]);
 
   return (
     <div className="app">
@@ -146,6 +148,7 @@ export function App() {
               <TrackVisualiser
                 layout={effectiveLayout ?? fallbackLayout}
                 result={lapResult}
+                lapSimInput={lapSimInput}
                 raceResult={raceResult}
                 triggerRace={triggerRace}
                 params={params}

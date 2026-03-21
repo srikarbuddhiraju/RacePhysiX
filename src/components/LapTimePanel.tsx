@@ -1,14 +1,12 @@
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { computeLapTime, simulateRace, TRACK_PRESETS } from '../physics/laptime';
-import type { TrackLayout, TrackSegment, LapResult, RaceResult } from '../physics/laptime';
-import { computeMaxDriveForce, computeMaxSpeed } from '../physics/gearModel';
+import type { TrackLayout, TrackSegment, LapResult, RaceResult, LapSimInput } from '../physics/laptime';
 import { optimiseSetup, OPTIMISE_BOUNDS, OPTIMISABLE_KEYS } from '../physics/optimise';
 import type { OptimiseResult } from '../physics/optimise';
 import type { VehicleParams, PacejkaCoeffs } from '../physics/types';
+import { buildLapSimInput } from '../physics/vehicleInput';
 import { InfoTooltip } from './InfoTooltip';
 import { exportLapTimeCSV } from '../utils/export';
-
-const G = 9.81;
 
 interface Props {
   params:              VehicleParams;
@@ -44,7 +42,6 @@ function fmtParamValue(key: string, v: number): string {
   return `${(v / 1000).toFixed(1)}k N/m`;
 }
 
-const RHO_AIR = 1.225;
 
 function fmtTime(sec: number): string {
   const m = Math.floor(sec / 60);
@@ -123,38 +120,8 @@ export function LapTimePanel({
     segments: isLocked ? baseLayout.segments : editSegs,
   }), [baseLayout, isLocked, editSegs, editName]);
 
-  const inpBuilder = useCallback((p: VehicleParams) => {
-    const { mass, brakingG, aeroCD, aeroReferenceArea, cgHeight, trackWidth,
-            tyreLoadSensitivity,
-            corneringStiffnessNPerDeg, rearCorneringStiffnessNPerDeg } = p;
-    const peakMu      = coeffs.peakMu;
-    const brakingCapG = Math.max(brakingG, 0.9);
-
-    const tw2o2   = (trackWidth * trackWidth) / 2;
-    const kPhiF   = (p.frontSpringRate + p.frontARBRate) * tw2o2;
-    const kPhiR   = (p.rearSpringRate  + p.rearARBRate)  * tw2o2;
-    const kPhiTot = kPhiF + kPhiR;
-    const phiFront = kPhiTot > 0 ? kPhiF / kPhiTot : 0.5;
-
-    const FzStatic  = mass * G / 4;
-    const dFzOuter  = mass * G * cgHeight * phiFront / trackWidth;
-    const FzOuter   = FzStatic + dFzOuter;
-    const qFz       = tyreLoadSensitivity;
-    const muFrac    = qFz > 0 ? Math.max(0.5, 1 - qFz * (FzOuter / FzStatic - 1)) : 1.0;
-    const peakMuEff = peakMu * muFrac;
-
-    const DEG_TO_RAD = Math.PI / 180;
-    const dragForce  = (V: number) => 0.5 * RHO_AIR * V * V * aeroReferenceArea * aeroCD;
-    const driveForce = (V: number) => computeMaxDriveForce(V, p);
-    return {
-      mass, peakMu: peakMuEff, brakingCapG,
-      aeroCL: p.aeroCL, aeroCD, aeroReferenceArea, dragForce, driveForce,
-      combSlipBrakeFrac: 0.4,
-      frontCaNPerRad: corneringStiffnessNPerDeg / DEG_TO_RAD,
-      rearCaNPerRad:  (rearCorneringStiffnessNPerDeg ?? corneringStiffnessNPerDeg) / DEG_TO_RAD,
-      maxVehicleSpeedMs: computeMaxSpeed(p),
-    };
-  }, [coeffs]);
+  const inpBuilder = useCallback((p: VehicleParams): LapSimInput =>
+    buildLapSimInput(p, coeffs), [coeffs]);
 
   const result = useMemo(() => computeLapTime(effectiveLayout, inpBuilder(params)), [params, effectiveLayout, inpBuilder]);
 
