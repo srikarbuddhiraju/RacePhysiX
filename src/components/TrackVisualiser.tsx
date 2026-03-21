@@ -661,7 +661,7 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
 
           {/* Car arrow */}
           {dotPos && (
-            <g transform={`translate(${dotPos.x},${dotPos.y}) rotate(${dotHeading})`}>
+            <g transform={`translate(${dotPos.x},${dotPos.y}) rotate(${dotHeading + 90})`}>
               <circle r={11} fill={`${zoneColor}35`} />
               <polygon points="0,-8 -4.5,5.5 4.5,5.5"
                 fill="#ffffff" stroke={zoneColor} strokeWidth={1.5} />
