@@ -4,9 +4,34 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
-## Session 18 — 2026-03-21  |  branch: `feature/stage16-gps-circuit-maps`
+## Session 19 — 2026-03-21  |  branch: `main`
 
 ### Status: IN PROGRESS
+
+### ✅ GPS-native animation — Session 19
+
+**Root cause confirmed (user screenshots):** Physics distance fraction ≠ GPS path fraction.
+Spa pit straight: 720m physics → La Source position shows 150-180 kph (should be 55-70).
+Monza: braking zone appeared AFTER Parabolica, not before.
+
+**Fix — `buildGpsZoneOverlay` fully restored with GPS-native timing:**
+- N=400, W=2 coordinate pre-smoothing (5-pt box) → R_noise≈590-830m >> vTop (~278 kph) ✓
+- Menger curvature on smoothed coords + 3-pt post-smooth
+- Forward/backward Euler passes → speed profile V[i]
+- Zone classification: decelG thresholds (>0.3g braking, >0.05g trail, atLimit→cornering, else FT)
+- Cumulative GPS timing: tCum += dsReal / vAvg → lapTimeSec
+- Returns `{ segs[], anim[], lapTimeSec }` — both overlay and animation from same GPS source
+- `gpsAtTime()` binary-search interpolator
+- RAF tick: GPS circuits use `gpsAnimRef` for `pathFrac` + telemetry; schematic use physics trace
+- Race mode unchanged (physics trace)
+- [x] Build clean ✓ | validate 21/21 ✓ | extended 303/303 ✓
+- [ ] Browser verify: La Source zone RED at ~55 kph; Parabolica braking BEFORE corner
+
+---
+
+## Session 18 — 2026-03-21  |  branch: `feature/stage16-gps-circuit-maps`
+
+### Status: COMPLETE (merged → main)
 
 ### Completed this session (Session 16)
 
