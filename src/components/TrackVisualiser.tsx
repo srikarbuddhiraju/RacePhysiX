@@ -213,96 +213,6 @@ interface ZoneSeg { x1: number; y1: number; x2: number; y2: number; color: strin
  *   4. Forward + backward Euler passes (4 iterations) → minimum-time speed profile.
  *   5. Classify zone at each sample: cornering / braking / trail / full-throttle.
  */
-function buildGpsZoneOverlay(
-  pathEl: SVGPathElement,
-  layout: TrackLayout,
-  inp:    LapSimInput,
-  N = 2000,
-): ZoneSeg[] {
-  const G_C     = 9.81;
-  const pathLen = pathEl.getTotalLength();
-  const totalDist = layout.segments.reduce((sum, s) => sum + s.length, 0);
-  if (pathLen < 1 || totalDist < 1) return [];
-
-  const svgToMeter = totalDist / pathLen;   // meters per SVG unit
-  const dsReal     = totalDist / N;         // meters per step
-  const vTop       = inp.maxVehicleSpeedMs ?? 80;
-
-  // 1. Sample points
-  const pts: { x: number; y: number }[] = [];
-  for (let i = 0; i <= N; i++) {
-    const p = pathEl.getPointAtLength((i / N) * pathLen);
-    pts.push({ x: p.x, y: p.y });
-  }
-
-  // 2. Menger curvature (raw)
-  const rawK = new Float64Array(N + 1);
-  for (let i = 1; i < N; i++) {
-    const ax = pts[i].x - pts[i-1].x, ay = pts[i].y - pts[i-1].y;
-    const bx = pts[i+1].x - pts[i].x, by = pts[i+1].y - pts[i].y;
-    const cx = pts[i+1].x - pts[i-1].x, cy = pts[i+1].y - pts[i-1].y;
-    const cross = Math.abs(ax * by - ay * bx);
-    const denom = Math.hypot(ax, ay) * Math.hypot(bx, by) * Math.hypot(cx, cy);
-    rawK[i] = denom > 1e-12 ? (2 * cross) / denom : 0;
-  }
-  rawK[0] = rawK[1]; rawK[N] = rawK[N - 1];
-
-  // 3-point smooth (reduces GPS noise without blurring short chicanes)
-  const kappa = new Float64Array(N + 1);
-  for (let i = 0; i <= N; i++) {
-    const im1 = Math.max(0, i - 1);
-    const ip1 = Math.min(N, i + 1);
-    kappa[i] = (rawK[im1] + 2 * rawK[i] + rawK[ip1]) / 4;
-  }
-
-  // 3. V_max from curvature
-  const vMax = new Float64Array(N + 1);
-  for (let i = 0; i <= N; i++) {
-    const kappaReal = kappa[i] / svgToMeter;            // 1/m
-    const R         = kappaReal > 1e-6 ? 1 / kappaReal : 1e6;
-    vMax[i] = Math.min(vTop, Math.sqrt(inp.peakMu * G_C * R));
-  }
-
-  // 4. Speed profile — 4 forward/backward Euler passes
-  const V      = Float64Array.from(vMax);
-  const aBrake = inp.brakingCapG * G_C;
-
-  for (let iter = 0; iter < 4; iter++) {
-    // Forward pass: max acceleration
-    for (let i = 0; i < N; i++) {
-      const Fd   = Math.max(0, inp.driveForce(V[i]) - inp.dragForce(V[i]));
-      const vNxt = Math.sqrt(Math.max(0, V[i] * V[i] + 2 * (Fd / inp.mass) * dsReal));
-      V[i + 1]   = Math.min(vNxt, vMax[i + 1]);
-    }
-    // Backward pass: max braking
-    for (let i = N; i > 0; i--) {
-      const vPrv = Math.sqrt(Math.max(0, V[i] * V[i] + 2 * aBrake * dsReal));
-      V[i - 1]   = Math.min(vPrv, vMax[i - 1]);
-    }
-  }
-
-  // 5. Zone classification + segment output
-  const segs: ZoneSeg[] = [];
-  for (let i = 0; i < N; i++) {
-    const isLimited = vMax[i] < vTop - 2;
-    const atLimit   = V[i] >= vMax[i] - 1.5;
-    // decelG > 0 = decelerating, < 0 = accelerating
-    const decelG = (V[i] * V[i] - V[i + 1] * V[i + 1]) / (2 * dsReal * G_C);
-    let zone: TracePoint['zone'];
-    if (isLimited && atLimit) {
-      zone = 'cornering';
-    } else if (decelG > 0.3) {
-      zone = 'braking';
-    } else if (decelG > 0.05) {
-      zone = 'trail-braking';
-    } else {
-      zone = 'full-throttle';
-    }
-    segs.push({ x1: pts[i].x, y1: pts[i].y, x2: pts[i+1].x, y2: pts[i+1].y, color: ZONE_COLORS[zone] });
-  }
-  return segs;
-}
-
 // ── Telemetry state ───────────────────────────────────────────────────────────
 
 interface TelemetryState {
@@ -330,11 +240,13 @@ interface Props {
 
 export function TrackVisualiser({ layout, result, lapSimInput, raceResult, triggerRace, params, onClose }: Props) {
   const [playing,    setPlaying]    = useState(true);
+  const [playSpeed,  setPlaySpeed]  = useState(4);
   const [dotPos,     setDotPos]     = useState<{ x: number; y: number } | null>(null);
   const [dotHeading, setDotHeading] = useState(0);
   const [zoneOverlay, setZoneOverlay] = useState<ZoneSeg[]>([]);
   const [raceLabel,  setRaceLabel]  = useState<string | null>(null);
   const [telemetry,  setTelemetry]  = useState<TelemetryState | null>(null);
+  const playSpeedRef = useRef(4);
 
   // Refs used inside RAF
   const pathRef        = useRef<SVGPathElement | null>(null);
@@ -347,6 +259,7 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
   const prevGearRef    = useRef(1);
 
   useEffect(() => { raceResultRef.current = raceResult; }, [raceResult]);
+  useEffect(() => { playSpeedRef.current = playSpeed; }, [playSpeed]);
 
   // Build trace from physics
   const trace = useMemo(() => buildLapTrace(layout, lapSimInput), [layout, lapSimInput]);
@@ -358,30 +271,26 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
     return buildTrackPath(layout);
   }, [layout]);
 
-  // Zone overlay:
-  //   GPS circuits  → curvature-based physics on the actual GPS path (exact positions)
-  //   Schematic     → segment-proportional buildTrackPath + trace lookup (exact)
+  // Zone overlay — trace-based for all circuits (GPS and schematic).
+  // Car position uses physics distM / traceTotalDist, so the zone overlay must too.
+  // GPS curvature approach was abandoned: coordinate quantisation noise (±0.05 SVG units)
+  // creates false curvature at high sample counts, colouring straights as braking zones.
   useEffect(() => {
     const pathEl = pathRef.current;
-    if (!pathEl) return;
-    if (layout.svgPath) {
-      setZoneOverlay(buildGpsZoneOverlay(pathEl, layout, lapSimInput));
-    } else {
-      if (trace.length < 2) return;
-      const N       = 400;
-      const pathLen = pathEl.getTotalLength();
-      const totalDist = trace[trace.length - 1].distM;
-      const ptArr   = Array.from({ length: N + 1 }, (_, i) => {
-        const pt = pathEl.getPointAtLength((i / N) * pathLen);
-        return { x: pt.x, y: pt.y };
-      });
-      const segs: ZoneSeg[] = ptArr.slice(1).map((p, i) => {
-        const distM = ((i + 0.5) / N) * totalDist;
-        const tp    = traceAtDist(distM, trace);
-        return { x1: ptArr[i].x, y1: ptArr[i].y, x2: p.x, y2: p.y, color: ZONE_COLORS[tp.zone] };
-      });
-      setZoneOverlay(segs);
-    }
+    if (!pathEl || trace.length < 2) return;
+    const N         = 400;
+    const pathLen   = pathEl.getTotalLength();
+    const totalDist = trace[trace.length - 1].distM;
+    const ptArr     = Array.from({ length: N + 1 }, (_, i) => {
+      const pt = pathEl.getPointAtLength((i / N) * pathLen);
+      return { x: pt.x, y: pt.y };
+    });
+    const segs: ZoneSeg[] = ptArr.slice(1).map((p, i) => {
+      const distM = ((i + 0.5) / N) * totalDist;
+      const tp    = traceAtDist(distM, trace);
+      return { x1: ptArr[i].x, y1: ptArr[i].y, x2: p.x, y2: p.y, color: ZONE_COLORS[tp.zone] };
+    });
+    setZoneOverlay(segs);
   }, [layout, trace, lapSimInput]);
 
   // Race trigger
@@ -396,8 +305,7 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
   // Reset animation on layout/trace change
   useEffect(() => { startRef.current = null; prevGearRef.current = 1; }, [layout, trace]);
 
-  // Playback speed: 8× real-time so a 2-min lap takes ~15s to watch
-  const PLAYBACK_SPEED = 8;
+  const PLAYBACK_SPEED = playSpeedRef.current;
 
   // Core RAF tick
   const tick = useCallback((timestamp: number) => {
@@ -499,6 +407,14 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
         <span style={{ fontFamily: 'monospace', fontSize: 13, color: C.text, letterSpacing: '0.08em' }}>
           {formatTime(result.totalTimeSec)}
         </span>
+        {([1, 4, 8] as const).map(s => (
+          <button key={s} onClick={() => setPlaySpeed(s)} style={{
+            background: playSpeed === s ? 'rgba(68,102,255,0.2)' : 'none',
+            border: `1px solid ${playSpeed === s ? C.accent : C.border}`,
+            color: playSpeed === s ? '#8899ff' : C.dim,
+            fontSize: 10, cursor: 'pointer', padding: '2px 6px', borderRadius: 3,
+          }}>{s}×</button>
+        ))}
         <button onClick={() => setPlaying(p => !p)} style={{
           background: 'none', border: `1px solid ${C.border}`, color: C.text,
           fontSize: 11, cursor: 'pointer', padding: '2px 8px', borderRadius: 3,
