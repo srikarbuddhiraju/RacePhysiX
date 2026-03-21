@@ -78,7 +78,7 @@ function saveCustomTracks(tracks: Record<string, TrackLayout>): void {
 
 const BUILTIN_KEYS = new Set([
   'club', 'karting', 'gt_circuit', 'formula_test',
-  'monza', 'monaco', 'spa', 'silverstone', 'suzuka',
+  'monza', 'spa', 'silverstone', 'suzuka',
   'nurburgring_gp', 'bahrain', 'barcelona', 'hungaroring', 'montreal',
 ]);
 
@@ -321,7 +321,7 @@ export function LapTimePanel({
             ))}
           </optgroup>
           <optgroup label="Real Circuits">
-            {['monza', 'monaco', 'spa', 'silverstone', 'suzuka',
+            {['monza', 'spa', 'silverstone', 'suzuka',
               'nurburgring_gp', 'bahrain', 'barcelona', 'hungaroring', 'montreal'].map(k => (
               <option key={k} value={k}>{TRACK_PRESETS[k].name}</option>
             ))}

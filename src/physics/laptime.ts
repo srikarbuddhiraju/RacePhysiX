@@ -133,37 +133,6 @@ export const TRACK_PRESETS: Record<string, TrackLayout> = {
     ],
   },
 
-  monaco: {
-    name: 'Monaco (3.337 km)',
-    // No svgPath — buildTrackPath() generates a physics-proportional path (zones accurate)
-    // Corner arcs = apex turns only. Corner radii unchanged → corner speeds unchanged.
-    segments: [
-      { type: 'straight', length: 270,  label: 'Start/Finish'             },
-      { type: 'corner',   length: 5,    radius: 22, direction: 'right', label: 'Sainte Dévote'       },  // ~13° — Monaco is tight, effective racing line R
-      { type: 'straight', length: 588,  label: 'Beau Rivage hill'         },
-      { type: 'corner',   length: 14,   radius: 30, direction: 'right', label: 'Casino Square'       },  // ~27°
-      { type: 'straight', length: 70                                       },
-      { type: 'corner',   length: 10,   radius: 30, direction: 'right', label: 'Mirabeau'            },  // ~19°
-      { type: 'corner',   length: 57,   radius: 18, direction: 'right', label: 'Grand Hotel Hairpin' },  // 180°, racing line R=18m → 51 kph
-      { type: 'straight', length: 150                                      },
-      { type: 'corner',   length: 6,    radius: 25, direction: 'right', label: 'Portier'             },  // ~14°
-      { type: 'straight', length: 418,  label: 'Tunnel'                   },
-      { type: 'corner',   length: 12,   radius: 22, direction: 'left',  label: 'Nouvelle Chicane T1' },  // left
-      { type: 'straight', length: 35                                       },
-      { type: 'corner',   length: 10,   radius: 20, direction: 'right', label: 'Nouvelle Chicane T2' },  // right
-      { type: 'straight', length: 85                                       },
-      { type: 'corner',   length: 5,    radius: 22, direction: 'right', label: 'Tabac'              },  // ~13°
-      { type: 'straight', length: 130,  label: 'Swimming Pool approach'   },
-      { type: 'corner',   length: 12,   radius: 22, direction: 'left',  label: 'Swimming Pool S1'   },  // left
-      { type: 'straight', length: 45                                       },
-      { type: 'corner',   length: 10,   radius: 20, direction: 'right', label: 'Swimming Pool S2'   },  // right
-      { type: 'straight', length: 55                                       },
-      { type: 'corner',   length: 14,   radius: 20, direction: 'right', label: 'Rascasse'           },  // ~40°
-      { type: 'corner',   length: 10,   radius: 30, direction: 'right', label: 'Anthony Noghes'     },  // ~19°
-      { type: 'straight', length: 1326, label: 'Return to start'          },  // reduced 16m for Grand Hotel arc increase
-    ],
-  },
-
   spa: {
     name: 'Spa-Francorchamps (7.004 km)',
     // GPS-derived from TUMFTM Racetrack Database (LGPL-3.0) https://github.com/TUMFTM/racetrack-database

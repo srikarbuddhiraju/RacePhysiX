@@ -411,7 +411,7 @@ const lapInp = makeLapInput(1500, 1.10, 200);  // 1500 kg road-performance car
 
 // F1: Circuit distances match stated totals (critical — arc lengths just fixed)
 const expectedLengths: Record<string, number> = {
-  monza: 5793, monaco: 3337, spa: 7004, silverstone: 5891, suzuka: 5807,
+  monza: 5793, spa: 7004, silverstone: 5891, suzuka: 5807,
 };
 for (const [name, expectedM] of Object.entries(expectedLengths)) {
   const layout = TRACK_PRESETS[name];
@@ -439,9 +439,8 @@ for (const [name, expectedM] of Object.entries(expectedLengths)) {
 
 // F3: Lap times for known circuits are in physically plausible ranges
 // 1500 kg, 200 kW, μ=1.1 — fast road car, not a racing car
-// Monaco ~90–130s, Monza ~100–140s, Spa ~140–190s, Silverstone ~110–160s, Suzuka ~120–165s
+// Monza ~100–140s, Spa ~140–190s, Silverstone ~110–160s, Suzuka ~120–165s
 const lapTimeBounds: Record<string, [number, number]> = {
-  monaco:      [85,  140],
   monza:       [90,  145],
   spa:         [130, 195],
   silverstone: [105, 165],
