@@ -200,19 +200,184 @@ function RpmBar({ frac }: { frac: number }) {
 
 interface ZoneSeg { x1: number; y1: number; x2: number; y2: number; color: string }
 
+// ── GPS animation point ────────────────────────────────────────────────────────
+
+interface GpsAnimPoint {
+  timeSec:  number;
+  pathFrac: number;
+  speedKph: number;
+  zone:     TracePoint['zone'];
+  longG:    number;
+  latG:     number;
+}
+
+interface GpsZoneResult {
+  segs:       ZoneSeg[];
+  anim:       GpsAnimPoint[];
+  lapTimeSec: number;
+}
+
 // ── GPS zone overlay ──────────────────────────────────────────────────────────
 /**
- * Compute zone overlay for GPS circuits by deriving physics directly from the
- * SVG path curvature. This guarantees zones appear at the correct GPS positions
- * rather than being approximated by a distance-fraction mapping.
+ * Derive speed profile and zone classification directly from GPS SVG path curvature.
+ * This ensures the zone overlay and car animation are spatially consistent with the
+ * GPS path — fixing the distance-fraction mismatch that put La Source at 180 km/h.
  *
- * Algorithm:
- *   1. Sample N+1 evenly-spaced points on the SVG path.
- *   2. Compute Menger curvature at each point (3-point formula) + smooth.
- *   3. V_max[i] = sqrt(μ · g · R_real[i]) — cornering speed from curvature.
- *   4. Forward + backward Euler passes (4 iterations) → minimum-time speed profile.
- *   5. Classify zone at each sample: cornering / braking / trail / full-throttle.
+ * Noise suppression: TUMFTM coords have ±0.05 SVG unit quantisation.
+ * At N=400 (ds≈2.1 SVG units), raw noise → R_noise≈307m → vMax≈216 km/h (below vTop).
+ * 5-point coordinate pre-smooth (W=2) → R_noise≈687m → vMax≈323 km/h >> vTop. ✓
+ * Corner signal preserved: La Source arc≈41m (3 samples), W=2 window=29m real → curvature survives.
  */
+function buildGpsZoneOverlay(
+  pathEl:    SVGPathElement,
+  inp:       LapSimInput,
+  totalDist: number,
+): GpsZoneResult {
+  const N       = 400;
+  const G       = 9.81;
+  const pathLen = pathEl.getTotalLength();
+  const svgToM  = totalDist / pathLen;   // SVG units → metres (global average)
+  const dsReal  = totalDist / N;          // metres per step
+
+  // 1. Sample N+1 evenly-spaced raw points on the GPS SVG path
+  const raw: { x: number; y: number }[] = [];
+  for (let i = 0; i <= N; i++) {
+    const pt = pathEl.getPointAtLength((i / N) * pathLen);
+    raw.push({ x: pt.x, y: pt.y });
+  }
+
+  // 2. 5-point coordinate pre-smoothing (±2 box average, circular wrap)
+  // Suppresses quantisation noise without blurring corners wider than 29m real.
+  const W = 2;
+  const sm: { x: number; y: number }[] = raw.map((_, i) => {
+    let sx = 0, sy = 0;
+    for (let k = -W; k <= W; k++) {
+      const j = ((i + k) % (N + 1) + (N + 1)) % (N + 1);
+      sx += raw[j].x; sy += raw[j].y;
+    }
+    return { x: sx / (2 * W + 1), y: sy / (2 * W + 1) };
+  });
+
+  // 3. Menger curvature at each interior smoothed point
+  //    κ = 2|AB × BC| / (|AB|·|BC|·|AC|)  units: SVG⁻¹
+  const kappa: number[] = new Array(N + 1).fill(0);
+  for (let i = 1; i < N; i++) {
+    const ax = sm[i].x - sm[i-1].x,  ay = sm[i].y - sm[i-1].y;
+    const bx = sm[i+1].x - sm[i].x,  by = sm[i+1].y - sm[i].y;
+    const cx = sm[i+1].x - sm[i-1].x, cy = sm[i+1].y - sm[i-1].y;
+    const cross = Math.abs(ax * by - ay * bx);
+    const dAB   = Math.hypot(ax, ay);
+    const dBC   = Math.hypot(bx, by);
+    const dAC   = Math.hypot(cx, cy);
+    kappa[i]    = (dAB < 1e-9 || dBC < 1e-9 || dAC < 1e-9)
+      ? 0 : 2 * cross / (dAB * dBC * dAC);
+  }
+  kappa[0] = kappa[1]; kappa[N] = kappa[N - 1];
+
+  // 4. 3-point post-smooth on curvature [1,2,1]/4 — removes remaining spikes
+  const kS: number[] = [...kappa];
+  for (let i = 1; i < N; i++) {
+    kS[i] = (kappa[i-1] + 2 * kappa[i] + kappa[i+1]) / 4;
+  }
+
+  // 5. Cornering speed limit: V_max[i] = sqrt(μ·g·R_real); cap at power-limited top speed
+  const vTop = inp.maxVehicleSpeedMs ?? 80;
+  const vMax: number[] = new Array(N + 1).fill(vTop);
+  for (let i = 0; i <= N; i++) {
+    const kReal  = kS[i] / svgToM;                 // m⁻¹
+    const R      = kReal > 1e-6 ? 1 / kReal : 2000;
+    const Rclamp = Math.min(R, 2000);
+    vMax[i] = Math.min(Math.sqrt(inp.peakMu * G * Rclamp), vTop);
+  }
+
+  // 6. Forward + backward Euler passes (4 iterations) — minimum-time speed profile
+  const aBrake = inp.brakingCapG * G;
+  const V: number[] = [...vMax];
+  for (let iter = 0; iter < 4; iter++) {
+    for (let i = 0; i < N; i++) {
+      const Fd   = inp.driveForce(V[i]) - inp.dragForce(V[i]);
+      const aD   = Math.max(0, Fd / inp.mass);
+      const vNxt = Math.sqrt(V[i] * V[i] + 2 * aD * dsReal);
+      V[i+1] = Math.min(V[i+1], vNxt, vTop);
+    }
+    for (let i = N; i > 0; i--) {
+      const vEnt = Math.sqrt(V[i] * V[i] + 2 * aBrake * dsReal);
+      V[i-1] = Math.min(V[i-1], vEnt);
+    }
+  }
+
+  // 7. Zone classification per segment midpoint
+  const zones:  TracePoint['zone'][] = new Array(N).fill('full-throttle' as TracePoint['zone']);
+  const longGs: number[] = new Array(N).fill(0);
+  const latGs:  number[] = new Array(N).fill(0);
+  for (let i = 0; i < N; i++) {
+    const vi   = V[i], vj = V[i + 1];
+    const kMid = (kS[i] + kS[i+1]) / 2;
+    const kReal = kMid / svgToM;
+    const RReal  = kReal > 1e-6 ? 1 / kReal : 2000;
+    const vMid   = (vi + vj) / 2;
+    const decelG = (vi * vi - vj * vj) / (2 * dsReal * G);
+    const atLim  = (vMax[i] + vMax[i+1]) / 2 < vTop - 1.5;
+
+    latGs[i]  = vMid * vMid / (RReal * G);
+    longGs[i] = -decelG;  // negative = braking
+
+    if (decelG > 0.3)         zones[i] = 'braking';
+    else if (decelG > 0.05)   zones[i] = 'trail-braking';
+    else if (atLim)           zones[i] = 'cornering';
+    else                      zones[i] = 'full-throttle';
+  }
+
+  // 8. Zone overlay segments — use raw points for accurate GPS positioning
+  const segs: ZoneSeg[] = raw.slice(1).map((p, i) => ({
+    x1: raw[i].x, y1: raw[i].y,
+    x2: p.x,      y2: p.y,
+    color: ZONE_COLORS[zones[i]],
+  }));
+
+  // 9. Animation array with cumulative GPS timing
+  const anim: GpsAnimPoint[] = [];
+  let tCum = 0;
+  for (let i = 0; i <= N; i++) {
+    anim.push({
+      timeSec:  tCum,
+      pathFrac: i / N,
+      speedKph: V[i] * 3.6,
+      zone:     i < N ? zones[i] : zones[N - 1],
+      longG:    i < N ? longGs[i] : longGs[N - 1],
+      latG:     i < N ? latGs[i] : latGs[N - 1],
+    });
+    if (i < N) {
+      const vAvg = (V[i] + V[i + 1]) / 2;
+      tCum += dsReal / Math.max(vAvg, 0.1);
+    }
+  }
+
+  return { segs, anim, lapTimeSec: tCum };
+}
+
+// ── GPS animation lookup ───────────────────────────────────────────────────────
+
+function gpsAtTime(timeSec: number, anim: GpsAnimPoint[]): GpsAnimPoint {
+  let lo = 0, hi = anim.length - 1;
+  while (lo < hi - 1) {
+    const mid = (lo + hi) >> 1;
+    if (anim[mid].timeSec <= timeSec) lo = mid; else hi = mid;
+  }
+  if (lo >= hi) return anim[hi];
+  const span = anim[hi].timeSec - anim[lo].timeSec;
+  if (span <= 0) return anim[lo];
+  const t = (timeSec - anim[lo].timeSec) / span;
+  return {
+    timeSec,
+    pathFrac: anim[lo].pathFrac + t * (anim[hi].pathFrac - anim[lo].pathFrac),
+    speedKph: anim[lo].speedKph + t * (anim[hi].speedKph - anim[lo].speedKph),
+    zone:     anim[lo].zone,
+    longG:    anim[lo].longG    + t * (anim[hi].longG    - anim[lo].longG),
+    latG:     anim[lo].latG     + t * (anim[hi].latG     - anim[lo].latG),
+  };
+}
+
 // ── Telemetry state ───────────────────────────────────────────────────────────
 
 interface TelemetryState {
@@ -244,9 +409,11 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
   const [dotPos,     setDotPos]     = useState<{ x: number; y: number } | null>(null);
   const [dotHeading, setDotHeading] = useState(0);
   const [zoneOverlay, setZoneOverlay] = useState<ZoneSeg[]>([]);
+  const [gpsAnim,    setGpsAnim]    = useState<{ anim: GpsAnimPoint[]; lapTimeSec: number } | null>(null);
   const [raceLabel,  setRaceLabel]  = useState<string | null>(null);
   const [telemetry,  setTelemetry]  = useState<TelemetryState | null>(null);
   const playSpeedRef = useRef(4);
+  const gpsAnimRef   = useRef<{ anim: GpsAnimPoint[]; lapTimeSec: number } | null>(null);
 
   // Refs used inside RAF
   const pathRef        = useRef<SVGPathElement | null>(null);
@@ -260,6 +427,7 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
 
   useEffect(() => { raceResultRef.current = raceResult; }, [raceResult]);
   useEffect(() => { playSpeedRef.current = playSpeed; }, [playSpeed]);
+  useEffect(() => { gpsAnimRef.current = gpsAnim; }, [gpsAnim]);
 
   // Build trace from physics
   const trace = useMemo(() => buildLapTrace(layout, lapSimInput), [layout, lapSimInput]);
@@ -271,26 +439,36 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
     return buildTrackPath(layout);
   }, [layout]);
 
-  // Zone overlay — trace-based for all circuits (GPS and schematic).
-  // Car position uses physics distM / traceTotalDist, so the zone overlay must too.
-  // GPS curvature approach was abandoned: coordinate quantisation noise (±0.05 SVG units)
-  // creates false curvature at high sample counts, colouring straights as braking zones.
+  // Zone overlay + GPS animation
+  // GPS circuits: derive zones AND car timing directly from SVG path curvature.
+  //   → car position = GPS pathFrac, telemetry = GPS physics. No distance-fraction mismatch.
+  // Schematic circuits: trace-based mapping (physics distance ∝ SVG path length exactly).
   useEffect(() => {
     const pathEl = pathRef.current;
     if (!pathEl || trace.length < 2) return;
-    const N         = 400;
-    const pathLen   = pathEl.getTotalLength();
     const totalDist = trace[trace.length - 1].distM;
-    const ptArr     = Array.from({ length: N + 1 }, (_, i) => {
-      const pt = pathEl.getPointAtLength((i / N) * pathLen);
-      return { x: pt.x, y: pt.y };
-    });
-    const segs: ZoneSeg[] = ptArr.slice(1).map((p, i) => {
-      const distM = ((i + 0.5) / N) * totalDist;
-      const tp    = traceAtDist(distM, trace);
-      return { x1: ptArr[i].x, y1: ptArr[i].y, x2: p.x, y2: p.y, color: ZONE_COLORS[tp.zone] };
-    });
-    setZoneOverlay(segs);
+
+    if (layout.svgPath) {
+      // GPS circuit — GPS-native animation
+      const result = buildGpsZoneOverlay(pathEl, lapSimInput, totalDist);
+      setZoneOverlay(result.segs);
+      setGpsAnim({ anim: result.anim, lapTimeSec: result.lapTimeSec });
+    } else {
+      // Schematic circuit — trace-based zones
+      setGpsAnim(null);
+      const N       = 400;
+      const pathLen = pathEl.getTotalLength();
+      const ptArr   = Array.from({ length: N + 1 }, (_, i) => {
+        const pt = pathEl.getPointAtLength((i / N) * pathLen);
+        return { x: pt.x, y: pt.y };
+      });
+      const segs: ZoneSeg[] = ptArr.slice(1).map((p, i) => {
+        const distM = ((i + 0.5) / N) * totalDist;
+        const tp    = traceAtDist(distM, trace);
+        return { x1: ptArr[i].x, y1: ptArr[i].y, x2: p.x, y2: p.y, color: ZONE_COLORS[tp.zone] };
+      });
+      setZoneOverlay(segs);
+    }
   }, [layout, trace, lapSimInput]);
 
   // Race trigger
@@ -341,8 +519,33 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
         }
       }
     } else {
-      const elapsed = (timestamp - startRef.current) * PLAYBACK_SPEED;
-      timeSec_cur   = (elapsed % (traceTotalTime * 1000)) / 1000;
+      const elapsed = (timestamp - startRef.current) * playSpeedRef.current;
+      const gpsA    = gpsAnimRef.current;
+
+      if (gpsA && gpsA.anim.length > 1) {
+        // GPS circuit — native timing: car position and telemetry derived from GPS curvature
+        const tGps  = (elapsed % (gpsA.lapTimeSec * 1000)) / 1000;
+        const gpt   = gpsAtTime(tGps, gpsA.anim);
+        const pLen  = pathEl.getTotalLength();
+        const sampleAt = gpt.pathFrac * pLen;
+        const pt    = pathEl.getPointAtLength(sampleAt);
+
+        const eps   = Math.max(0.5, pLen * 0.003);
+        const ptA   = pathEl.getPointAtLength(Math.max(eps, Math.min(sampleAt - eps, pLen - 2 * eps)));
+        const ptB   = pathEl.getPointAtLength(Math.min(pLen - eps, Math.max(sampleAt + eps, 2 * eps)));
+        const hdg   = Math.atan2(ptB.y - ptA.y, ptB.x - ptA.x) * 180 / Math.PI;
+
+        const { gear, rpm } = computeGearRPM(gpt.speedKph, params, prevGearRef.current);
+        prevGearRef.current = gear;
+
+        setDotPos({ x: pt.x, y: pt.y });
+        setDotHeading(hdg);
+        setTelemetry({ speedKph: gpt.speedKph, gear, rpm, longG: gpt.longG, latG: gpt.latG, zone: gpt.zone });
+        rafRef.current = requestAnimationFrame(tick);
+        return;
+      }
+
+      timeSec_cur = (elapsed % (traceTotalTime * 1000)) / 1000;
     }
 
     const tp       = traceAtTime(timeSec_cur, tr);
