@@ -448,7 +448,7 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
     if (!pathEl || trace.length < 2) return;
     const totalDist = trace[trace.length - 1].distM;
 
-    if (layout.svgPath) {
+    if (layout.svgPath && layout.svgIsGps) {
       // GPS circuit — GPS-native animation
       const result = buildGpsZoneOverlay(pathEl, lapSimInput, totalDist);
       setZoneOverlay(result.segs);
@@ -598,9 +598,11 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
         <span style={{ fontFamily: 'monospace', fontSize: 11, letterSpacing: '0.18em', color: C.dim, textTransform: 'uppercase' }}>
           {layout.name}
         </span>
-        {layout.svgPath && (
+        {layout.svgIsGps && (
           <span style={{ fontSize: 8, color: C.dim, letterSpacing: '0.10em', opacity: 0.6 }}>
-            GPS © TUMFTM · LGPL-3.0
+            {layout.svgSource === 'osm'
+              ? 'GPS © OpenStreetMap contributors · ODbL'
+              : 'GPS © TUMFTM · LGPL-3.0'}
           </span>
         )}
         <div style={{ flex: 1 }} />

@@ -4,9 +4,77 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
+## Session 20 — 2026-03-21  |  branch: `feature/stage16-gps-circuit-maps`
+
+### Status: READY TO MERGE — browser verify pending (user action)
+
+### ✅ 5 TUMFTM GPS circuits added (Session 20)
+
+Added to `laptime.ts` + dropdown (`LapTimePanel.tsx`):
+- **Brands Hatch GP** (3.916 km) — TUMFTM LGPL-3.0 GPS path, 250 pts
+- **Hockenheim GP** (4.574 km) — TUMFTM LGPL-3.0 GPS path, 250 pts
+- **Red Bull Ring / Spielberg** (4.318 km) — TUMFTM LGPL-3.0 GPS path, 250 pts
+- **Zandvoort** (4.259 km) — TUMFTM LGPL-3.0 GPS path, 250 pts
+- **São Paulo / Interlagos** (4.309 km) — TUMFTM LGPL-3.0 GPS path, 250 pts
+
+All appear in "European Touring (GPS)" group in circuit dropdown.
+
+### ✅ Laguna Seca GPS path replaced (Session 20)
+
+Replaced hand-crafted 13-point schematic with 147-node OSM GPS path.
+Attribution updated to "GPS © OpenStreetMap contributors · ODbL".
+Added `svgSource: 'osm'` field to TrackLayout interface + laguna_seca entry.
+
+### ✅ Scripted GPS pipeline (Session 20)
+
+`scripts/gen-circuit-paths.mjs` — fetches TUMFTM CSVs, normalises to 400×250 SVG paths
+`scripts/gen-osm-paths2.mjs`, `gen-osm-paths3.mjs` — OSM Overpass fetch + way join
+
+### ✅ Remaining GT circuits — GPS paths applied (Session 20 continued)
+
+- **Le Mans**: GPS from OSM relation 2126739 — 926 nodes, 221m closure gap. `svgIsGps: true, svgSource: 'osm'`.
+- **Mugello**: GPS from OSM relation 8487163 — 621 nodes, 0m closure gap. `svgIsGps: true, svgSource: 'osm'`.
+- **Sebring**: GPS from OSM — 228 nodes, 534m closure gap (fragmented airport circuit). `svgIsGps: true, svgSource: 'osm'`.
+- **Imola**: GPS from OSM — 232 nodes, 0m closure gap (35 ways, non-pit non-polygon). `svgIsGps: true, svgSource: 'osm'`.
+
+### ✅ Imola GPS path fixed (Session 20 continued)
+
+Previous: 179-node path had a 96m closure gap + visible artifact near S/F/Tamburello.
+Root cause: previous deduplication incorrectly excluded 1021xxx connector ways that are sequential (not duplicate) to 1025xxx ways. All 1021/1025 ways form a chain — excluding any creates gaps.
+Fix: include ALL OSM ways except closed polygon (116346020) and Pit Lane (196368195). Result: 232 nodes, 0m closure, clean Imola outline. Variante Bassa (3 ways, 355m gap from chain) not connectable — section simplified as straight. Acceptable for circuit outline.
+
+### ✅ Generic circuits redesigned as closed shapes (Session 20 continued)
+
+Root cause of visual issue: original segment layouts not geometrically closed. `buildTrackPath()` Z command drew huge diagonal closure lines (400–550px = 40–55% of path length), making circuits look like open C-shapes.
+
+All 4 generic circuits redesigned as properly closed geometries. Closure gaps now < 3px (invisible in SVG):
+- **Club (~1.9km)**: Twin 180°-hairpin symmetric oval. R=30m (65 kph). Closes within 3px.
+- **Karting (~1.0km)**: Twin 180°-hairpin oval. R=8m (35 kph, kart-tight). Closes within 3px.
+- **GT circuit (~3.2km)**: Analytically closed layout — 60°/120°/90°/90° corners. Preserves fast sweeper (R=100m, 134 kph) and Bus Stop (R=50m, 94 kph). Closes within 2px.
+- **Formula test (~2.1km)**: Rectangular 4×90° layout with tight turns. R=70m/35m mixed corners (73-103 kph). S/F ≠ Back straight (529m vs 600m) to cancel corner arc x-displacement. Closes within 1px.
+
+Physics validation: 21/21 ✓ | Extended tests: 419/419 ✓ | Build clean ✓
+
+### ROADMAP — Racing line overlay (future)
+
+TUMFTM `global_racetrajectory_optimization` repo only has 4 circuits (Berlin, Modena, test tracks) — not usable directly. Plan: develop our own minimum-curvature racing line solver using TUMFTM racetrack-database centerline + track width data (w_tr_right_m, w_tr_left_m). Output: a second svgPath per circuit (thinner overlay showing ideal racing line). Branch when ready: `feature/racing-line-overlay`.
+
+### OPEN — Pre-release blockers
+
+- [x] `LICENSES/TUMFTM-LGPL-3.0.txt` — file present ✓
+- [x] Attribution in README — TUMFTM (14 circuits) + OSM (5 circuits) ✓
+- [x] docs/lessons.md + memory updated ✓
+- [ ] **Browser verify**: Imola — no kink artifact, clean 232-node outline
+- [ ] **Browser verify**: Club/Karting/GT/Formula — no diagonal closure line, clean shapes
+- [ ] **Browser verify**: 5 new TUMFTM circuits (Brands Hatch, Hockenheim, Spielberg, Zandvoort, São Paulo)
+- [ ] **Browser verify**: Laguna Seca, Mugello — clean GPS shapes (not blob/octopus)
+- [ ] Commit + merge → main + deploy (after browser verify)
+
+---
+
 ## Session 19 — 2026-03-21  |  branch: `main`
 
-### Status: IN PROGRESS
+### Status: COMPLETE
 
 ### ✅ GPS-native animation — Session 19
 
@@ -119,82 +187,9 @@ Monza: braking zone appeared AFTER Parabolica, not before.
 
 ---
 
-## Session 13 — 2026-03-16  |  branch: `feature/stage16-gps-circuit-maps`
+## Sessions 1–13 — 2026-03-15/16  |  Status: COMPLETE / MERGED
 
-### Status: IN PROGRESS
-
-### Completed this session (Session 13)
-
-**Stage 16 — GPS-accurate circuit maps**
-- [x] Monza, Spa, Silverstone, Suzuka: svgPath + svgViewBox added (TUMFTM GPS data)
-- [x] Monaco: remains schematic (not in TUMFTM database)
-- [x] Build clean; test-extended 312/312
-
-**TUMFTM License analysis**
-- LGPL-3.0 applies to GPS coordinate data we embed as SVG path strings
-- Inline code comments exist but are insufficient — formal compliance needed before release
-- See critical pre-release items below
-
-**TrackVisualiser UX fixes**
-- [x] Eau Rouge radius 22m → 75m: was forcing hard braking (~55 km/h), now taken fast (~103 km/h)
-- [x] Layout: 3-column → 2-row (circuit SVG full-width top, telemetry strip bottom)
-- [x] Telemetry strip: Speedometer + Gear + RPM side-by-side, then G-meter, tyre temps
-- [x] Speedometer + RPM SVG: size prop added (rendered at 118px instead of 160px)
-- [x] Car dot → directional arrow: smaller triangle pointing in direction of travel
-- [x] Speed heatmap: straight midpoint now uses maxSpeedKph — shows full accel/brake arc
-  - Previously: straight only interpolated entry→exit, missed peak speed on Kemmel etc.
-
-### OPEN — To fix next
-
-**Physics: speed display still jumpy on some corners**
-- Reported: abrupt speed drops/jumps on all circuits (not just Spa/Eau Rouge)
-- Likely cause: corner radii on some schematic circuits are too tight (same root cause as Eau Rouge)
-- Review all circuits for corners where V_max < 60 km/h but no hard braking expected
-- Candidate fixes: Monaco (many), Monza (Rettifilo chicane R=14m), Spa (Bus Stop R=16m)
-
-**GT circuit expansion**
-- TUMFTM has 25 circuits — all F1/DTM/IndyCar. No GT tracks available.
-- User requested: Road Atlanta, Lime Rock, Daytona, Kyalami, Le Mans, Imola, Mugello
-- Alternative: OpenStreetMap (ODbL licence) — good coverage of all GT venues
-- Decision needed: OSM data vs schematic layouts
-
-### CRITICAL — Pre-release blockers
-
-**⚠️ LGPL-3.0 Compliance (TUMFTM data)**
-- [ ] Add `LICENSES/TUMFTM-LGPL-3.0.txt` — full license text required with distribution
-- [ ] Add attribution section to README (circuit GPS data source + LGPL notice)
-- [ ] Add copyright notice to About section or footer in the UI
-
-**⚠️ Pending merge + deploy**
-- [ ] Run npx tsx src/physics/validate.ts (target: 21/21)
-- [ ] Run npx tsx src/physics/test-extended.ts (target: 312/312)
-- [ ] Commit Stage 16 + TrackVisualiser improvements
-- [ ] Merge feature/stage16-gps-circuit-maps → main
-- [ ] Deploy to Cloudflare Pages (apexsim.srikarbuddhiraju.com)
-- [ ] Browser verify: Spa/Monza/Silverstone/Suzuka shapes recognisable
-
----
-
-## Session 12 — 2026-03-16  |  branch: `feature/stage15-track-editor-visualiser`  |  COMPLETE
-
-- Stage 15: TrackVisualiser, LapTimePanel track editor, circuit map overlay
-- Physics: maxCornerSpeed divergence fix (Blanchimont R=230m, CL=4.0)
-- UX: MoTeC force arrow colour, legend fixes, slip angle precision, ParameterPanel % labels
-
----
-
-## Sessions 9–11 — 2026-03-16  |  Status: COMPLETE / MERGED
-
-- S9: Stage 10 (gear model), Stage 11 (tyre thermal)
-- S10: Stage 12 (setup optimiser), Stage 13A/B/C (separate Cα, combined slip, yaw transient)
-- S11: Stage 14 (race sim), 5 GPS circuits (TUMFTM), fuel model, race UI
-
----
-
-## Sessions 1–8 — 2026-03-15  |  Status: COMPLETE / MERGED
-
-- S1–S4: Scaffold, bicycle model, Pacejka, load transfer, drivetrain, aero, braking, lap time, Stage 8 (14-DOF)
-- S5: Arc length fixes, direction tag fixes, extended test suite
-- S6: UX fixes, test reports, Stage 9 (load sensitivity)
-- S7: Session-start skill, V_ch formula fix
-- S8: ▶ Play animation, double-stroke track map, vectorEffect scaling
+- S1–S8: Stages 1–8 (bicycle model, Pacejka, load transfer, aero, braking, lap time, 14-DOF, animation)
+- S9–S11: Stages 10–14 (gear, tyre thermal, optimiser, combined slip, race sim, TUMFTM GPS initial)
+- S12: Stage 15 (TrackVisualiser, track editor, circuit map overlay, UX fixes)
+- S13: Stage 16 start (GPS circuits: Monza, Spa, Silverstone, Suzuka; LGPL compliance identified)

@@ -236,6 +236,35 @@ Updated after every correction per CLAUDE.md Self-Improvement Loop.
 
 ---
 
+## OSM / GPS Data
+
+### OSM way series at real circuits are sequential chains, not duplicates
+- **Rule**: When fetching `highway=raceway` ways for a real circuit, NEVER exclude a way series (e.g., 1021xxx vs 1025xxx) as "duplicates" without verifying endpoint coordinates first. Different series often share endpoint node IDs — they are SEQUENTIAL connectors that together form the circuit, not redundant copies.
+- **Why**: Session 20 — Imola has two OSM way series (1021771xxx and 1025616xxx). Excluding either caused 355m+ gaps and 96–363m closure failures. Root cause: old Piratella (1021771xxx) ends at the exact same node where new Piratella (1025616xxx) begins — they are back-to-back segments, not duplicates.
+- **How to apply**: Before excluding a way, extract its first and last node coordinates. If those nodes are shared with ways you're keeping, the way is a sequential connector and must be included. Only exclude: closed polygons (`type=way` with first_node = last_node), explicit pit lane tags, or ways with no shared nodes with the rest of the circuit.
+
+---
+
+## Circuit / Track Data — Geometric Closure
+
+### `buildTrackPath()` heading closure ≠ spatial closure (update: mixed radii)
+- **(Extends the SVG/Animation Geometry lesson above.)**
+- **Rule**: Even when Σ(turn×sweep) = 360° AND straights are equal and opposite, the circuit will NOT close if corner arc radii differ. Two 180° hairpins with R1 ≠ R2 produce a y-offset of 2×(R1+R2)×SCALE from origin.
+- **Why**: Session 20 — original Club circuit had two 180° hairpins at R=30m and R=40m. Total heading = 360° but path ended 170px from start. Fixing: use identical radii for symmetric ovals.
+- **How to apply**: For symmetric oval circuits, always use equal radii on opposite hairpins. For mixed-angle circuits, use the analytic linear system (see next rule).
+
+### Analytic method for designing closed schematic circuits
+- **Rule**: Given corner heading angles θ1…θN (cumulative headings before each straight), write the closure linear system: Σ Si·cos(θi) = 0 and Σ Si·sin(θi) = 0. Solve for the unknown straight lengths, then add a small numerical correction after accounting for corner arc displacements.
+- **Why**: Session 20 — GT circuit redesigned analytically: with corner headings 0°/60°/180°/270°, solving gives S1 + 0.5·S2 = S3 and 0.866·S2 = S4. Choosing S2=390m gives S1=887m, S4=338m, S3=1059m. After arc displacement correction: final gaps < 2px.
+- **How to apply**: Step 1 — list cumulative headings before each straight. Step 2 — write the 2×N linear system. Step 3 — pick 2 straight lengths freely, solve for the others. Step 4 — simulate `buildTrackPath()` numerically with those lengths. Step 5 — if residual > 5px, adjust one "filler straight" by the residual/(SCALE) until < 3px.
+
+### Rectangle circuit with mixed corner radii: S1 ≠ S3 required for closure
+- **Rule**: For a 4×90° circuit (rectangle) where opposite corners have different radii (R1 ≠ R2), the corner arc x-displacement is non-zero. To cancel it: reduce S1 (the first straight) by `(R1 - R2) × 2 × SCALE` relative to S3 (the third straight). Do NOT reduce both S1 and S3 equally — their x-contributions cancel and you get no net change.
+- **Why**: Session 20 — Formula test circuit (4×90°, R1=R2=same for 2 corners + R3=R4=same) had a net x-displacement from corner arcs. Reducing S1 only (from 600→529m) while keeping S3=600m produced 0.32px closure vs 170px originally.
+- **How to apply**: Compute corner arc x-displacement = SCALE × Σ [R_i × (sin(θ_exit) - sin(θ_entry))]. Attribute entirely to S1 correction.
+
+---
+
 ## Skills / Commands
 
 ### Create project-level skills for recurring tasks

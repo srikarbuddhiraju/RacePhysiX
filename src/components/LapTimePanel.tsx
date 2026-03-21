@@ -81,6 +81,7 @@ const BUILTIN_KEYS = new Set([
   'monza', 'spa', 'silverstone', 'suzuka',
   'nurburgring_gp', 'bahrain', 'barcelona', 'hungaroring', 'montreal',
   'laguna_seca', 'imola', 'le_mans', 'sebring', 'mugello',
+  'brands_hatch', 'hockenheim', 'spielberg', 'zandvoort', 'sao_paulo',
 ]);
 
 // ── Main component ─────────────────────────────────────────────────────────────
@@ -329,6 +330,11 @@ export function LapTimePanel({
           </optgroup>
           <optgroup label="GT / Endurance">
             {['laguna_seca', 'imola', 'le_mans', 'sebring', 'mugello'].map(k => (
+              <option key={k} value={k}>{TRACK_PRESETS[k].name}</option>
+            ))}
+          </optgroup>
+          <optgroup label="European Touring (GPS)">
+            {['brands_hatch', 'hockenheim', 'spielberg', 'zandvoort', 'sao_paulo'].map(k => (
               <option key={k} value={k}>{TRACK_PRESETS[k].name}</option>
             ))}
           </optgroup>
