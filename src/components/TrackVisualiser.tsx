@@ -1,101 +1,48 @@
 /**
- * TrackVisualiser — premium circuit map with speed heatmap and real-time animation.
+ * TrackVisualiser — race-engineer standard circuit map with zone overlay and live telemetry.
  *
- * Layout: 3-column flex row
- *   Left panel (200px)  — Speedometer arc gauge, speed number, gear indicator
- *   Centre (flex-1)     — SVG circuit map with speed heatmap
- *   Right panel (200px) — RPM gauge, longitudinal G-meter, 4 tyre temp indicators
- *
- * Animation is ALWAYS real-time (loop duration = result.totalTimeSec * 1000 ms).
- *
- * Visual layers (back to front):
- *   1. Track shadow (blurred black, depth)
- *   2. Kerb/edge border (#4a4a60, more visible)
- *   3. Asphalt surface (#252533)
- *   4. Speed heatmap (red→yellow→cyan)
- *   5. Centre line dashes (subtle white)
- *   6. S/F line (white crossbar)
- *   7. Car glow + car dot (speed-coloured)
+ * Architecture:
+ *   buildLapTrace()  → high-res physics trace (distM, timeSec, speedKph, longG, latG, zone)
+ *   Zone overlay     → 400 SVG segments coloured by zone (replaces heatmap)
+ *   Animation        → binary-search trace by timeSec → smooth position, no linear interp
+ *   Telemetry strip  → speed | gear | rpm | long-G | lat-G | zone (data-first, monospaced)
  */
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import type { TrackLayout, LapResult, RaceResult } from '../physics/laptime';
+import { buildLapTrace } from '../physics/laptime';
+import type { TrackLayout, LapResult, RaceResult, LapSimInput, TracePoint } from '../physics/laptime';
 import type { VehicleParams } from '../physics/types';
 
-// ── Speed profile ──────────────────────────────────────────────────────────────
+// ── Zone colours ──────────────────────────────────────────────────────────────
 
-interface SpeedPt { pathFrac: number; speedKph: number }
+const ZONE_COLORS: Record<TracePoint['zone'], string> = {
+  'braking':       '#ff2020',
+  'trail-braking': '#ff8000',
+  'cornering':     '#f5c000',
+  'full-throttle': '#00c8f0',
+};
 
-function buildSpeedProfile(result: LapResult): SpeedPt[] {
-  const totalLen = result.totalLengthM;
-  const pts: SpeedPt[] = [];
-  let cumLen = 0;
-  for (const seg of result.segments) {
-    const startFrac = cumLen / totalLen;
-    const midFrac   = (cumLen + seg.length / 2) / totalLen;
-    const endFrac   = (cumLen + seg.length)     / totalLen;
-    if (seg.type === 'straight') {
-      pts.push({ pathFrac: startFrac, speedKph: seg.entrySpeedKph });
-      pts.push({ pathFrac: endFrac,   speedKph: seg.exitSpeedKph  });
-    } else {
-      pts.push({ pathFrac: startFrac, speedKph: seg.entrySpeedKph });
-      pts.push({ pathFrac: midFrac,   speedKph: seg.minSpeedKph   });
-      pts.push({ pathFrac: endFrac,   speedKph: seg.exitSpeedKph  });
-    }
-    cumLen += seg.length;
-  }
-  return pts;
-}
+const ZONE_LABELS: Record<TracePoint['zone'], string> = {
+  'braking':       'BRAKING',
+  'trail-braking': 'TRAIL',
+  'cornering':     'CORNERING',
+  'full-throttle': 'FULL THROTTLE',
+};
 
-function interpSpeed(frac: number, profile: SpeedPt[]): number {
-  if (!profile.length) return 0;
-  if (frac <= profile[0].pathFrac) return profile[0].speedKph;
-  for (let i = 1; i < profile.length; i++) {
-    if (frac <= profile[i].pathFrac) {
-      const span = profile[i].pathFrac - profile[i - 1].pathFrac;
-      const t    = span > 0 ? (frac - profile[i - 1].pathFrac) / span : 0;
-      return profile[i - 1].speedKph + t * (profile[i].speedKph - profile[i - 1].speedKph);
-    }
-  }
-  return profile[profile.length - 1].speedKph;
-}
+const ZONE_ENTRIES = Object.entries(ZONE_COLORS) as [TracePoint['zone'], string][];
 
-/** Map speed → hsl colour: slow = red (0°), medium = yellow (50°), fast = cyan (200°). */
-function speedToColor(speed: number, minSpd: number, maxSpd: number): string {
-  const t   = maxSpd > minSpd ? Math.max(0, Math.min(1, (speed - minSpd) / (maxSpd - minSpd))) : 0;
-  const hue = t < 0.5 ? t * 2 * 50 : 50 + (t - 0.5) * 2 * 150;
-  return `hsl(${hue.toFixed(0)}, 90%, 58%)`;
-}
+// ── Theme ─────────────────────────────────────────────────────────────────────
 
-// ── Time fractions table ───────────────────────────────────────────────────────
+const C = {
+  bg:      '#07070f',
+  panel:   '#0a0a16',
+  border:  '#181828',
+  text:    '#b8b8d0',
+  dim:     '#38385a',
+  accent:  '#4466ff',
+};
 
-interface TimePt { pathFrac: number; timeFrac: number }
-
-function buildTimeFractions(result: LapResult): TimePt[] {
-  const total = result.totalTimeSec;
-  const totalLen = result.totalLengthM;
-  let cumLen = 0, cumTime = 0;
-  const pts: TimePt[] = [{ pathFrac: 0, timeFrac: 0 }];
-  for (const seg of result.segments) {
-    cumLen  += seg.length;
-    cumTime += seg.timeSec;
-    pts.push({ pathFrac: cumLen / totalLen, timeFrac: cumTime / total });
-  }
-  return pts;
-}
-
-function timeFracToPathFrac(tf: number, table: TimePt[]): number {
-  for (let i = 1; i < table.length; i++) {
-    if (tf <= table[i].timeFrac) {
-      const span = table[i].timeFrac - table[i - 1].timeFrac;
-      const t    = span > 0 ? (tf - table[i - 1].timeFrac) / span : 0;
-      return table[i - 1].pathFrac + t * (table[i].pathFrac - table[i - 1].pathFrac);
-    }
-  }
-  return 1;
-}
-
-// ── Track path builder ────────────────────────────────────────────────────────
+// ── Track path builder (schematic circuits) ───────────────────────────────────
 
 function buildTrackPath(layout: TrackLayout): { d: string; viewBox: string } {
   const SCALE = 0.4;
@@ -116,7 +63,7 @@ function buildTrackPath(layout: TrackLayout): { d: string; viewBox: string } {
       const turn  = seg.direction === 'right' ? 1 : -1;
       const sweep = seg.length / seg.radius;
       const R     = seg.radius * SCALE;
-      const perpAngle = heading + turn * Math.PI / 2;
+      const perpAngle  = heading + turn * Math.PI / 2;
       const cx = x + Math.cos(perpAngle) * R;
       const cy = y + Math.sin(perpAngle) * R;
       const newHeading = heading + turn * sweep;
@@ -144,233 +91,227 @@ function buildTrackPath(layout: TrackLayout): { d: string; viewBox: string } {
   const vbW  = maxX - minX + 2 * PAD;
   const vbH  = maxY - minY + 2 * PAD;
   return {
-    d:       pts.join(' '),
+    d:       pts.join(' ') + ' Z',
     viewBox: `${(minX - PAD).toFixed(1)} ${(minY - PAD).toFixed(1)} ${vbW.toFixed(1)} ${vbH.toFixed(1)}`,
   };
 }
 
-// ── Heatmap segment ────────────────────────────────────────────────────────────
+// ── Trace lookup ──────────────────────────────────────────────────────────────
 
-interface HeatSeg { x1: number; y1: number; x2: number; y2: number; color: string }
+/** Interpolated trace state at a given cumulative time. */
+function traceAtTime(timeSec: number, trace: TracePoint[]): TracePoint {
+  let lo = 0, hi = trace.length - 1;
+  while (lo < hi - 1) {
+    const mid = (lo + hi) >> 1;
+    if (trace[mid].timeSec <= timeSec) lo = mid; else hi = mid;
+  }
+  if (lo >= hi) return trace[hi];
+  const span = trace[hi].timeSec - trace[lo].timeSec;
+  if (span <= 0) return trace[lo];
+  const t = (timeSec - trace[lo].timeSec) / span;
+  return {
+    distM:    trace[lo].distM    + t * (trace[hi].distM    - trace[lo].distM),
+    timeSec:  timeSec,
+    speedKph: trace[lo].speedKph + t * (trace[hi].speedKph - trace[lo].speedKph),
+    longG:    trace[lo].longG    + t * (trace[hi].longG    - trace[lo].longG),
+    latG:     trace[lo].latG     + t * (trace[hi].latG     - trace[lo].latG),
+    zone:     trace[lo].zone,
+  };
+}
 
-// ── Gear / RPM computation ─────────────────────────────────────────────────────
+/** Nearest trace point by cumulative distance (for static zone overlay). */
+function traceAtDist(distM: number, trace: TracePoint[]): TracePoint {
+  let lo = 0, hi = trace.length - 1;
+  while (lo < hi - 1) {
+    const mid = (lo + hi) >> 1;
+    if (trace[mid].distM <= distM) lo = mid; else hi = mid;
+  }
+  return trace[lo];
+}
 
-function computeGearRPM(speedKph: number, params: VehicleParams): { gear: number; rpm: number } {
+// ── Gear / RPM ────────────────────────────────────────────────────────────────
+
+function computeGearRPM(speedKph: number, params: VehicleParams, prevGear = 1): { gear: number; rpm: number } {
   const speedMs = speedKph / 3.6;
   if (speedMs < 0.5) return { gear: 1, rpm: params.enginePeakRpm * 0.2 };
-  const wheelRpmAtSpeed = (speedMs / params.wheelRadiusM) / (2 * Math.PI) * 60;
+  const wheelRpm = (speedMs / params.wheelRadiusM) / (2 * Math.PI) * 60;
   const n    = params.gearCount;
   const step = Math.pow(params.topGearRatio / params.firstGearRatio, 1 / (n - 1));
-  for (let g = 1; g <= n; g++) {
-    const ratio = params.firstGearRatio * Math.pow(step, g - 1);
-    const rpm   = wheelRpmAtSpeed * ratio * params.finalDriveRatio;
-    if (rpm <= params.engineRedlineRpm * 0.92) {
-      return { gear: g, rpm: Math.max(rpm, params.enginePeakRpm * 0.15) };
+  // Hysteresis: stay in prevGear if RPM is in the comfortable band
+  if (prevGear >= 1 && prevGear <= n) {
+    const prevRatio = params.firstGearRatio * Math.pow(step, prevGear - 1);
+    const prevRpm   = wheelRpm * prevRatio * params.finalDriveRatio;
+    if (prevRpm >= params.enginePeakRpm * 0.65 && prevRpm <= params.engineRedlineRpm * 0.95) {
+      return { gear: prevGear, rpm: prevRpm };
     }
   }
+  for (let g = 1; g <= n; g++) {
+    const ratio = params.firstGearRatio * Math.pow(step, g - 1);
+    const rpm   = wheelRpm * ratio * params.finalDriveRatio;
+    if (rpm <= params.engineRedlineRpm * 0.92) return { gear: g, rpm: Math.max(rpm, params.enginePeakRpm * 0.15) };
+  }
   const topRatio = params.firstGearRatio * Math.pow(step, n - 1);
-  return { gear: n, rpm: wheelRpmAtSpeed * topRatio * params.finalDriveRatio };
+  return { gear: n, rpm: wheelRpm * topRatio * params.finalDriveRatio };
 }
 
-// ── Arc gauge helpers ─────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-// Speedometer/RPM gauge: -210° to +30° from 12-o-clock (240° sweep, standard analog style)
-const SPD_START_DEG = -210;  // from 12-o-clock (bottom-left)
-const SPD_END_DEG   = 30;    // from 12-o-clock (bottom-right)
-
-function speedometerAngle(speedKph: number, maxSpd: number): number {
-  const frac = Math.max(0, Math.min(1, speedKph / Math.max(maxSpd, 1)));
-  return SPD_START_DEG + frac * (SPD_END_DEG - SPD_START_DEG);
+function formatTime(sec: number): string {
+  const m = Math.floor(sec / 60);
+  const s = sec - m * 60;
+  return `${m}:${s.toFixed(1).padStart(4, '0')}`;
 }
 
-function rpmAngle(rpm: number, redline: number): number {
-  const frac = Math.max(0, Math.min(1, rpm / Math.max(redline, 1)));
-  return SPD_START_DEG + frac * (SPD_END_DEG - SPD_START_DEG);
-}
+// ── Sub-components ────────────────────────────────────────────────────────────
 
-/** SVG arc path from centre. startAngle/endAngle in degrees from 12-o-clock, CW positive. */
-function gaugeArcPath(cx: number, cy: number, r: number, startAngleDeg: number, endAngleDeg: number): string {
-  const toRad = (d: number) => (d - 90) * Math.PI / 180;
-  const sa = toRad(startAngleDeg);
-  const ea = toRad(endAngleDeg);
-  const x1 = cx + r * Math.cos(sa);
-  const y1 = cy + r * Math.sin(sa);
-  const x2 = cx + r * Math.cos(ea);
-  const y2 = cy + r * Math.sin(ea);
-  // Determine large arc: going clockwise from start to end
-  const sweep = ((endAngleDeg - startAngleDeg) % 360 + 360) % 360;
-  const large = sweep > 180 ? 1 : 0;
-  return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
-}
-
-// ── Speedometer gauge SVG ─────────────────────────────────────────────────────
-
-function SpeedometerGauge({ speedKph, maxSpeedKph, color }: { speedKph: number; maxSpeedKph: number; color: string }) {
-  const cx = 80, cy = 80, r = 60;
-  const needleAngle = speedometerAngle(speedKph, maxSpeedKph);
-  const toRad = (d: number) => (d - 90) * Math.PI / 180;
-  const nx = cx + r * 0.85 * Math.cos(toRad(needleAngle));
-  const ny = cy + r * 0.85 * Math.sin(toRad(needleAngle));
-
-  // Background arc
-  const bgArc      = gaugeArcPath(cx, cy, r, SPD_START_DEG, SPD_END_DEG);
-  // Value arc (from start to needle position)
-  const valArc     = speedKph > 0.1
-    ? gaugeArcPath(cx, cy, r, SPD_START_DEG, needleAngle)
-    : null;
-
+/** Centre-anchored horizontal bar: negative fills left (red), positive fills right (green). */
+function GBar({ value, range, negColor, posColor }: {
+  value: number; range: number; negColor: string; posColor: string;
+}) {
+  const clamped = Math.max(-range, Math.min(range, value));
+  const isNeg   = clamped < 0;
+  const pct     = Math.abs(clamped) / range * 50;
   return (
-    <svg width="160" height="130" viewBox="0 0 160 130" style={{ display: 'block', margin: '0 auto' }}>
-      {/* Background track */}
-      <path d={bgArc} fill="none" stroke="#1e1e2d" strokeWidth="8" strokeLinecap="round" />
-      {/* Value arc */}
-      {valArc && <path d={valArc} fill="none" stroke={color} strokeWidth="8" strokeLinecap="round" strokeOpacity="0.9" />}
-      {/* Needle */}
-      <line
-        x1={cx} y1={cy}
-        x2={nx.toFixed(1)} y2={ny.toFixed(1)}
-        stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeOpacity="0.95"
-      />
-      {/* Centre dot */}
-      <circle cx={cx} cy={cy} r="4" fill={color} fillOpacity="0.9" />
-      <circle cx={cx} cy={cy} r="2" fill="#0a0a14" />
-      {/* Speed text */}
-      <text x={cx} y={cy + 26} textAnchor="middle" fill={color} fontSize="22" fontWeight="700" fontFamily="monospace">
-        {Math.round(speedKph)}
-      </text>
-      <text x={cx} y={cy + 38} textAnchor="middle" fill="#556" fontSize="8" fontFamily="sans-serif">
-        km/h
-      </text>
-      {/* Scale labels */}
-      <text x={cx - 45} y={cy + 55} textAnchor="middle" fill="#445" fontSize="7">0</text>
-      <text x={cx + 45} y={cy + 55} textAnchor="middle" fill="#445" fontSize="7">{Math.round(maxSpeedKph)}</text>
-    </svg>
-  );
-}
-
-// ── RPM gauge SVG ─────────────────────────────────────────────────────────────
-
-function RpmGauge({ rpm, peakRpm, redlineRpm }: { rpm: number; peakRpm: number; redlineRpm: number }) {
-  const cx = 80, cy = 80, r = 60;
-  const needleAngle = rpmAngle(rpm, redlineRpm);
-  const peakAngle   = rpmAngle(peakRpm, redlineRpm);
-  const warnAngle   = rpmAngle(redlineRpm * 0.90, redlineRpm);
-  const toRad = (d: number) => (d - 90) * Math.PI / 180;
-  const nx = cx + r * 0.85 * Math.cos(toRad(needleAngle));
-  const ny = cy + r * 0.85 * Math.sin(toRad(needleAngle));
-
-  const greenArc  = gaugeArcPath(cx, cy, r, SPD_START_DEG, peakAngle);
-  const orangeArc = gaugeArcPath(cx, cy, r, peakAngle, warnAngle);
-  const redArc    = gaugeArcPath(cx, cy, r, warnAngle, SPD_END_DEG);
-  const valArc    = rpm > 100 ? gaugeArcPath(cx, cy, r, SPD_START_DEG, needleAngle) : null;
-
-  const rpmColor = rpm >= redlineRpm * 0.90 ? '#f43f5e' : rpm >= peakRpm ? '#f97316' : '#4ade80';
-
-  return (
-    <svg width="160" height="130" viewBox="0 0 160 130" style={{ display: 'block', margin: '0 auto' }}>
-      {/* Zone arcs */}
-      <path d={greenArc}  fill="none" stroke="#4ade8022" strokeWidth="8" strokeLinecap="round" />
-      <path d={orangeArc} fill="none" stroke="#f9731622" strokeWidth="8" strokeLinecap="round" />
-      <path d={redArc}    fill="none" stroke="#f43f5e22" strokeWidth="8" strokeLinecap="round" />
-      {/* Background track */}
-      <path d={gaugeArcPath(cx, cy, r, SPD_START_DEG, SPD_END_DEG)} fill="none" stroke="#1e1e2d" strokeWidth="8" strokeLinecap="round" />
-      {/* Value arc */}
-      {valArc && <path d={valArc} fill="none" stroke={rpmColor} strokeWidth="6" strokeLinecap="round" strokeOpacity="0.85" />}
-      {/* Needle */}
-      <line x1={cx} y1={cy} x2={nx.toFixed(1)} y2={ny.toFixed(1)} stroke={rpmColor} strokeWidth="2.5" strokeLinecap="round" />
-      <circle cx={cx} cy={cy} r="4" fill={rpmColor} fillOpacity="0.9" />
-      <circle cx={cx} cy={cy} r="2" fill="#0a0a14" />
-      {/* RPM text */}
-      <text x={cx} y={cy + 24} textAnchor="middle" fill={rpmColor} fontSize="14" fontWeight="700" fontFamily="monospace">
-        {Math.round(rpm / 100) * 100}
-      </text>
-      <text x={cx} y={cy + 35} textAnchor="middle" fill="#556" fontSize="8">RPM</text>
-      <text x={cx - 40} y={cy + 55} textAnchor="middle" fill="#445" fontSize="7">0</text>
-      <text x={cx + 40} y={cy + 55} textAnchor="middle" fill="#f43f5e88" fontSize="7">{Math.round(redlineRpm / 1000)}k</text>
-    </svg>
-  );
-}
-
-// ── G-meter (vertical bar) ────────────────────────────────────────────────────
-
-function GMeter({ accelG }: { accelG: number }) {
-  const H = 100, W = 24;
-  const minG = -1.5, maxG = 1.0;
-  const total = maxG - minG;
-  const zeroFrac  = (maxG) / total;  // fraction from top where zero is
-  const gFrac     = Math.max(0, Math.min(1, (maxG - accelG) / total));  // from top
-  const zeroY     = zeroFrac * H;
-  const gY        = gFrac * H;
-  const barTop    = Math.min(zeroY, gY);
-  const barHeight = Math.abs(zeroY - gY);
-  const isAccel   = accelG >= 0;
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-      <span style={{ fontSize: 7, color: '#445', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Long G</span>
-      <svg width={W + 20} height={H + 4} viewBox={`0 0 ${W + 20} ${H + 4}`}>
-        {/* Background bar */}
-        <rect x={10} y={2} width={W} height={H} rx={3} fill="#1e1e2d" />
-        {/* Value bar */}
-        <rect x={10} y={barTop + 2} width={W} height={barHeight} rx={2} fill={isAccel ? '#4ade80' : '#f43f5e'} fillOpacity="0.85" />
-        {/* Zero line */}
-        <line x1={8} y1={zeroY + 2} x2={W + 12} y2={zeroY + 2} stroke="#334" strokeWidth="1.5" />
-        {/* Labels */}
-        <text x={W + 14} y={zeroY + 6} fontSize="7" fill="#445" fontFamily="monospace">0</text>
-        <text x={W + 14} y={6} fontSize="7" fill="#4ade8088" fontFamily="monospace">+1g</text>
-        <text x={W + 14} y={H + 4} fontSize="7" fill="#f43f5e88" fontFamily="monospace">-1.5</text>
-      </svg>
-      <span style={{ fontSize: 9, fontWeight: 700, color: isAccel ? '#4ade80' : '#f43f5e', fontVariantNumeric: 'tabular-nums' }}>
-        {accelG >= 0 ? '+' : ''}{accelG.toFixed(2)}g
-      </span>
+    <div style={{ width: '88%', height: 3, background: C.border, borderRadius: 2, position: 'relative', marginTop: 4 }}>
+      <div style={{
+        position: 'absolute', top: 0, height: '100%',
+        left: isNeg ? `${50 - pct}%` : '50%',
+        width: `${pct}%`,
+        background: isNeg ? negColor : posColor,
+        borderRadius: 2,
+      }} />
+      {/* Centre tick */}
+      <div style={{ position: 'absolute', top: -2, left: '50%', width: 1, height: 7, background: C.dim }} />
     </div>
   );
 }
 
-// ── Tyre temperature indicator ────────────────────────────────────────────────
-
-function tyreTempColor(tempC: number, optC: number, halfWidthC: number): string {
-  const delta = Math.abs(tempC - optC);
-  if (delta < halfWidthC * 0.4) return '#4ade80';
-  if (delta < halfWidthC * 0.8) return '#facc15';
-  if (delta < halfWidthC * 1.3) return '#f97316';
-  return '#f43f5e';
-}
-
-function TyreTempGrid({ tempC, optC, halfWidthC }: { tempC: number; optC: number; halfWidthC: number }) {
-  const positions = ['FL', 'FR', 'RL', 'RR'] as const;
+/** Linear bar 0→1, with colour zones (green/yellow/red). */
+function RpmBar({ frac }: { frac: number }) {
+  const color = frac > 0.9 ? '#ff3030' : frac > 0.75 ? '#ffcc00' : '#22cc55';
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-      <span style={{ fontSize: 7, color: '#445', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Tyre Temps</span>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
-        {positions.map(pos => {
-          const col = tyreTempColor(tempC, optC, halfWidthC);
-          return (
-            <div key={pos} style={{
-              background: col + '22',
-              border: `1px solid ${col}66`,
-              borderRadius: 4, padding: '4px 6px', textAlign: 'center', minWidth: 36,
-            }}>
-              <div style={{ fontSize: 7, color: '#667', marginBottom: 1 }}>{pos}</div>
-              <div style={{ fontSize: 9, fontWeight: 700, color: col, fontVariantNumeric: 'tabular-nums' }}>
-                {Math.round(tempC)}°
-              </div>
-            </div>
-          );
-        })}
-      </div>
+    <div style={{ width: '88%', height: 3, background: C.border, borderRadius: 2, marginTop: 4 }}>
+      <div style={{ width: `${Math.min(1, frac) * 100}%`, height: '100%', background: color, borderRadius: 2 }} />
     </div>
   );
 }
 
-// ── Telemetry state ────────────────────────────────────────────────────────────
+// ── Zone segment ──────────────────────────────────────────────────────────────
+
+interface ZoneSeg { x1: number; y1: number; x2: number; y2: number; color: string }
+
+// ── GPS zone overlay ──────────────────────────────────────────────────────────
+/**
+ * Compute zone overlay for GPS circuits by deriving physics directly from the
+ * SVG path curvature. This guarantees zones appear at the correct GPS positions
+ * rather than being approximated by a distance-fraction mapping.
+ *
+ * Algorithm:
+ *   1. Sample N+1 evenly-spaced points on the SVG path.
+ *   2. Compute Menger curvature at each point (3-point formula) + smooth.
+ *   3. V_max[i] = sqrt(μ · g · R_real[i]) — cornering speed from curvature.
+ *   4. Forward + backward Euler passes (4 iterations) → minimum-time speed profile.
+ *   5. Classify zone at each sample: cornering / braking / trail / full-throttle.
+ */
+function buildGpsZoneOverlay(
+  pathEl: SVGPathElement,
+  layout: TrackLayout,
+  inp:    LapSimInput,
+  N = 2000,
+): ZoneSeg[] {
+  const G_C     = 9.81;
+  const pathLen = pathEl.getTotalLength();
+  const totalDist = layout.segments.reduce((sum, s) => sum + s.length, 0);
+  if (pathLen < 1 || totalDist < 1) return [];
+
+  const svgToMeter = totalDist / pathLen;   // meters per SVG unit
+  const dsReal     = totalDist / N;         // meters per step
+  const vTop       = inp.maxVehicleSpeedMs ?? 80;
+
+  // 1. Sample points
+  const pts: { x: number; y: number }[] = [];
+  for (let i = 0; i <= N; i++) {
+    const p = pathEl.getPointAtLength((i / N) * pathLen);
+    pts.push({ x: p.x, y: p.y });
+  }
+
+  // 2. Menger curvature (raw)
+  const rawK = new Float64Array(N + 1);
+  for (let i = 1; i < N; i++) {
+    const ax = pts[i].x - pts[i-1].x, ay = pts[i].y - pts[i-1].y;
+    const bx = pts[i+1].x - pts[i].x, by = pts[i+1].y - pts[i].y;
+    const cx = pts[i+1].x - pts[i-1].x, cy = pts[i+1].y - pts[i-1].y;
+    const cross = Math.abs(ax * by - ay * bx);
+    const denom = Math.hypot(ax, ay) * Math.hypot(bx, by) * Math.hypot(cx, cy);
+    rawK[i] = denom > 1e-12 ? (2 * cross) / denom : 0;
+  }
+  rawK[0] = rawK[1]; rawK[N] = rawK[N - 1];
+
+  // 3-point smooth (reduces GPS noise without blurring short chicanes)
+  const kappa = new Float64Array(N + 1);
+  for (let i = 0; i <= N; i++) {
+    const im1 = Math.max(0, i - 1);
+    const ip1 = Math.min(N, i + 1);
+    kappa[i] = (rawK[im1] + 2 * rawK[i] + rawK[ip1]) / 4;
+  }
+
+  // 3. V_max from curvature
+  const vMax = new Float64Array(N + 1);
+  for (let i = 0; i <= N; i++) {
+    const kappaReal = kappa[i] / svgToMeter;            // 1/m
+    const R         = kappaReal > 1e-6 ? 1 / kappaReal : 1e6;
+    vMax[i] = Math.min(vTop, Math.sqrt(inp.peakMu * G_C * R));
+  }
+
+  // 4. Speed profile — 4 forward/backward Euler passes
+  const V      = Float64Array.from(vMax);
+  const aBrake = inp.brakingCapG * G_C;
+
+  for (let iter = 0; iter < 4; iter++) {
+    // Forward pass: max acceleration
+    for (let i = 0; i < N; i++) {
+      const Fd   = Math.max(0, inp.driveForce(V[i]) - inp.dragForce(V[i]));
+      const vNxt = Math.sqrt(Math.max(0, V[i] * V[i] + 2 * (Fd / inp.mass) * dsReal));
+      V[i + 1]   = Math.min(vNxt, vMax[i + 1]);
+    }
+    // Backward pass: max braking
+    for (let i = N; i > 0; i--) {
+      const vPrv = Math.sqrt(Math.max(0, V[i] * V[i] + 2 * aBrake * dsReal));
+      V[i - 1]   = Math.min(vPrv, vMax[i - 1]);
+    }
+  }
+
+  // 5. Zone classification + segment output
+  const segs: ZoneSeg[] = [];
+  for (let i = 0; i < N; i++) {
+    const isLimited = vMax[i] < vTop - 2;
+    const atLimit   = V[i] >= vMax[i] - 1.5;
+    // decelG > 0 = decelerating, < 0 = accelerating
+    const decelG = (V[i] * V[i] - V[i + 1] * V[i + 1]) / (2 * dsReal * G_C);
+    let zone: TracePoint['zone'];
+    if (isLimited && atLimit) {
+      zone = 'cornering';
+    } else if (decelG > 0.3) {
+      zone = 'braking';
+    } else if (decelG > 0.05) {
+      zone = 'trail-braking';
+    } else {
+      zone = 'full-throttle';
+    }
+    segs.push({ x1: pts[i].x, y1: pts[i].y, x2: pts[i+1].x, y2: pts[i+1].y, color: ZONE_COLORS[zone] });
+  }
+  return segs;
+}
+
+// ── Telemetry state ───────────────────────────────────────────────────────────
 
 interface TelemetryState {
   speedKph: number;
   gear:     number;
   rpm:      number;
-  accelG:   number;
-  tyreTempC: number;
+  longG:    number;
+  latG:     number;
+  zone:     TracePoint['zone'];
 }
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -378,8 +319,8 @@ interface TelemetryState {
 interface Props {
   layout:      TrackLayout;
   result:      LapResult;
+  lapSimInput: LapSimInput;
   raceResult:  RaceResult | null;
-  /** Increment to trigger race animation. */
   triggerRace: number;
   params:      VehicleParams;
   onClose:     () => void;
@@ -387,13 +328,13 @@ interface Props {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function TrackVisualiser({ layout, result, raceResult, triggerRace, params, onClose }: Props) {
-  const [playing,         setPlaying]         = useState(true);
-  const [dotPos,          setDotPos]          = useState<{ x: number; y: number } | null>(null);
-  const [dotColor,        setDotColor]        = useState('#ef4444');
-  const [heatmap,         setHeatmap]         = useState<HeatSeg[]>([]);
-  const [raceLabel,       setRaceLabel]       = useState<string | null>(null);
-  const [telemetry,       setTelemetry]       = useState<TelemetryState | null>(null);
+export function TrackVisualiser({ layout, result, lapSimInput, raceResult, triggerRace, params, onClose }: Props) {
+  const [playing,    setPlaying]    = useState(true);
+  const [dotPos,     setDotPos]     = useState<{ x: number; y: number } | null>(null);
+  const [dotHeading, setDotHeading] = useState(0);
+  const [zoneOverlay, setZoneOverlay] = useState<ZoneSeg[]>([]);
+  const [raceLabel,  setRaceLabel]  = useState<string | null>(null);
+  const [telemetry,  setTelemetry]  = useState<TelemetryState | null>(null);
 
   // Refs used inside RAF
   const pathRef        = useRef<SVGPathElement | null>(null);
@@ -401,54 +342,49 @@ export function TrackVisualiser({ layout, result, raceResult, triggerRace, param
   const startRef       = useRef<number | null>(null);
   const lapStartRef    = useRef<number | null>(null);
   const raceAnimRef    = useRef<{ isRacing: boolean; lapIdx: number } | null>(null);
-  const resultRef      = useRef(result);
   const raceResultRef  = useRef(raceResult);
-  const timeFracsRef   = useRef<TimePt[]>([]);
-  const speedProfRef   = useRef<SpeedPt[]>([]);
-  const prevSpeedRef   = useRef<number>(0);
-  const prevTimeRef    = useRef<number | null>(null);
+  const traceRef       = useRef<TracePoint[]>([]);
+  const prevGearRef    = useRef(1);
 
-  // Keep refs in sync
-  useEffect(() => { resultRef.current    = result;    }, [result]);
   useEffect(() => { raceResultRef.current = raceResult; }, [raceResult]);
 
-  const timeFractions = useMemo(() => buildTimeFractions(result), [result]);
-  const speedProfile  = useMemo(() => buildSpeedProfile(result),  [result]);
+  // Build trace from physics
+  const trace = useMemo(() => buildLapTrace(layout, lapSimInput), [layout, lapSimInput]);
+  useEffect(() => { traceRef.current = trace; }, [trace]);
 
-  useEffect(() => { timeFracsRef.current = timeFractions; }, [timeFractions]);
-  useEffect(() => { speedProfRef.current = speedProfile;  }, [speedProfile]);
-
-  // Derive SVG path
-  const { d, viewBox } = useMemo(() => {
-    if (layout.svgPath && layout.svgViewBox) {
-      return { d: layout.svgPath, viewBox: layout.svgViewBox };
-    }
+  // SVG path
+  const { d: trackD, viewBox } = useMemo(() => {
+    if (layout.svgPath && layout.svgViewBox) return { d: layout.svgPath, viewBox: layout.svgViewBox };
     return buildTrackPath(layout);
   }, [layout]);
 
-  // Sample heatmap
+  // Zone overlay:
+  //   GPS circuits  → curvature-based physics on the actual GPS path (exact positions)
+  //   Schematic     → segment-proportional buildTrackPath + trace lookup (exact)
   useEffect(() => {
     const pathEl = pathRef.current;
-    if (!pathEl || result.totalLengthM === 0) return;
-    const N       = 300;
-    const pathLen = pathEl.getTotalLength();
-    const minSpd  = result.minCornerKph;
-    const maxSpd  = result.maxSpeedKph;
-    const profile = speedProfRef.current;
-    const ptArr: Array<{ x: number; y: number }> = [];
-    for (let i = 0; i <= N; i++) {
-      const pt = pathEl.getPointAtLength((i / N) * pathLen);
-      ptArr.push({ x: pt.x, y: pt.y });
+    if (!pathEl) return;
+    if (layout.svgPath) {
+      setZoneOverlay(buildGpsZoneOverlay(pathEl, layout, lapSimInput));
+    } else {
+      if (trace.length < 2) return;
+      const N       = 400;
+      const pathLen = pathEl.getTotalLength();
+      const totalDist = trace[trace.length - 1].distM;
+      const ptArr   = Array.from({ length: N + 1 }, (_, i) => {
+        const pt = pathEl.getPointAtLength((i / N) * pathLen);
+        return { x: pt.x, y: pt.y };
+      });
+      const segs: ZoneSeg[] = ptArr.slice(1).map((p, i) => {
+        const distM = ((i + 0.5) / N) * totalDist;
+        const tp    = traceAtDist(distM, trace);
+        return { x1: ptArr[i].x, y1: ptArr[i].y, x2: p.x, y2: p.y, color: ZONE_COLORS[tp.zone] };
+      });
+      setZoneOverlay(segs);
     }
-    const lines: HeatSeg[] = ptArr.slice(1).map((p, i) => ({
-      x1: ptArr[i].x, y1: ptArr[i].y,
-      x2: p.x,        y2: p.y,
-      color: speedToColor(interpSpeed((i + 0.5) / N, profile), minSpd, maxSpd),
-    }));
-    setHeatmap(lines);
-  }, [layout, result]);
+  }, [layout, trace, lapSimInput]);
 
-  // Trigger race animation
+  // Race trigger
   useEffect(() => {
     if (triggerRace === 0 || !raceResult || raceResult.laps.length === 0) return;
     raceAnimRef.current = { isRacing: true, lapIdx: 0 };
@@ -457,36 +393,34 @@ export function TrackVisualiser({ layout, result, raceResult, triggerRace, param
     setRaceLabel(`Lap 1 / ${raceResult.laps.length}`);
   }, [triggerRace]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Reset on layout/result change
-  useEffect(() => {
-    startRef.current = null;
-  }, [layout, result]);
+  // Reset animation on layout/trace change
+  useEffect(() => { startRef.current = null; prevGearRef.current = 1; }, [layout, trace]);
 
-  // Core RAF tick — always real-time
+  // Playback speed: 8× real-time so a 2-min lap takes ~15s to watch
+  const PLAYBACK_SPEED = 8;
+
+  // Core RAF tick
   const tick = useCallback((timestamp: number) => {
+    if (!playing) { rafRef.current = requestAnimationFrame(tick); return; }
     const pathEl = pathRef.current;
-    if (!pathEl) return;
-    if (startRef.current === null) {
-      startRef.current  = timestamp;
-      prevTimeRef.current = timestamp;
-    }
+    const tr = traceRef.current;
+    if (!pathEl || tr.length < 2) { rafRef.current = requestAnimationFrame(tick); return; }
+    if (startRef.current === null) startRef.current = timestamp;
 
-    const res       = resultRef.current;
-    const raceRes   = raceResultRef.current;
-    const raceAnim  = raceAnimRef.current;
-    const timeFracs = timeFracsRef.current;
-    const speedProf = speedProfRef.current;
+    const traceTotalTime = tr[tr.length - 1].timeSec;
+    const traceTotalDist = tr[tr.length - 1].distM;
+    let timeSec_cur: number;
 
-    let pathFrac: number;
+    const raceAnim = raceAnimRef.current;
+    const raceRes  = raceResultRef.current;
 
     if (raceAnim?.isRacing && raceRes && raceRes.laps.length > 0) {
       if (lapStartRef.current === null) lapStartRef.current = timestamp;
-      const lapData  = raceRes.laps[raceAnim.lapIdx];
-      const lapMs    = lapData.lapTimeSec * 1000;
-      const elapsed  = timestamp - lapStartRef.current;
-      const tf       = Math.min(elapsed / lapMs, 1);
-      pathFrac       = timeFracToPathFrac(tf, timeFracs);
-
+      const lapData     = raceRes.laps[raceAnim.lapIdx];
+      const lapMs       = lapData.lapTimeSec * 1000;
+      const elapsed     = (timestamp - lapStartRef.current) * PLAYBACK_SPEED;
+      const t           = Math.min(elapsed / lapMs, 1);
+      timeSec_cur       = t * traceTotalTime;
       if (elapsed >= lapMs) {
         const nextIdx = raceAnim.lapIdx + 1;
         if (nextIdx >= raceRes.laps.length) {
@@ -494,267 +428,257 @@ export function TrackVisualiser({ layout, result, raceResult, triggerRace, param
           setRaceLabel(null);
         } else {
           raceAnimRef.current = { isRacing: true, lapIdx: nextIdx };
-          setRaceLabel(`Lap ${nextIdx + 1} / ${raceRes.laps.length}`);
           lapStartRef.current = timestamp;
+          setRaceLabel(`Lap ${nextIdx + 1} / ${raceRes.laps.length}`);
         }
       }
     } else {
-      // Always real-time loop
-      const elapsed = timestamp - startRef.current;
-      const loopMs  = res.totalTimeSec * 1000;
-      const tf      = (elapsed % loopMs) / loopMs;
-      pathFrac      = timeFracToPathFrac(tf, timeFracs);
+      const elapsed = (timestamp - startRef.current) * PLAYBACK_SPEED;
+      timeSec_cur   = (elapsed % (traceTotalTime * 1000)) / 1000;
     }
 
-    const totalPathLen = pathEl.getTotalLength();
-    const pt           = pathEl.getPointAtLength(pathFrac * totalPathLen);
-    const speedKph     = interpSpeed(pathFrac, speedProf);
-    const color        = speedToColor(speedKph, res.minCornerKph, res.maxSpeedKph);
+    const tp       = traceAtTime(timeSec_cur, tr);
+    const pathFrac = tp.distM / traceTotalDist;
+    const pathLen  = pathEl.getTotalLength();
+    const sampleAt = pathFrac * pathLen;
+    const pt       = pathEl.getPointAtLength(sampleAt);
 
-    // Longitudinal G
-    const dt = prevTimeRef.current !== null ? (timestamp - prevTimeRef.current) : 16;
-    const prevSpeed = prevSpeedRef.current;
-    const accelMs2  = ((speedKph - prevSpeed) / 3.6) / (dt / 1000);
-    const accelG    = accelMs2 / 9.81;
-    prevSpeedRef.current = speedKph;
-    prevTimeRef.current  = timestamp;
+    // Heading — eps clamp prevents snap at lap end
+    const eps  = Math.max(0.5, pathLen * 0.003);
+    const ptA  = pathEl.getPointAtLength(Math.max(eps, Math.min(sampleAt - eps, pathLen - 2 * eps)));
+    const ptB  = pathEl.getPointAtLength(Math.min(pathLen - eps, Math.max(sampleAt + eps, 2 * eps)));
+    const headingDeg = Math.atan2(ptB.y - ptA.y, ptB.x - ptA.x) * 180 / Math.PI;
 
     // Gear / RPM
-    const { gear, rpm } = computeGearRPM(speedKph, params);
-
-    // Tyre temp: use raceResult current lap if available
-    let tyreTempC = params.tyreTempCurrentC;
-    if (raceAnimRef.current?.isRacing && raceRes && raceRes.laps.length > 0) {
-      const lapIdx = Math.min(raceAnimRef.current.lapIdx, raceRes.laps.length - 1);
-      tyreTempC = raceRes.laps[lapIdx].tyreTempC;
-    }
+    const { gear, rpm } = computeGearRPM(tp.speedKph, params, prevGearRef.current);
+    prevGearRef.current = gear;
 
     setDotPos({ x: pt.x, y: pt.y });
-    setDotColor(color);
-    setTelemetry({ speedKph, gear, rpm, accelG, tyreTempC });
+    setDotHeading(headingDeg);
+    setTelemetry({ speedKph: tp.speedKph, gear, rpm, longG: tp.longG, latG: tp.latG, zone: tp.zone });
 
     rafRef.current = requestAnimationFrame(tick);
-  }, [params]); // params is stable-ish; gear/RPM computation needs it
+  }, [playing, params]);
 
-  // Start / stop animation
   useEffect(() => {
-    if (rafRef.current !== null) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-    if (playing) {
-      startRef.current = null;
-      prevTimeRef.current = null;
-      rafRef.current = requestAnimationFrame(tick);
-    } else {
-      setDotPos(null);
-      setTelemetry(null);
-    }
-    return () => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    };
-  }, [playing, tick]);
+    rafRef.current = requestAnimationFrame(tick);
+    return () => { if (rafRef.current !== null) cancelAnimationFrame(rafRef.current); };
+  }, [tick]);
 
-  // S/F marker geometry
-  const [, , vbW, vbH] = viewBox.split(' ').map(Number);
-  const u       = Math.min(vbW, vbH) * 0.06;
-  const sfMatch = d.match(/M\s*([\d.+-]+)\s+([\d.+-]+)/);
-  const sfX     = sfMatch ? parseFloat(sfMatch[1]) : 0;
-  const sfY     = sfMatch ? parseFloat(sfMatch[2]) : 0;
+  // ── Derived telemetry display values ─────────────────────────────────────────
+  const redline   = params.engineRedlineRpm;
+  const rpmFrac   = telemetry ? Math.min(1, telemetry.rpm / redline) : 0;
+  const zoneColor = telemetry ? ZONE_COLORS[telemetry.zone] : C.dim;
 
-  const distKm     = (result.totalLengthM / 1000).toFixed(3);
-  const maxSpeedKph = result.maxSpeedKph;
-
+  // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#0a0a14' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: C.bg, fontFamily: 'system-ui, sans-serif', overflow: 'hidden' }}>
 
-      {/* ── Header bar ── */}
+      {/* ── Header ── */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 10, padding: '6px 12px',
-        borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0,
-        background: '#0d0d1a',
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '0 14px', height: 36, flexShrink: 0,
+        background: C.panel, borderBottom: `1px solid ${C.border}`,
       }}>
-        {/* Close button */}
-        <button
-          onClick={onClose}
-          title="Close circuit map"
-          style={{
-            background: 'none', border: '1px solid #333344', borderRadius: 4,
-            color: '#888899', cursor: 'pointer', fontSize: 14, lineHeight: 1,
-            padding: '2px 8px', fontWeight: 700,
-          }}
-        >
-          ×
-        </button>
-
-        <span style={{ fontSize: 11, fontWeight: 700, color: '#e0e0f0', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+        <button onClick={onClose} style={{
+          background: 'none', border: 'none', color: C.dim,
+          fontSize: 16, cursor: 'pointer', padding: '0 4px', lineHeight: 1,
+        }}>×</button>
+        <span style={{ fontFamily: 'monospace', fontSize: 11, letterSpacing: '0.18em', color: C.dim, textTransform: 'uppercase' }}>
           {layout.name}
         </span>
-        <span style={{ fontSize: 9, color: '#555577' }}>{distKm} km</span>
-
-        <span style={{ fontSize: 9, color: '#666688', background: 'rgba(100,100,255,0.08)', padding: '2px 8px', borderRadius: 10 }}>
-          Real-time simulation
-        </span>
-
-        {raceLabel && (
-          <span style={{ fontSize: 9, fontWeight: 700, color: '#a0a0ff', background: 'rgba(100,100,255,0.12)', padding: '2px 7px', borderRadius: 10 }}>
-            {raceLabel}
+        {layout.svgPath && (
+          <span style={{ fontSize: 8, color: C.dim, letterSpacing: '0.10em', opacity: 0.6 }}>
+            GPS © TUMFTM · LGPL-3.0
           </span>
         )}
+        <div style={{ flex: 1 }} />
+        {raceLabel && (
+          <span style={{ fontSize: 10, color: C.accent, letterSpacing: '0.12em' }}>{raceLabel}</span>
+        )}
+        <span style={{ fontFamily: 'monospace', fontSize: 13, color: C.text, letterSpacing: '0.08em' }}>
+          {formatTime(result.totalTimeSec)}
+        </span>
+        <button onClick={() => setPlaying(p => !p)} style={{
+          background: 'none', border: `1px solid ${C.border}`, color: C.text,
+          fontSize: 11, cursor: 'pointer', padding: '2px 8px', borderRadius: 3,
+          letterSpacing: '0.1em',
+        }}>
+          {playing ? '⏸' : '▶'}
+        </button>
+      </div>
 
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button
-            onClick={() => setPlaying(p => !p)}
-            title={playing ? 'Pause animation' : 'Resume animation'}
-            style={{
-              padding: '3px 10px', fontSize: 10, fontWeight: 700,
-              background: playing ? 'rgba(100,100,255,0.15)' : '#1e1e2e',
-              border: `1px solid ${playing ? '#6466f1' : '#333344'}`,
-              borderRadius: 5, color: playing ? '#a0a0ff' : '#666677', cursor: 'pointer',
-            }}
-          >
-            {playing ? '⏸' : '▶'}
-          </button>
+      {/* ── Circuit map ── */}
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden', background: C.bg }}>
+        <svg
+          viewBox={viewBox}
+          style={{ width: '100%', height: '100%' }}
+          preserveAspectRatio="xMidYMid meet"
+        >
+          {/* Hidden measurement path — Z stripped so getTotalLength() excludes closing segment */}
+          <path ref={pathRef} d={trackD.replace(/\s*Z\s*$/i, '')} fill="none" stroke="none" />
+
+          {/* Track shadow */}
+          <path d={trackD} fill="none" stroke="#02020a" strokeWidth={22}
+            strokeLinecap="round" strokeLinejoin="round" />
+          {/* Track asphalt */}
+          <path d={trackD} fill="none" stroke="#141420" strokeWidth={16}
+            strokeLinecap="round" strokeLinejoin="round" />
+          {/* Track edge */}
+          <path d={trackD} fill="none" stroke="#1e1e30" strokeWidth={12}
+            strokeLinecap="round" strokeLinejoin="round" />
+
+          {/* Zone overlay */}
+          {zoneOverlay.map((seg, i) => (
+            <line key={i}
+              x1={seg.x1} y1={seg.y1} x2={seg.x2} y2={seg.y2}
+              stroke={seg.color} strokeWidth={3} strokeLinecap="round" opacity={0.88}
+            />
+          ))}
+
+          {/* Centre line dashes */}
+          <path d={trackD} fill="none" stroke="rgba(255,255,255,0.05)"
+            strokeWidth={1} strokeDasharray="4 10" />
+
+          {/* Car arrow */}
+          {dotPos && (
+            <g transform={`translate(${dotPos.x},${dotPos.y}) rotate(${dotHeading})`}>
+              <circle r={11} fill={`${zoneColor}35`} />
+              <polygon points="0,-8 -4.5,5.5 4.5,5.5"
+                fill="#ffffff" stroke={zoneColor} strokeWidth={1.5} />
+            </g>
+          )}
+        </svg>
+
+        {/* Zone legend — bottom-left of map */}
+        <div style={{
+          position: 'absolute', bottom: 8, left: 10,
+          display: 'flex', gap: 10, flexWrap: 'wrap',
+        }}>
+          {ZONE_ENTRIES.map(([zone, color]) => (
+            <div key={zone} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div style={{ width: 8, height: 8, background: color, borderRadius: 1 }} />
+              <span style={{ fontSize: 9, color: C.dim, letterSpacing: '0.1em' }}>
+                {ZONE_LABELS[zone]}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* ── 3-column body ── */}
-      <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+      {/* ── Telemetry strip ── */}
+      <div style={{
+        display: 'flex', flexShrink: 0, height: 82,
+        background: C.panel, borderTop: `1px solid ${C.border}`,
+      }}>
 
-        {/* ── Left panel: Speedometer + Gear ── */}
-        <div style={{
-          width: 170, flexShrink: 0,
-          background: '#0d0d1a', borderRight: '1px solid #1a1a28',
-          display: 'flex', flexDirection: 'column', alignItems: 'center',
-          justifyContent: 'center', gap: 8, padding: '12px 8px',
-        }}>
-          <div style={{ fontSize: 8, color: '#445', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Speed</div>
-          <SpeedometerGauge
-            speedKph={telemetry?.speedKph ?? 0}
-            maxSpeedKph={maxSpeedKph}
-            color={telemetry ? speedToColor(telemetry.speedKph, result.minCornerKph, result.maxSpeedKph) : '#ef4444'}
-          />
-          {/* Gear display */}
-          <div style={{
-            fontSize: 42, fontWeight: 900, color: '#e0e0f0',
-            fontFamily: 'monospace', lineHeight: 1, letterSpacing: '-0.05em',
-            textShadow: '0 0 20px rgba(100,100,255,0.4)',
+        {/* Speed */}
+        <TCell flex={1.2}>
+          <TValue size={30} color={C.text}>
+            {telemetry ? Math.round(telemetry.speedKph) : '---'}
+          </TValue>
+          <TLabel>KM/H</TLabel>
+        </TCell>
+
+        <TDivider />
+
+        {/* Gear */}
+        <TCell flex={0.7}>
+          <TValue size={42} color="#ffffff" weight={700}>
+            {telemetry ? telemetry.gear : '-'}
+          </TValue>
+          <TLabel>GEAR</TLabel>
+        </TCell>
+
+        <TDivider />
+
+        {/* RPM */}
+        <TCell flex={1.6}>
+          <TValue size={22} color={rpmFrac > 0.9 ? '#ff3030' : rpmFrac > 0.75 ? '#ffcc00' : C.text}>
+            {telemetry ? Math.round(telemetry.rpm) : '----'}
+          </TValue>
+          <RpmBar frac={rpmFrac} />
+          <TLabel>{redline.toFixed(0)} REDLINE</TLabel>
+        </TCell>
+
+        <TDivider />
+
+        {/* Long G */}
+        <TCell flex={1.6}>
+          <TValue size={20} color={telemetry && telemetry.longG < -0.1 ? '#ff4040' : telemetry && telemetry.longG > 0.1 ? '#22cc55' : C.text}>
+            {telemetry
+              ? (telemetry.longG >= 0 ? '+' : '') + telemetry.longG.toFixed(2) + 'g'
+              : '+0.00g'
+            }
+          </TValue>
+          <GBar value={telemetry?.longG ?? 0} range={2} negColor="#ff2020" posColor="#22cc55" />
+          <TLabel>LONG G</TLabel>
+        </TCell>
+
+        <TDivider />
+
+        {/* Lat G */}
+        <TCell flex={1.6}>
+          <TValue size={20} color={C.text}>
+            {telemetry ? telemetry.latG.toFixed(2) + 'g' : '0.00g'}
+          </TValue>
+          <GBar value={telemetry?.latG ?? 0} range={2} negColor="#a040ff" posColor="#a040ff" />
+          <TLabel>LAT G</TLabel>
+        </TCell>
+
+        <TDivider />
+
+        {/* Zone */}
+        <TCell flex={1.4}>
+          <span style={{
+            fontFamily: 'monospace', fontSize: 11, fontWeight: 700,
+            color: zoneColor, letterSpacing: '0.08em', textAlign: 'center',
           }}>
-            {telemetry ? telemetry.gear : '—'}
-          </div>
-          <div style={{ fontSize: 8, color: '#445', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Gear</div>
-        </div>
-
-        {/* ── Centre: SVG circuit map ── */}
-        <div style={{ flex: 1, position: 'relative', background: '#0a0a14', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <svg
-            viewBox={viewBox}
-            width="100%"
-            height="100%"
-            style={{ display: 'block' }}
-            preserveAspectRatio="xMidYMid meet"
-          >
-            <defs>
-              <filter id="tv-carGlow" x="-100%" y="-100%" width="300%" height="300%">
-                <feGaussianBlur stdDeviation="5" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-              <filter id="tv-trackShadow" x="-20%" y="-20%" width="140%" height="140%">
-                <feDropShadow dx="0" dy="3" stdDeviation="8" floodColor="#000000" floodOpacity="0.9" />
-              </filter>
-            </defs>
-
-            {/* Layer 1 — shadow */}
-            <path d={d} fill="none" stroke="rgba(0,0,0,0.5)" strokeWidth="32"
-              vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round"
-              filter="url(#tv-trackShadow)" />
-
-            {/* Layer 2 — edge (more visible) */}
-            <path d={d} fill="none" stroke="#4a4a60" strokeWidth="20"
-              vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
-
-            {/* Layer 3 — asphalt */}
-            <path ref={pathRef} d={d} fill="none" stroke="#252533" strokeWidth="12"
-              vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
-
-            {/* Layer 4 — speed heatmap */}
-            {heatmap.map((seg, i) => (
-              <line key={i}
-                x1={seg.x1} y1={seg.y1} x2={seg.x2} y2={seg.y2}
-                stroke={seg.color} strokeWidth="5" strokeOpacity="0.88"
-                vectorEffect="non-scaling-stroke" strokeLinecap="round" />
-            ))}
-
-            {/* Layer 5 — centre line */}
-            <path d={d} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1"
-              strokeDasharray="10 18" vectorEffect="non-scaling-stroke"
-              strokeLinejoin="round" strokeLinecap="round" />
-
-            {/* S/F line */}
-            <line x1={sfX} y1={sfY - u} x2={sfX} y2={sfY + u}
-              stroke="rgba(255,255,255,0.9)" strokeWidth={u * 0.28}
-              strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-
-            {/* Car glow */}
-            {dotPos && (
-              <circle cx={dotPos.x} cy={dotPos.y} r={u * 1.8}
-                fill={dotColor} fillOpacity="0.20" filter="url(#tv-carGlow)" />
-            )}
-            {/* Car dot */}
-            {dotPos && (
-              <circle cx={dotPos.x} cy={dotPos.y} r={u * 0.75}
-                fill={dotColor} stroke="rgba(255,255,255,0.9)" strokeWidth={u * 0.15}
-                vectorEffect="non-scaling-stroke" />
-            )}
-          </svg>
-
-          {/* Speed legend — bottom right */}
-          <div style={{ position: 'absolute', bottom: 14, right: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', fontVariantNumeric: 'tabular-nums' }}>
-              {result.minCornerKph.toFixed(0)}
-            </span>
-            <div style={{
-              width: 56, height: 4, borderRadius: 2,
-              background: 'linear-gradient(to right, hsl(0,90%,58%), hsl(50,90%,58%), hsl(200,90%,58%))',
-            }} />
-            <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', fontVariantNumeric: 'tabular-nums' }}>
-              {result.maxSpeedKph.toFixed(0)} km/h
-            </span>
-          </div>
-
-          {/* Lap time — bottom left */}
-          <div style={{ position: 'absolute', bottom: 14, left: 14 }}>
-            <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)' }}>
-              {Math.floor(result.totalTimeSec / 60)}:{(result.totalTimeSec % 60).toFixed(1).padStart(4, '0')}
-            </span>
-          </div>
-        </div>
-
-        {/* ── Right panel: RPM + G-meter + Tyre temps ── */}
-        <div style={{
-          width: 170, flexShrink: 0,
-          background: '#0d0d1a', borderLeft: '1px solid #1a1a28',
-          display: 'flex', flexDirection: 'column', alignItems: 'center',
-          justifyContent: 'center', gap: 10, padding: '12px 8px',
-        }}>
-          <div style={{ fontSize: 8, color: '#445', textTransform: 'uppercase', letterSpacing: '0.1em' }}>RPM</div>
-          <RpmGauge
-            rpm={telemetry?.rpm ?? 0}
-            peakRpm={params.enginePeakRpm}
-            redlineRpm={params.engineRedlineRpm}
-          />
-          <GMeter accelG={telemetry ? Math.max(-1.5, Math.min(1.0, telemetry.accelG)) : 0} />
-          <TyreTempGrid
-            tempC={telemetry?.tyreTempC ?? params.tyreTempCurrentC}
-            optC={params.tyreOptTempC}
-            halfWidthC={params.tyreTempHalfWidthC}
-          />
-        </div>
+            {telemetry ? ZONE_LABELS[telemetry.zone] : '───'}
+          </span>
+          <TLabel>ZONE</TLabel>
+        </TCell>
 
       </div>
     </div>
   );
+}
+
+// ── Telemetry cell primitives ─────────────────────────────────────────────────
+
+function TCell({ children, flex }: { children: React.ReactNode; flex: number }) {
+  return (
+    <div style={{
+      flex, display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      padding: '6px 10px', gap: 2,
+    }}>
+      {children}
+    </div>
+  );
+}
+
+function TValue({ children, size, color, weight = 400 }: {
+  children: React.ReactNode; size: number; color: string; weight?: number;
+}) {
+  return (
+    <span style={{
+      fontFamily: 'monospace', fontSize: size, fontWeight: weight,
+      color, lineHeight: 1, letterSpacing: '-0.02em',
+    }}>
+      {children}
+    </span>
+  );
+}
+
+function TLabel({ children }: { children?: React.ReactNode }) {
+  return (
+    <span style={{ fontSize: 8, color: C.dim, letterSpacing: '0.22em', textTransform: 'uppercase' }}>
+      {children}
+    </span>
+  );
+}
+
+function TDivider() {
+  return <div style={{ width: 1, height: '60%', background: C.border, flexShrink: 0 }} />;
 }

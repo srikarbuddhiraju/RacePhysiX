@@ -1,0 +1,32 @@
+Circuit GPS Data — Third-Party Attribution
+==========================================
+
+Source:     TUMFTM Racetrack Database
+            Chair of Automotive Technology
+            Technical University of Munich (TUM)
+            https://github.com/TUMFTM/racetrack-database
+
+License:    GNU Lesser General Public License v3.0 (LGPL-3.0)
+            Full license text: https://www.gnu.org/licenses/lgpl-3.0.txt
+
+Usage:      GPS coordinate data for the following circuits has been derived
+            from the TUMFTM Racetrack Database and is embedded in this
+            application as SVG path strings:
+
+              - Autodromo Nazionale Monza
+              - Circuit de Spa-Francorchamps
+              - Silverstone Circuit
+              - Suzuka Circuit
+              - Nurburgring Grand Prix Circuit
+              - Bahrain International Circuit (Sakhir)
+              - Circuit de Barcelona-Catalunya
+              - Hungaroring
+              - Circuit Gilles Villeneuve (Montreal)
+
+Copyright:  Copyright (c) TUMFTM Contributors
+            The TUMFTM Racetrack Database is licensed under LGPL-3.0.
+            This notice satisfies the attribution requirement for use
+            and distribution of the derived GPS path data.
+
+ApexSim application code is separately licensed under MIT.
+See LICENSE in the project root.
