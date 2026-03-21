@@ -196,6 +196,15 @@ Updated after every correction per CLAUDE.md Self-Improvement Loop.
 
 ---
 
+## SVG / Animation Geometry
+
+### Always verify polygon-tip direction vs heading formula
+- **Rule**: For any directional arrow, explicitly verify: (a) which axis the polygon tip points at rotation=0°, (b) what angle `atan2` returns for the primary direction of travel, (c) confirm `rotate(heading)` aligns them. If tip is at `(0,-y)` (points up) and heading = `atan2(dy,dx)`, the offset needed is +90°.
+- **Why**: Session 19 — arrow polygon tip was at `(0,-8)` (up). `atan2` gives 0° for eastward motion. rotate(0°) = tip up = 90° sideways. Visible in every screenshot. Was not caught because the code `rotate(${headingDeg})` looks correct on a quick read without checking the polygon geometry.
+- **How to apply**: Write out: tip direction at 0° → required rotation for car moving east → offset = required - atan2_east. Takes 30 seconds.
+
+---
+
 ## Screenshots / Browser Capture
 
 ### On Bazzite (Wayland + rpm-ostree): just ask Srikar for screenshots
