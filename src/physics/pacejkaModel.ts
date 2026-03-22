@@ -71,10 +71,10 @@ function buildHandlingCurve(
   const a = L - b;
 
   // Stage 13A: derive per-axle B from cornering stiffness (B = Cα / (C × peakMu × Fz0))
-  // The passed-in B encodes the front Pacejka slider; override both with Cα-derived values
-  // for physical consistency with the bicycle model.
-  const CαF_Nrad = corneringStiffnessNPerDeg / DEG_TO_RAD;
-  const CαR_Nrad = ((rearCorneringStiffnessNPerDeg ?? corneringStiffnessNPerDeg)) / DEG_TO_RAD;
+  // Stage 22: toe-in increases effective Cα → higher B (RCVD §2.3.3).
+  const k_toe_hc = 0.12;
+  const CαF_Nrad = (corneringStiffnessNPerDeg / DEG_TO_RAD) * (1 + k_toe_hc * Math.abs(params.frontToeDeg ?? 0));
+  const CαR_Nrad = ((rearCorneringStiffnessNPerDeg ?? corneringStiffnessNPerDeg) / DEG_TO_RAD) * (1 + k_toe_hc * Math.abs(params.rearToeDeg ?? 0));
   const B_front  = CαF_Nrad / (C * peakMu * Fz0);
   const B_rear   = CαR_Nrad / (C * peakMu * Fz0);
 
@@ -195,8 +195,17 @@ export function computePacejkaModel(params: VehicleParams, coeffs: PacejkaCoeffs
   // ── Final slip angles ──────────────────────────────────────────────────────
   const FyFrontReq = mass * ay_ms2 * (b / L);
   const FyRearReq  = mass * ay_ms2 * (a / L);
-  const frontSlipAngleRad = solveSlipAngleTyreAxle(FyFrontReq, lt.FzFR, lt.FzFL, Math.abs(FxFrontNet), B, C, peakMu, E, qFz, Fz0);
-  const rearSlipAngleRad  = solveSlipAngleTyreAxle(FyRearReq,  lt.FzRR, lt.FzRL, Math.abs(FxRearNet),  B, C, peakMu, E, qFz, Fz0);
+
+  // Stage 22: subtract camber thrust from required Fy before solving slip angle.
+  // Cγ = 0.05 × Cα (rad); negative camber (deg < 0) → positive thrust aids cornering.
+  const DEG2RAD = Math.PI / 180;
+  const Cα_F_eff = (params.corneringStiffnessNPerDeg / DEG2RAD) * (1 + 0.12 * Math.abs(params.frontToeDeg ?? 0));
+  const Cα_R_eff = ((params.rearCorneringStiffnessNPerDeg ?? params.corneringStiffnessNPerDeg) / DEG2RAD) * (1 + 0.12 * Math.abs(params.rearToeDeg ?? 0));
+  const ΔFy_F22 = -0.05 * Cα_F_eff * (params.frontCamberDeg ?? 0) * DEG2RAD;
+  const ΔFy_R22 = -0.05 * Cα_R_eff * (params.rearCamberDeg  ?? 0) * DEG2RAD;
+
+  const frontSlipAngleRad = solveSlipAngleTyreAxle(Math.max(0, FyFrontReq - ΔFy_F22), lt.FzFR, lt.FzFL, Math.abs(FxFrontNet), B, C, peakMu, E, qFz, Fz0);
+  const rearSlipAngleRad  = solveSlipAngleTyreAxle(Math.max(0, FyRearReq  - ΔFy_R22), lt.FzRR, lt.FzRL, Math.abs(FxRearNet),  B, C, peakMu, E, qFz, Fz0);
 
   const frontSlipAngleDeg = frontSlipAngleRad * RAD_TO_DEG;
   const rearSlipAngleDeg  = rearSlipAngleRad  * RAD_TO_DEG;

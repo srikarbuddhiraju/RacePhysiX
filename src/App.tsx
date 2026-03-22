@@ -10,6 +10,9 @@ import { TRACK_PRESETS } from './physics/laptime';
 import type { LapResult, RaceResult, TrackLayout } from './physics/laptime';
 import type { VehicleParams, PacejkaCoeffs } from './physics/types';
 import { buildLapSimInput } from './physics/vehicleInput';
+import { VehiclePresetSelector } from './components/VehiclePresetSelector';
+import { WelcomeBanner } from './components/WelcomeBanner';
+import { type PowerUnit } from './utils/units';
 import './App.css';
 
 // ── URL hash persistence ──────────────────────────────────────────────────────
@@ -67,6 +70,11 @@ const DEFAULT_PARAMS: VehicleParams = {
   // Race simulation
   fuelLoadKg:             45,
   fuelBurnRateKgPerLap:   2.5,
+  // Stage 22 — Camber + Toe
+  frontCamberDeg: -1.5,   // deg — negative camber (road default)
+  rearCamberDeg:  -0.5,
+  frontToeDeg:     0.05,  // deg — slight toe-in front
+  rearToeDeg:      0.15,  // deg — toe-in rear (stability)
 };
 
 function loadInitialParams(): VehicleParams {
@@ -82,7 +90,8 @@ function loadInitialParams(): VehicleParams {
 export function App() {
   const [params, setParamsRaw] = useState<VehicleParams>(loadInitialParams);
   const [coeffs, setCoeffs]    = useState<PacejkaCoeffs>(DEFAULT_PACEJKA_COEFFS);
-  const [darkMode, setDarkMode] = useState(true);
+  const [darkMode, setDarkMode]     = useState(true);
+  const [powerUnit, setPowerUnit]   = useState<PowerUnit>('kW');
 
   // Track Visualiser state — shared between LapTimePanel (editor) and TrackVisualiser (map)
   const [trackKey,      setTrackKey]      = useState<string>('club');
@@ -110,11 +119,18 @@ export function App() {
   const pacejka      = useMemo(() => computePacejkaModel(params, coeffs),    [params, coeffs]);
   const lapSimInput  = useMemo(() => buildLapSimInput(params, coeffs),       [params, coeffs]);
 
+  const handlePresetSelect = useCallback((p: VehicleParams, c: PacejkaCoeffs) => {
+    setParams(p);
+    setCoeffs(c);
+  }, [setParams]);
+
   return (
     <div className="app">
+      <VehiclePresetSelector onSelect={handlePresetSelect} powerUnit={powerUnit} onPowerUnitChange={setPowerUnit} />
+      <WelcomeBanner />
       {/* Top row: param panel | 3D view | results */}
       <div className="app-main">
-        <ParameterPanel params={params} onChange={setParams} />
+        <ParameterPanel params={params} onChange={setParams} powerUnit={powerUnit} onPowerUnitChange={setPowerUnit} />
         <div className="canvas-area">
           <TopDownView params={params} result={bicycle} pacejka={pacejka} coeffs={coeffs} darkMode={darkMode} />
           <button
@@ -176,6 +192,7 @@ export function App() {
           onRaceResultChange={setRaceResult}
           onTriggerRaceAnim={() => setTriggerRace(n => n + 1)}
           onLayoutChange={setEffectiveLayout}
+          powerUnit={powerUnit}
         />
       </div>
     </div>

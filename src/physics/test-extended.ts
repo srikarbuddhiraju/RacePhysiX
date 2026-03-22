@@ -97,6 +97,7 @@ const BASE: VehicleParams = {
   finalDriveRatio: 3.9, wheelRadiusM: 0.32,
   enginePeakRpm: 5500, engineRedlineRpm: 6500,
   fuelLoadKg: 45, fuelBurnRateKgPerLap: 2.5,
+  frontCamberDeg: 0, rearCamberDeg: 0, frontToeDeg: 0, rearToeDeg: 0,
 };
 
 const COEFFS: PacejkaCoeffs = { B: 11.5, C: 1.28, peakMu: 1.20, E: -1.5 };

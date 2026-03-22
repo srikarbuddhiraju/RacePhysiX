@@ -49,14 +49,21 @@ Srikar can and will catch incorrect physics — accuracy is non-negotiable.
 | 12 | Setup optimisation | ✅ done | Nelder-Mead simplex over 7 params (spring/ARB/aero/brake bias) — min lap time |
 | 13 | Full nonlinear | ✅ done | Separate front/rear Cα, combined slip friction circle, yaw transient penalty |
 | 14 | Race simulation | ✅ done | Multi-lap sim: tyre warmup/degradation, fuel burn, sector times, gap-to-fastest |
-| 15 | Track editor | 🔲 next | User-editable segment table with live SVG preview, JSON import/export |
-| 16 | GPS-accurate circuit maps | 🔲 future | TUMFTM Racetrack Database (LGPL-3.0) x/y CSV → svgPath per circuit |
+| 15 | Track editor | ✅ done | User-editable segment table with live SVG preview, JSON import/export, localStorage persistence |
+| 16 | GPS-accurate circuit maps | ✅ done | TUMFTM (LGPL-3.0) + OSM (ODbL) GPS paths — 18 real circuits |
+| 17 | Racing line overlay | 🔲 future | Min-curvature racing line from TUMFTM centerline + width data |
+| 18 | Vehicle presets | 🔲 next | Road / Formula Student / GT3 / F1 one-click parameter sets |
+| 19 | Onboarding | 🔲 next | First-use guidance — hint text per panel, "try this" nudges |
+| 20 | Setup comparison | 🔲 next | Save baseline → run variant → show Δ lap time side-by-side |
+| 21 | About / methodology | 🔲 next | Validation methodology, physics references, attribution visible in UI |
+| 22 | Camber + toe | 🔲 next | Camber angle + toe-in/out effect on effective slip angles + Fy |
 
 ## Circuits Available
-- **Generic**: Club (~1.9 km), Karting (~1.0 km), GT circuit (~3.2 km), Formula test (~2.1 km)
-- **Real (schematic)**: Monza, Monaco, Spa, Silverstone, Suzuka
-- **Real (GPS-derived, TUMFTM LGPL-3.0)**: Nürburgring GP, Bahrain/Sakhir, Barcelona/Catalunya, Hungaroring/Budapest, Montreal
-- Total: 14 circuits
+- **Generic (4)**: Club (~1.9 km), Karting (~1.0 km), GT circuit (~3.2 km), Formula test (~2.1 km)
+- **Real (schematic, 4)**: Monza, Spa, Silverstone, Suzuka
+- **Real (GPS, TUMFTM LGPL-3.0, 10)**: Nürburgring GP, Bahrain/Sakhir, Barcelona/Catalunya, Hungaroring/Budapest, Montreal, Brands Hatch, Hockenheim, Red Bull Ring/Spielberg, Zandvoort, São Paulo/Interlagos
+- **Real (GPS, OSM ODbL, 4)**: Laguna Seca, Imola, Le Mans, Mugello
+- Total: **22 circuits**
 
 ## Validation
 `src/physics/validate.ts` — run with `npx tsx src/physics/validate.ts`
@@ -66,7 +73,7 @@ Srikar can and will catch incorrect physics — accuracy is non-negotiable.
 - Check 7: Stage 5 braking (bias distribution, ABS activation)
 - Checks 8–10: Stage 8 time-domain (step steer, neutral steer, sine sweep)
 - Checks 11–14: Stages 10–13 (gear model, thermal tyre, optimiser, combined slip/transient)
-- **All 21 checks pass. Extended suite: 309/309 pass.**
+- **All 21 checks pass. Extended suite: 424/424 pass.**
 
 ## Physics Reference Docs
 All physics knowledge lives in `docs/physics-reference/`. Read relevant file before

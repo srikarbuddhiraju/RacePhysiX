@@ -233,11 +233,23 @@ function buildGpsZoneOverlay(
   inp:       LapSimInput,
   totalDist: number,
 ): GpsZoneResult {
-  const N       = 400;
+  // N=2000: ds≈2.5m for 5km circuit → resolves 18m T1 chicane with 7 samples (Session 18 finding).
+  const N       = 2000;
   const G       = 9.81;
+  const RHO_AIR = 1.225;
   const pathLen = pathEl.getTotalLength();
   const svgToM  = totalDist / pathLen;   // SVG units → metres (global average)
   const dsReal  = totalDist / N;          // metres per step
+
+  // Aero coefficient for speed-dependent grip: kAero = peakMu × ½ρA·CL/m  [m⁻¹]
+  // When multiplied by V², gives the extra lateral/longitudinal accel from aero downforce.
+  const kAero = inp.aeroCL > 0
+    ? inp.peakMu * 0.5 * RHO_AIR * inp.aeroReferenceArea * inp.aeroCL / inp.mass
+    : 0;
+
+  // Effective braking decel base: use peakMu × g (grip-limited), not the fixed 0.9g floor.
+  // The brakingCapG in inp is max(brakingGSlider, 0.9) which under-estimates high-μ tyres.
+  const aBrakeBase = Math.max(inp.brakingCapG, inp.peakMu) * G;
 
   // 1. Sample N+1 evenly-spaced raw points on the GPS SVG path
   const raw: { x: number; y: number }[] = [];
@@ -280,18 +292,25 @@ function buildGpsZoneOverlay(
     kS[i] = (kappa[i-1] + 2 * kappa[i] + kappa[i+1]) / 4;
   }
 
-  // 5. Cornering speed limit: V_max[i] = sqrt(μ·g·R_real); cap at power-limited top speed
+  // 5. Cornering speed limit — includes aero downforce (RCVD §6.4: aero augments tyre Fz)
+  //    Without aero: V²/R = μ·g  →  V = sqrt(μ·g·R)
+  //    With aero:    V²/R = μ·(g + kAero·V²)  →  V² = μ·g·R / (1 − kAero·R)
+  //    When denominator ≤ 0 (aero-dominated corner), the car is never grip-limited → vTop.
   const vTop = inp.maxVehicleSpeedMs ?? 80;
   const vMax: number[] = new Array(N + 1).fill(vTop);
   for (let i = 0; i <= N; i++) {
     const kReal  = kS[i] / svgToM;                 // m⁻¹
     const R      = kReal > 1e-6 ? 1 / kReal : 2000;
     const Rclamp = Math.min(R, 2000);
-    vMax[i] = Math.min(Math.sqrt(inp.peakMu * G * Rclamp), vTop);
+    const denom  = 1 - kAero * Rclamp;
+    vMax[i] = denom > 0.05
+      ? Math.min(Math.sqrt(inp.peakMu * G * Rclamp / denom), vTop)
+      : vTop;  // aero-dominated: no grip limit on this corner — use power-limited top speed
   }
 
   // 6. Forward + backward Euler passes (4 iterations) — minimum-time speed profile
-  const aBrake = inp.brakingCapG * G;
+  //    Backward pass: speed-dependent braking → aBrake(V) = aBrakeBase + kAero·V²
+  //    (aero downforce adds grip proportional to V², RCVD §6.4 / Milliken ch.8)
   const V: number[] = [...vMax];
   for (let iter = 0; iter < 4; iter++) {
     for (let i = 0; i < N; i++) {
@@ -301,7 +320,8 @@ function buildGpsZoneOverlay(
       V[i+1] = Math.min(V[i+1], vNxt, vTop);
     }
     for (let i = N; i > 0; i--) {
-      const vEnt = Math.sqrt(V[i] * V[i] + 2 * aBrake * dsReal);
+      const aBrakeV = aBrakeBase + kAero * V[i] * V[i];  // aero adds grip at speed
+      const vEnt    = Math.sqrt(V[i] * V[i] + 2 * aBrakeV * dsReal);
       V[i-1] = Math.min(V[i-1], vEnt);
     }
   }

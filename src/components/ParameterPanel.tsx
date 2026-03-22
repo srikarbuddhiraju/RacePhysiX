@@ -1,24 +1,17 @@
 import { useState } from 'react';
 import type { VehicleParams, DrivetrainType } from '../physics/types';
 import { InfoTooltip } from './InfoTooltip';
+import { type PowerUnit, toKW, fromKW, fmtPower, POWER_RANGE } from '../utils/units';
 import './ParameterPanel.css';
 
 // ── Tab type ─────────────────────────────────────────────────────────────────
 type PanelTab = 'vehicle' | 'suspension' | 'aero' | 'tyres';
 
-// ── Power unit helpers ────────────────────────────────────────────────────────
-type PowerUnit = 'kW' | 'BHP' | 'PS';
-const toKW   = (v: number, u: PowerUnit) => u === 'BHP' ? v / 1.34102 : u === 'PS' ? v / 1.35962 : v;
-const fromKW = (v: number, u: PowerUnit) => u === 'BHP' ? v * 1.34102 : u === 'PS' ? v * 1.35962 : v;
-const POWER_RANGE: Record<PowerUnit, { min: number; max: number; step: number }> = {
-  kW:  { min: 50,  max: 600, step: 5  },
-  BHP: { min: 67,  max: 805, step: 5  },
-  PS:  { min: 68,  max: 816, step: 5  },
-};
-
 interface Props {
-  params: VehicleParams;
-  onChange: (params: VehicleParams) => void;
+  params:             VehicleParams;
+  onChange:           (params: VehicleParams) => void;
+  powerUnit:          PowerUnit;
+  onPowerUnitChange:  (u: PowerUnit) => void;
 }
 
 interface SliderConfig {
@@ -106,8 +99,7 @@ const SLIDERS: SliderConfig[] = [
   },
 ];
 
-export function ParameterPanel({ params, onChange }: Props) {
-  const [powerUnit, setPowerUnit] = useState<PowerUnit>('kW');
+export function ParameterPanel({ params, onChange, powerUnit, onPowerUnitChange }: Props) {
   const [tab, setTab] = useState<PanelTab>('vehicle');
 
   const set = (key: keyof VehicleParams, value: number) => {
@@ -173,7 +165,7 @@ export function ParameterPanel({ params, onChange }: Props) {
 
         <div className="param-section-label">Drivetrain</div>
         <DrivetrainSelector value={params.drivetrainType} onChange={dt => onChange({ ...params, drivetrainType: dt })} />
-        <PowerSliderRow powerKW={params.enginePowerKW} unit={powerUnit} onUnitChange={setPowerUnit} onKWChange={kw => onChange({ ...params, enginePowerKW: kw })} />
+        <PowerSliderRow powerKW={params.enginePowerKW} unit={powerUnit} onUnitChange={onPowerUnitChange} onKWChange={kw => onChange({ ...params, enginePowerKW: kw })} />
         <SliderRow cfg={{ label: 'Throttle', key: 'throttlePercent', min: 0, max: 100, step: 5, unit: '%', format: v => v.toFixed(0), tip: 'Fraction of maximum engine power applied. At 0% = coast. Throttle on driven axle → combined slip → reduced lateral grip.' }} params={params} set={set} />
         {(params.drivetrainType === 'AWD' || params.drivetrainType === 'AWD_TV') && (
           <SliderRow cfg={{ label: 'Torque split', key: 'awdFrontBias', min: 0, max: 1, step: 0.05, unit: '', format: v => `${(v*100).toFixed(0)}%F / ${((1-v)*100).toFixed(0)}%R`, tip: 'Torque split front/rear. 0.40 = 40F/60R typical.' }} params={params} set={set} />
@@ -222,6 +214,30 @@ export function ParameterPanel({ params, onChange }: Props) {
         <SliderRow cfg={{ label: 'Front ARB', key: 'frontARBRate', min: 0, max: 40000, step: 500, unit: 'N/m eq.', format: v => v === 0 ? 'off' : `${(v/1000).toFixed(1)}k`, tip: 'Front anti-roll bar as equivalent wheel rate. Adding front ARB increases front roll stiffness → more lateral load transfer to front axle → more understeer.' }} params={params} set={set} />
         <SliderRow cfg={{ label: 'Rear ARB',  key: 'rearARBRate',  min: 0, max: 40000, step: 500, unit: 'N/m eq.', format: v => v === 0 ? 'off' : `${(v/1000).toFixed(1)}k`, tip: 'Rear anti-roll bar. Adding rear ARB shifts load transfer to rear → more oversteer tendency. Classic handling tuning: soften rear ARB to reduce oversteer.' }} params={params} set={set} />
 
+        <div className="param-section-label">Camber &amp; Toe (Stage 22)</div>
+        <SliderRow cfg={{ label: 'Front camber', key: 'frontCamberDeg', min: -5, max: 2, step: 0.1, unit: '°', format: v => v.toFixed(1), tip: 'Static setup camber — front axle. Negative camber (top tilted inward) generates camber thrust that aids lateral force and flattens the contact patch during roll. Typical: −1.5° road, −3° race. RCVD §2.3.5: Cγ ≈ 0.05 × Cα.' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Rear camber',  key: 'rearCamberDeg',  min: -5, max: 2, step: 0.1, unit: '°', format: v => v.toFixed(1), tip: 'Static setup camber — rear axle. More negative rear camber → rear camber thrust increases → less oversteer tendency. F1 limit ≈ −2.5°R.' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Front toe',    key: 'frontToeDeg',    min: -0.5, max: 0.5, step: 0.05, unit: '°', format: v => v.toFixed(2), tip: 'Front toe angle. Positive = toe-in (front wheels point inward). Toe-in increases effective front Cα → mild understeer. Toe-out (negative) aids turn-in. RCVD §2.3.3: ≈12% Cα per degree.' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Rear toe',     key: 'rearToeDeg',     min: -0.3, max: 0.5, step: 0.05, unit: '°', format: v => v.toFixed(2), tip: 'Rear toe angle. Toe-in increases effective rear Cα → more stable (less oversteer). Typical: 0.10–0.30° rear toe-in for road and race cars. High-downforce cars use minimal toe to reduce drag.' }} params={params} set={set} />
+
+        <div className="param-derived">
+          {(() => {
+            const DEG_TO_RAD = Math.PI / 180;
+            const k_toe = 0.12;
+            const k_cam = 0.05;
+            const CaF_eff = params.corneringStiffnessNPerDeg * (1 + k_toe * Math.abs(params.frontToeDeg ?? 0));
+            const CaR_eff = (params.rearCorneringStiffnessNPerDeg ?? params.corneringStiffnessNPerDeg) * (1 + k_toe * Math.abs(params.rearToeDeg ?? 0));
+            const dFyF = -k_cam * CaF_eff / DEG_TO_RAD * (params.frontCamberDeg ?? 0) * DEG_TO_RAD;
+            const dFyR = -k_cam * CaR_eff / DEG_TO_RAD * (params.rearCamberDeg  ?? 0) * DEG_TO_RAD;
+            return <>
+              <DerivedRow label="Front Cα eff." value={`${CaF_eff.toFixed(0)} N/deg`} tip="Effective front cornering stiffness after toe preload. Cα_eff = Cα × (1 + 0.12 × |toe|). Stage 22." />
+              <DerivedRow label="Rear Cα eff."  value={`${CaR_eff.toFixed(0)} N/deg`} tip="Effective rear cornering stiffness after toe preload." />
+              <DerivedRow label="Camber thrust F" value={`${dFyF.toFixed(1)} N/axle`} tip="Camber thrust at front axle = Cγ × γ. Negative camber → positive thrust → aids cornering." />
+              <DerivedRow label="Camber thrust R" value={`${dFyR.toFixed(1)} N/axle`} tip="Camber thrust at rear axle." />
+            </>;
+          })()}
+        </div>
+
         <div className="param-derived">
           {(() => {
             const TW = params.trackWidth;
@@ -258,7 +274,7 @@ export function ParameterPanel({ params, onChange }: Props) {
             return <>
               <DerivedRow label="Downforce @ V" value={`${(F_down/1000).toFixed(2)} kN`} tip="Speed-dependent downforce at current speed. Adds to tyre Fz → more grip. Grows with V²." />
               <DerivedRow label="Drag @ V"      value={`${(F_drag/1000).toFixed(2)} kN`} tip="Aerodynamic drag force at current speed. Must be overcome by engine drive force." />
-              <DerivedRow label="Drag power"    value={`${(F_drag * speedMs / 1000).toFixed(1)} kW`} tip="Power consumed by drag = F_drag × V. At high speed this dominates the power budget." />
+              <DerivedRow label="Drag power"    value={fmtPower(F_drag * speedMs / 1000, powerUnit)} tip="Power consumed by drag = F_drag × V. At high speed this dominates the power budget." />
             </>;
           })()}
         </div>
@@ -322,7 +338,8 @@ export function ParameterPanel({ params, onChange }: Props) {
         Stages 3–6: load transfer · suspension · drivetrain · braking · aero<br />
         Stage 9: Pacejka load sensitivity (degressive μ with Fz)<br />
         Stage 10: Gear model (torque curve · ratio progression · optimal gear selection)<br />
-        Stage 11: Tyre thermal model (bell-curve μ vs temperature)
+        Stage 11: Tyre thermal model (bell-curve μ vs temperature)<br />
+        Stage 22: Camber thrust + toe preload (effective Cα + Fy offset)
       </div>
     </div>
   );

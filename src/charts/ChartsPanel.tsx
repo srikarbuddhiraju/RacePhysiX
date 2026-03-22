@@ -14,6 +14,7 @@ import type { PacejkaResult, PhysicsResult, PacejkaCoeffs, VehicleParams, Vehicl
 import type { LapResult, RaceResult, TrackLayout } from '../physics/laptime';
 import './ChartsPanel.css';
 import { LapTimePanel }       from '../components/LapTimePanel';
+import { type PowerUnit } from '../utils/units';
 import { TimeDomainPanel }   from '../components/TimeDomainPanel';
 
 // ─── Tyre presets ──────────────────────────────────────────────────────────────
@@ -153,6 +154,7 @@ interface Props {
   onRaceResultChange:  (r: RaceResult) => void;
   onTriggerRaceAnim:   () => void;
   onLayoutChange:      (layout: TrackLayout) => void;
+  powerUnit:           PowerUnit;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -163,6 +165,7 @@ export function ChartsPanel({
   params, onParamsChange,
   trackKey, onTrackChange,
   onLapResultChange, onRaceResultChange, onTriggerRaceAnim, onLayoutChange,
+  powerUnit,
 }: Props) {
   const [activeTab, setActiveTab]       = useState<'presets' | 'advanced' | 'laptime' | 'timedomain'>('presets');
   const [selectedPreset, setSelected]   = useState<string>('road-standard');
@@ -257,6 +260,7 @@ export function ChartsPanel({
           onRaceResultChange={onRaceResultChange}
           onTriggerRaceAnim={onTriggerRaceAnim}
           onLayoutChange={onLayoutChange}
+          powerUnit={powerUnit}
         />
       </div>
       {activeTab === 'timedomain' && (
