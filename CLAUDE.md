@@ -57,9 +57,14 @@ Srikar can and will catch incorrect physics — accuracy is non-negotiable.
 | 20 | Setup comparison | ✅ done | Save baseline → run variant → show Δ lap time side-by-side |
 | 21 | About / methodology | ✅ done | Collapsible section — physics stages, textbook refs, circuit attribution |
 | 22 | Camber + toe | ✅ done | Camber thrust + toe effective Cα in bicycle + Pacejka models |
-| 23 | Tyre wear model | 🔲 next | Lap-by-lap grip degradation curve — cliff + graining phases |
-| 24 | Wind / ambient conditions | 🔲 next | Headwind/crosswind effect on drag + lateral force; altitude → air density |
-| 25 | Driver model | 🔲 next | Driving style (aggressive/smooth) → tyre heating rate, corner entry speed |
+| 23 | Tyre wear model | ✅ done | Soft/medium/hard/inter/wet compounds — warmup, linear wear, cliff, graining |
+| 24 | Wind / ambient conditions | ✅ done | ISA air density (altitude+temp), headwind drag, crosswind μ penalty |
+| 25 | Driver model | ✅ done | Aggression 0–100%: tyre heat rate, wear rate, μ utilisation scaling |
+| 26 | Differential model | ✅ done | Open/LSD/Locked — traction efficiency + yaw moment (RCVD Ch.22) |
+| 27 | Brake temperature | ✅ done | Disc temp per lap, Gaussian fade model, race sim brakingCapG scaling |
+| 28 | Tyre pressure | 🔲 next | Pressure → Cα scaling (Pacejka §4.3), contact patch μ, temp-pressure coupling |
+| 29 | Ride height & rake | 🔲 next | Rake angle → aero balance shift; ride height → ground effect CL multiplier |
+| 30 | Race strategy optimizer | 🔲 next | Enumerate 1/2-stop strategies, all compound combos → min total race time |
 
 ## Circuits Available
 - **Generic (4)**: Club (~1.9 km), Karting (~1.0 km), GT circuit (~3.2 km), Formula test (~2.1 km)
