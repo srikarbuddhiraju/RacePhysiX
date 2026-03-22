@@ -62,9 +62,15 @@ Srikar can and will catch incorrect physics — accuracy is non-negotiable.
 | 25 | Driver model | ✅ done | Aggression 0–100%: tyre heat rate, wear rate, μ utilisation scaling |
 | 26 | Differential model | ✅ done | Open/LSD/Locked — traction efficiency + yaw moment (RCVD Ch.22) |
 | 27 | Brake temperature | ✅ done | Disc temp per lap, Gaussian fade model, race sim brakingCapG scaling |
-| 28 | Tyre pressure | 🔲 next | Pressure → Cα scaling (Pacejka §4.3), contact patch μ, temp-pressure coupling |
-| 29 | Ride height & rake | 🔲 next | Rake angle → aero balance shift; ride height → ground effect CL multiplier |
-| 30 | Race strategy optimizer | 🔲 next | Enumerate 1/2-stop strategies, all compound combos → min total race time |
+| 28 | Tyre pressure | ✅ done | Cα × (p/2.0)^0.35, μ × (2.0/p)^0.10 — Pacejka §4.3.1 |
+| 29 | Ride height & rake | ✅ done | Rake → aero balance shift (0.015/deg); CL boost +20% at 30mm for aero cars |
+| 30 | Race strategy optimizer | ✅ done | Brute-force 1/2-stop over soft/medium/hard, thermal×wear grip model per stint |
+| 31 | Engine torque curve | ✅ done | NA bell curve, turbo flat plateau after boost RPM, electric flat from 0 |
+| 32 | Traction control | ✅ done | TC clip on driven axle slip ratio threshold — clamps driveForce |
+| 33 | Track rubber evolution | ✅ done | peakMu × (1 + 0.15 × rubberLevel) — 0=green track, 1=fully rubbed |
+| 34 | Wet track / drying line | ✅ done | Per-compound wetGripFactor — slick→0.30 at standing water; inter/wet peak curves |
+| 35 | ERS / Hybrid deployment | ✅ done | MGU-K additive force, deploy strategies (saving/full/attack), energy budget |
+| 36 | Multi-car comparison | ✅ done | Mass/power/peakMu vs baseline — Δlap time comparison cards in LapTimePanel |
 
 ## Circuits Available
 - **Generic (4)**: Club (~1.9 km), Karting (~1.0 km), GT circuit (~3.2 km), Formula test (~2.1 km)
