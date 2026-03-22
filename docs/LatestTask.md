@@ -23,7 +23,7 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 **Charts/Results/TopDown:** Handling diagram Y-axis fixed (δ−L/R) + Legend added · Time Domain axis labels · Lateral g inline unit · TopDownView legend corrected · Corner loads kN · μ symbol fixed · Default aero → Road preset.
 
 ### Open
-- [ ] Browser verify: all panels, new Tyres & Fuel tab, live timer, dual lap time, S/F marker
+- [x] Browser verify: all panels, new Tyres & Fuel tab, live timer, dual lap time, S/F marker ✓
 - [ ] Deploy to Cloudflare Pages
 
 ---
