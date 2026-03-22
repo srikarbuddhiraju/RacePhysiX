@@ -449,9 +449,14 @@ const lapTimeBounds: Record<string, [number, number]> = {
   le_mans:     [220, 340],
   sebring:     [85,  150],
   mugello:     [95,  145],
-  spa:         [130, 195],
-  silverstone: [105, 165],
-  suzuka:      [110, 165],
+  spa:           [130, 195],
+  silverstone:   [105, 165],
+  suzuka:        [110, 165],
+  nurburgring_gp:[110, 160],
+  bahrain:       [120, 170],
+  barcelona:     [110, 155],
+  hungaroring:   [110, 155],
+  montreal:      [100, 145],
 };
 for (const [name, [lo, hi]] of Object.entries(lapTimeBounds)) {
   const result = computeLapTime(TRACK_PRESETS[name], lapInp);

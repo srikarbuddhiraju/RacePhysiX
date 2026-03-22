@@ -91,11 +91,13 @@ function TdChart({
             tick={{ fontSize: 9, fill: 'var(--text-faint)' }}
             tickFormatter={v => v.toFixed(1)}
             domain={['dataMin', 'dataMax']}
+            label={{ value: 'Time (s)', position: 'insideBottom', offset: -5, fontSize: 9, fill: 'var(--text-faint)' }}
           />
           <YAxis
             tick={{ fontSize: 9, fill: 'var(--text-faint)' }}
             tickFormatter={v => v.toFixed(1)}
             width={42}
+            label={{ value: unit, angle: -90, position: 'insideLeft', fontSize: 9, fill: 'var(--text-faint)' }}
           />
           <Tooltip
             contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', fontSize: 10 }}

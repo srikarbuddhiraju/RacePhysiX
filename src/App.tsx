@@ -45,8 +45,8 @@ const DEFAULT_PARAMS: VehicleParams = {
   brakingG:   0,
   brakeBias:  0.65,
   // Stage 6 — Aero
-  aeroCL:            0.30,
-  aeroCD:            0.30,
+  aeroCL:            0,
+  aeroCD:            0.28,
   aeroReferenceArea: 2.0,
   aeroBalance:       0.45,
   // Stage 9 — Tyre load sensitivity
@@ -127,17 +127,18 @@ export function App() {
           {/* Circuit Map toggle — below theme-toggle */}
           <button
             onClick={() => setShowTrackViz(v => !v)}
-            title={showTrackViz ? 'Close circuit map' : 'Open circuit map'}
+            title={showTrackViz ? 'Close circuit animation' : 'Open circuit animation'}
             style={{
               position: 'absolute', top: 46, left: 8,
-              padding: '4px 10px', fontSize: 9, fontWeight: 600,
-              background: showTrackViz ? 'rgba(100,100,255,0.25)' : 'var(--bg-card)',
-              border: `1px solid ${showTrackViz ? '#6466f1' : 'var(--border)'}`,
-              borderRadius: 5, color: showTrackViz ? '#a0a0ff' : 'var(--text-secondary)',
+              padding: '4px 10px', fontSize: 9, fontWeight: 700,
+              background: showTrackViz ? 'rgba(100,100,255,0.25)' : 'rgba(99,102,241,0.15)',
+              border: `1px solid ${showTrackViz ? '#6466f1' : '#6466f1'}`,
+              borderRadius: 5, color: showTrackViz ? '#a0a0ff' : '#a0a0ff',
               cursor: 'pointer', zIndex: 10, whiteSpace: 'nowrap',
+              animation: showTrackViz ? 'none' : 'pulse-border 2s ease-in-out infinite',
             }}
           >
-            {showTrackViz ? '⊟ Map' : '⊞ Map'}
+            {showTrackViz ? '⊟ Close' : '⊞ Animate Circuit'}
           </button>
           {/* Circuit Map overlay — covers entire canvas-area */}
           {showTrackViz && lapResult && (

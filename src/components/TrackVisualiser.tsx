@@ -305,6 +305,10 @@ function buildGpsZoneOverlay(
       V[i-1] = Math.min(V[i-1], vEnt);
     }
   }
+  // Q2: reconcile lap-boundary speed discontinuity
+  const vBoundary = Math.min(V[0], V[N]);
+  V[0] = vBoundary;
+  V[N] = vBoundary;
 
   // 7. Zone classification per segment midpoint
   const zones:  TracePoint['zone'][] = new Array(N).fill('full-throttle' as TracePoint['zone']);
@@ -412,8 +416,11 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
   const [gpsAnim,    setGpsAnim]    = useState<{ anim: GpsAnimPoint[]; lapTimeSec: number } | null>(null);
   const [raceLabel,  setRaceLabel]  = useState<string | null>(null);
   const [telemetry,  setTelemetry]  = useState<TelemetryState | null>(null);
+  const [liveTimeSec, setLiveTimeSec] = useState(0);
   const playSpeedRef = useRef(4);
   const gpsAnimRef   = useRef<{ anim: GpsAnimPoint[]; lapTimeSec: number } | null>(null);
+  const lastRealTimestamp = useRef<number>(0);
+  const lastLiveUpdate    = useRef<number>(0);
 
   // Refs used inside RAF
   const pathRef        = useRef<SVGPathElement | null>(null);
@@ -487,11 +494,22 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
 
   // Core RAF tick
   const tick = useCallback((timestamp: number) => {
+    // Q3: cap per-frame real-time delta to prevent jumps when tab is backgrounded
+    const realDelta = lastRealTimestamp.current > 0 ? timestamp - lastRealTimestamp.current : 0;
+    lastRealTimestamp.current = timestamp;
+    const cappedDelta = Math.min(realDelta, 200); // max 200ms per frame
+    void cappedDelta; // used implicitly via startRef adjustment below
+
     if (!playing) { rafRef.current = requestAnimationFrame(tick); return; }
     const pathEl = pathRef.current;
     const tr = traceRef.current;
     if (!pathEl || tr.length < 2) { rafRef.current = requestAnimationFrame(tick); return; }
     if (startRef.current === null) startRef.current = timestamp;
+    // If a large gap occurred (tab backgrounded), advance startRef to absorb excess time
+    if (realDelta > 200 && startRef.current !== null) {
+      startRef.current += (realDelta - 200);
+      if (lapStartRef.current !== null) lapStartRef.current += (realDelta - 200);
+    }
 
     const traceTotalTime = tr[tr.length - 1].timeSec;
     const traceTotalDist = tr[tr.length - 1].distM;
@@ -541,6 +559,11 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
         setDotPos({ x: pt.x, y: pt.y });
         setDotHeading(hdg);
         setTelemetry({ speedKph: gpt.speedKph, gear, rpm, longG: gpt.longG, latG: gpt.latG, zone: gpt.zone });
+        // T2: live lap timer (throttled ~100ms)
+        if (timestamp - lastLiveUpdate.current >= 100) {
+          lastLiveUpdate.current = timestamp;
+          setLiveTimeSec(tGps);
+        }
         rafRef.current = requestAnimationFrame(tick);
         return;
       }
@@ -567,6 +590,11 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
     setDotPos({ x: pt.x, y: pt.y });
     setDotHeading(headingDeg);
     setTelemetry({ speedKph: tp.speedKph, gear, rpm, longG: tp.longG, latG: tp.latG, zone: tp.zone });
+    // T2: live lap timer (throttled ~100ms)
+    if (timestamp - lastLiveUpdate.current >= 100) {
+      lastLiveUpdate.current = timestamp;
+      setLiveTimeSec(timeSec_cur);
+    }
 
     rafRef.current = requestAnimationFrame(tick);
   }, [playing, params]);
@@ -610,7 +638,7 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
           <span style={{ fontSize: 10, color: C.accent, letterSpacing: '0.12em' }}>{raceLabel}</span>
         )}
         <span style={{ fontFamily: 'monospace', fontSize: 13, color: C.text, letterSpacing: '0.08em' }}>
-          {formatTime(result.totalTimeSec)}
+          {formatTime(liveTimeSec)} / {formatTime(result.totalTimeSec)}
         </span>
         {([1, 4, 8] as const).map(s => (
           <button key={s} onClick={() => setPlaySpeed(s)} style={{
@@ -669,16 +697,28 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
                 fill="#ffffff" stroke={zoneColor} strokeWidth={1.5} />
             </g>
           )}
+
+          {/* S/F marker at path start */}
+          {pathRef.current && (() => {
+            const pt = pathRef.current!.getPointAtLength(0);
+            return (
+              <>
+                <circle cx={pt.x} cy={pt.y} r={4} fill="white" opacity={0.9} />
+                <text x={pt.x + 6} y={pt.y + 4} fontSize={8} fill="white" fontFamily="monospace" opacity={0.7}>S/F</text>
+              </>
+            );
+          })()}
         </svg>
 
         {/* Zone legend — bottom-left of map */}
         <div style={{
           position: 'absolute', bottom: 8, left: 10,
           display: 'flex', gap: 10, flexWrap: 'wrap',
+          background: 'rgba(7,7,15,0.80)', borderRadius: 4, padding: '4px 6px',
         }}>
           {ZONE_ENTRIES.map(([zone, color]) => (
             <div key={zone} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <div style={{ width: 8, height: 8, background: color, borderRadius: 1 }} />
+              <div style={{ width: 10, height: 10, background: color, borderRadius: 1 }} />
               <span style={{ fontSize: 9, color: C.dim, letterSpacing: '0.1em' }}>
                 {ZONE_LABELS[zone]}
               </span>
@@ -716,7 +756,7 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
         {/* RPM */}
         <TCell flex={1.6}>
           <TValue size={22} color={rpmFrac > 0.9 ? '#ff3030' : rpmFrac > 0.75 ? '#ffcc00' : C.text}>
-            {telemetry ? Math.round(telemetry.rpm) : '----'}
+            {telemetry ? Math.min(telemetry.rpm, params.engineRedlineRpm).toFixed(0) : '----'}
           </TValue>
           <RpmBar frac={rpmFrac} />
           <TLabel>{redline.toFixed(0)} REDLINE</TLabel>
@@ -743,7 +783,7 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
           <TValue size={20} color={C.text}>
             {telemetry ? telemetry.latG.toFixed(2) + 'g' : '0.00g'}
           </TValue>
-          <GBar value={telemetry?.latG ?? 0} range={2} negColor="#a040ff" posColor="#a040ff" />
+          <GBar value={telemetry?.latG ?? 0} range={2} negColor="#ec4899" posColor="#3b82f6" />
           <TLabel>LAT G</TLabel>
         </TCell>
 
