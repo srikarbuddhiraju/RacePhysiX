@@ -12,6 +12,7 @@ import type { VehicleParams, PacejkaCoeffs } from './physics/types';
 import { buildLapSimInput } from './physics/vehicleInput';
 import { VehiclePresetSelector } from './components/VehiclePresetSelector';
 import { WelcomeBanner } from './components/WelcomeBanner';
+import { type PowerUnit } from './utils/units';
 import './App.css';
 
 // ── URL hash persistence ──────────────────────────────────────────────────────
@@ -89,7 +90,8 @@ function loadInitialParams(): VehicleParams {
 export function App() {
   const [params, setParamsRaw] = useState<VehicleParams>(loadInitialParams);
   const [coeffs, setCoeffs]    = useState<PacejkaCoeffs>(DEFAULT_PACEJKA_COEFFS);
-  const [darkMode, setDarkMode] = useState(true);
+  const [darkMode, setDarkMode]     = useState(true);
+  const [powerUnit, setPowerUnit]   = useState<PowerUnit>('kW');
 
   // Track Visualiser state — shared between LapTimePanel (editor) and TrackVisualiser (map)
   const [trackKey,      setTrackKey]      = useState<string>('club');
@@ -124,11 +126,11 @@ export function App() {
 
   return (
     <div className="app">
-      <VehiclePresetSelector onSelect={handlePresetSelect} />
+      <VehiclePresetSelector onSelect={handlePresetSelect} powerUnit={powerUnit} onPowerUnitChange={setPowerUnit} />
       <WelcomeBanner />
       {/* Top row: param panel | 3D view | results */}
       <div className="app-main">
-        <ParameterPanel params={params} onChange={setParams} />
+        <ParameterPanel params={params} onChange={setParams} powerUnit={powerUnit} onPowerUnitChange={setPowerUnit} />
         <div className="canvas-area">
           <TopDownView params={params} result={bicycle} pacejka={pacejka} coeffs={coeffs} darkMode={darkMode} />
           <button
@@ -190,6 +192,7 @@ export function App() {
           onRaceResultChange={setRaceResult}
           onTriggerRaceAnim={() => setTriggerRace(n => n + 1)}
           onLayoutChange={setEffectiveLayout}
+          powerUnit={powerUnit}
         />
       </div>
     </div>

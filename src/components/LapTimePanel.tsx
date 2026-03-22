@@ -7,11 +7,13 @@ import type { VehicleParams, PacejkaCoeffs } from '../physics/types';
 import { buildLapSimInput } from '../physics/vehicleInput';
 import { InfoTooltip } from './InfoTooltip';
 import { exportLapTimeCSV } from '../utils/export';
+import { type PowerUnit, fmtPower } from '../utils/units';
 
 interface Props {
   params:              VehicleParams;
   coeffs:              PacejkaCoeffs;
   onChange:            (p: VehicleParams) => void;
+  powerUnit:           PowerUnit;
   /** Lifted to App so TrackVisualiser can share the same selected circuit. */
   trackKey:            string;
   onTrackChange:       (k: string) => void;
@@ -90,6 +92,7 @@ export function LapTimePanel({
   params, coeffs, onChange,
   trackKey, onTrackChange,
   onLapResultChange, onRaceResultChange, onTriggerRaceAnim, onLayoutChange,
+  powerUnit,
 }: Props) {
   const [optimState,  setOptimState]  = useState<OptimState>({ status: 'idle' });
   const [raceState,   setRaceState]   = useState<RaceSimState>({ status: 'idle' });
@@ -350,7 +353,7 @@ export function LapTimePanel({
       <div style={{ display: 'flex', gap: 14, fontSize: 10, color: 'var(--text-muted)', alignItems: 'center', flexWrap: 'wrap' }}>
         <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{params.mass} kg</span>
         <span>·</span>
-        <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{params.enginePowerKW} kW</span>
+        <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{fmtPower(params.enginePowerKW, powerUnit)}</span>
         <span>·</span>
         <span>μ <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{coeffs.peakMu.toFixed(2)}</span></span>
         <span>·</span>

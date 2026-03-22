@@ -1,24 +1,17 @@
 import { useState } from 'react';
 import type { VehicleParams, DrivetrainType } from '../physics/types';
 import { InfoTooltip } from './InfoTooltip';
+import { type PowerUnit, toKW, fromKW, fmtPower, POWER_RANGE } from '../utils/units';
 import './ParameterPanel.css';
 
 // ── Tab type ─────────────────────────────────────────────────────────────────
 type PanelTab = 'vehicle' | 'suspension' | 'aero' | 'tyres';
 
-// ── Power unit helpers ────────────────────────────────────────────────────────
-type PowerUnit = 'kW' | 'BHP' | 'PS';
-const toKW   = (v: number, u: PowerUnit) => u === 'BHP' ? v / 1.34102 : u === 'PS' ? v / 1.35962 : v;
-const fromKW = (v: number, u: PowerUnit) => u === 'BHP' ? v * 1.34102 : u === 'PS' ? v * 1.35962 : v;
-const POWER_RANGE: Record<PowerUnit, { min: number; max: number; step: number }> = {
-  kW:  { min: 50,  max: 600, step: 5  },
-  BHP: { min: 67,  max: 805, step: 5  },
-  PS:  { min: 68,  max: 816, step: 5  },
-};
-
 interface Props {
-  params: VehicleParams;
-  onChange: (params: VehicleParams) => void;
+  params:             VehicleParams;
+  onChange:           (params: VehicleParams) => void;
+  powerUnit:          PowerUnit;
+  onPowerUnitChange:  (u: PowerUnit) => void;
 }
 
 interface SliderConfig {
@@ -106,8 +99,7 @@ const SLIDERS: SliderConfig[] = [
   },
 ];
 
-export function ParameterPanel({ params, onChange }: Props) {
-  const [powerUnit, setPowerUnit] = useState<PowerUnit>('kW');
+export function ParameterPanel({ params, onChange, powerUnit, onPowerUnitChange }: Props) {
   const [tab, setTab] = useState<PanelTab>('vehicle');
 
   const set = (key: keyof VehicleParams, value: number) => {
@@ -173,7 +165,7 @@ export function ParameterPanel({ params, onChange }: Props) {
 
         <div className="param-section-label">Drivetrain</div>
         <DrivetrainSelector value={params.drivetrainType} onChange={dt => onChange({ ...params, drivetrainType: dt })} />
-        <PowerSliderRow powerKW={params.enginePowerKW} unit={powerUnit} onUnitChange={setPowerUnit} onKWChange={kw => onChange({ ...params, enginePowerKW: kw })} />
+        <PowerSliderRow powerKW={params.enginePowerKW} unit={powerUnit} onUnitChange={onPowerUnitChange} onKWChange={kw => onChange({ ...params, enginePowerKW: kw })} />
         <SliderRow cfg={{ label: 'Throttle', key: 'throttlePercent', min: 0, max: 100, step: 5, unit: '%', format: v => v.toFixed(0), tip: 'Fraction of maximum engine power applied. At 0% = coast. Throttle on driven axle → combined slip → reduced lateral grip.' }} params={params} set={set} />
         {(params.drivetrainType === 'AWD' || params.drivetrainType === 'AWD_TV') && (
           <SliderRow cfg={{ label: 'Torque split', key: 'awdFrontBias', min: 0, max: 1, step: 0.05, unit: '', format: v => `${(v*100).toFixed(0)}%F / ${((1-v)*100).toFixed(0)}%R`, tip: 'Torque split front/rear. 0.40 = 40F/60R typical.' }} params={params} set={set} />
@@ -282,7 +274,7 @@ export function ParameterPanel({ params, onChange }: Props) {
             return <>
               <DerivedRow label="Downforce @ V" value={`${(F_down/1000).toFixed(2)} kN`} tip="Speed-dependent downforce at current speed. Adds to tyre Fz → more grip. Grows with V²." />
               <DerivedRow label="Drag @ V"      value={`${(F_drag/1000).toFixed(2)} kN`} tip="Aerodynamic drag force at current speed. Must be overcome by engine drive force." />
-              <DerivedRow label="Drag power"    value={`${(F_drag * speedMs / 1000).toFixed(1)} kW`} tip="Power consumed by drag = F_drag × V. At high speed this dominates the power budget." />
+              <DerivedRow label="Drag power"    value={fmtPower(F_drag * speedMs / 1000, powerUnit)} tip="Power consumed by drag = F_drag × V. At high speed this dominates the power budget." />
             </>;
           })()}
         </div>
