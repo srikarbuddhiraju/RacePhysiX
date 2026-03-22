@@ -52,7 +52,7 @@ Parameters: a, b, L, h, track. Static axle load formulas. Parameter effect table
 
 ### `bicycle-model.md` (180 lines)
 Full linear bicycle model: assumptions, slip angles, EOM (state-space), steady-state response, understeer gradient K, handling diagram, limits. Validated against Gillespie Ch.6.
-**Key notation:** ApexSim uses b = CG to REAR axle (opposite to Gillespie).
+**Key notation:** RacePhysiX uses b = CG to REAR axle (opposite to Gillespie).
 **Read before** any change to `bicycleModel.ts`.
 
 ### `tyre-pacejka.md` (161 lines)
@@ -70,7 +70,7 @@ Longitudinal + lateral load transfer formulas, per-wheel Fz, Pacejka nonlinearit
 All PDFs in `docs/Textbooks/`.
 
 ### Gillespie — *Fundamentals of Vehicle Dynamics* (Revised Ed.)
-**Notation:** `b`=CG to FRONT, `c`=CG to REAR — **opposite** to ApexSim.
+**Notation:** `b`=CG to FRONT, `c`=CG to REAR — **opposite** to RacePhysiX.
 
 | Topic | Location |
 |---|---|
@@ -82,7 +82,7 @@ All PDFs in `docs/Textbooks/`.
 | Handling diagram | Ch.6 §6.4 |
 
 ### Milliken & Milliken — *Race Car Vehicle Dynamics* (RCVD)
-**Notation:** `a`=CG to front, `b`=CG to rear — **matches ApexSim**.
+**Notation:** `a`=CG to front, `b`=CG to rear — **matches RacePhysiX**.
 
 | Topic | Location |
 |---|---|
@@ -112,9 +112,9 @@ All PDFs in `docs/Textbooks/`.
 
 ---
 
-## Notation conventions (ApexSim vs Gillespie)
+## Notation conventions (RacePhysiX vs Gillespie)
 
-| Quantity | ApexSim | Gillespie Ch.6 |
+| Quantity | RacePhysiX | Gillespie Ch.6 |
 |---|---|---|
 | CG to front axle | `a` | `c` |
 | CG to rear axle | `b` | `b` |

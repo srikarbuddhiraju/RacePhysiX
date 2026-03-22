@@ -1,7 +1,7 @@
-# ApexSim — Project Overview
+# RacePhysiX — Project Overview
 
 **Created:** 2026-03-15
-**Repo:** https://github.com/srikarbuddhiraju/ApexSim
+**Repo:** https://github.com/srikarbuddhiraju/RacePhysiX
 **Local path:** `/home/srikarbuddhiraju/Srikar/Repo/ApexSim`
 **Status:** v1 feature-complete — pending deployment
 
@@ -57,7 +57,7 @@ Not a game. A tool where you change parameters and see real-world vehicle behavi
 | 3D Visualisation | Three.js |
 | Charts | Recharts |
 | Physics engine | Pure TypeScript module (framework-agnostic) |
-| Hosting | Cloudflare Pages — `apexsim.srikarbuddhiraju.com` |
+| Hosting | Cloudflare Pages — `racephysix.srikarbuddhiraju.com` |
 | License | MIT |
 
 ---
@@ -125,5 +125,5 @@ All stages validated against Milliken & Milliken / Gillespie. 18 checks pass.
 ## Relationship to Panchangam
 
 - Panchangam ships April 2026 — that takes priority
-- ApexSim runs in parallel, slow pace, no hard deadline
+- RacePhysiX runs in parallel, slow pace, no hard deadline
 - Separate repo, separate stack, separate Claude project context

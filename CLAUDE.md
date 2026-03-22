@@ -1,4 +1,4 @@
-# ApexSim — Claude Instructions
+# RacePhysiX — Claude Instructions
 
 ## Project Overview
 A browser-based, physics-accurate vehicle dynamics simulator.

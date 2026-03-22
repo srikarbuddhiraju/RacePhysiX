@@ -130,8 +130,8 @@ Equivalently per g: `K [deg/g] = K · g · RAD_TO_DEG`
 ```
 K [deg/g] = Wf/Cαf - Wr/Cαr   where Wf,Wr in N and Cα in N/deg
 ```
-Note: Gillespie uses b = CG to FRONT axle, c = CG to REAR axle (opposite to ApexSim convention).
-ApexSim: b = CG to rear (= frontWeightFraction × L), a = CG to front. See vehicle-geometry.md §2.
+Note: Gillespie uses b = CG to FRONT axle, c = CG to REAR axle (opposite to RacePhysiX convention).
+RacePhysiX: b = CG to rear (= frontWeightFraction × L), a = CG to front. See vehicle-geometry.md §2.
 
 | Condition | K value | Behaviour |
 |-----------|---------|-----------|

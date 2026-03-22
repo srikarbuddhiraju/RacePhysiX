@@ -1,4 +1,4 @@
-# ApexSim UX/UI Test Report — 2026-03-15
+# RacePhysiX UX/UI Test Report — 2026-03-15
 
 ## P1 Fixes Applied
 

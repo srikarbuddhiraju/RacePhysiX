@@ -1,4 +1,4 @@
-# Claude Lessons — ApexSim Project
+# Claude Lessons — RacePhysiX Project
 
 Running log of mistakes and rules to avoid repeating.
 Updated after every correction per CLAUDE.md Self-Improvement Loop.

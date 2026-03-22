@@ -1,4 +1,4 @@
-# Load Transfer — ApexSim Physics Reference
+# Load Transfer — RacePhysiX Physics Reference
 *Reference for Claude. Validates against: Milliken & Milliken ch.17, Gillespie ch.6*
 
 ---
