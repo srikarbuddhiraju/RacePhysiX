@@ -1,4 +1,4 @@
-# Bicycle Model — ApexSim Physics Reference
+# Bicycle Model — RacePhysiX Physics Reference
 *Reference for Claude. Validates against: Milliken & Milliken ch.5, Gillespie ch.6*
 
 ---

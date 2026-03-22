@@ -2,7 +2,7 @@
 
 **Created:** 2026-03-15
 **Repo:** https://github.com/srikarbuddhiraju/RacePhysiX
-**Local path:** `/home/srikarbuddhiraju/Srikar/Repo/ApexSim`
+**Local path:** `/home/srikarbuddhiraju/Srikar/Repo/RacePhysiX`
 **Status:** v1 feature-complete — pending deployment
 
 ---

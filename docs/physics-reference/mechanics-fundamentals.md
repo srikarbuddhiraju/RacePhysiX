@@ -115,7 +115,7 @@ Setup: vehicle turning right at constant speed (steady-state), viewed from above
 
 ---
 
-## Sign Conventions (ApexSim standard)
+## Sign Conventions (RacePhysiX standard)
 
 | Quantity | Positive direction | Notes |
 |---|---|---|

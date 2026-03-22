@@ -28,7 +28,7 @@ Srikar can and will catch incorrect physics — accuracy is non-negotiable.
 - 3D Visualisation: Three.js
 - Charts: Recharts
 - Physics engine: Pure TypeScript module (framework-agnostic)
-- Hosting: Cloudflare Pages — `apexsim.srikarbuddhiraju.com`
+- Hosting: Cloudflare Pages — `racephysix.srikarbuddhiraju.com`
 - License: MIT
 
 ## Physics Model Roadmap
