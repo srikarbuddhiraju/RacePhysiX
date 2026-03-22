@@ -52,11 +52,14 @@ Srikar can and will catch incorrect physics — accuracy is non-negotiable.
 | 15 | Track editor | ✅ done | User-editable segment table with live SVG preview, JSON import/export, localStorage persistence |
 | 16 | GPS-accurate circuit maps | ✅ done | TUMFTM (LGPL-3.0) + OSM (ODbL) GPS paths — 18 real circuits |
 | 17 | Racing line overlay | 🔲 future | Min-curvature racing line from TUMFTM centerline + width data |
-| 18 | Vehicle presets | 🔲 next | Road / Formula Student / GT3 / F1 one-click parameter sets |
-| 19 | Onboarding | 🔲 next | First-use guidance — hint text per panel, "try this" nudges |
-| 20 | Setup comparison | 🔲 next | Save baseline → run variant → show Δ lap time side-by-side |
-| 21 | About / methodology | 🔲 next | Validation methodology, physics references, attribution visible in UI |
-| 22 | Camber + toe | 🔲 next | Camber angle + toe-in/out effect on effective slip angles + Fy |
+| 18 | Vehicle presets | ✅ done | Road / Formula Student / GT3 / F1 one-click parameter sets |
+| 19 | Onboarding | ✅ done | Welcome banner — first-visit dismissible, localStorage flag |
+| 20 | Setup comparison | ✅ done | Save baseline → run variant → show Δ lap time side-by-side |
+| 21 | About / methodology | ✅ done | Collapsible section — physics stages, textbook refs, circuit attribution |
+| 22 | Camber + toe | ✅ done | Camber thrust + toe effective Cα in bicycle + Pacejka models |
+| 23 | Tyre wear model | 🔲 next | Lap-by-lap grip degradation curve — cliff + graining phases |
+| 24 | Wind / ambient conditions | 🔲 next | Headwind/crosswind effect on drag + lateral force; altitude → air density |
+| 25 | Driver model | 🔲 next | Driving style (aggressive/smooth) → tyre heating rate, corner entry speed |
 
 ## Circuits Available
 - **Generic (4)**: Club (~1.9 km), Karting (~1.0 km), GT circuit (~3.2 km), Formula test (~2.1 km)

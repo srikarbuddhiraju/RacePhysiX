@@ -75,6 +75,9 @@ const BASE: VehicleParams = {
   enginePeakRpm: 5500, engineRedlineRpm: 6500,
   fuelLoadKg: 45, fuelBurnRateKgPerLap: 2.5,
   frontCamberDeg: 0, rearCamberDeg: 0, frontToeDeg: 0, rearToeDeg: 0,
+  tyreCompound: 'medium',
+  altitudeM: 0, ambientTempC: 20, windSpeedKph: 0, windAngleDeg: 0,
+  driverAggression: 0.5,
 };
 
 let allPassed = true;

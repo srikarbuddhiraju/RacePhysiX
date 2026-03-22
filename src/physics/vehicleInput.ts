@@ -6,9 +6,9 @@
 import { computeMaxDriveForce, computeMaxSpeed } from './gearModel';
 import type { VehicleParams, PacejkaCoeffs }     from './types';
 import type { LapSimInput }                       from './laptime';
+import { airDensity, headwindMs as computeHeadwind, crosswindLateralForceN } from './ambient';
 
 const G       = 9.81;
-const RHO_AIR = 1.225;
 
 export function buildLapSimInput(params: VehicleParams, coeffs: PacejkaCoeffs): LapSimInput {
   const { mass, brakingG, aeroCD, aeroReferenceArea, cgHeight, trackWidth,
@@ -32,20 +32,37 @@ export function buildLapSimInput(params: VehicleParams, coeffs: PacejkaCoeffs): 
     : 1.0;
   const peakMuEff = peakMu * muFrac;
 
+  // Stage 24: Ambient conditions — air density and wind
+  const rhoAir       = airDensity(params.altitudeM ?? 0, params.ambientTempC ?? 20);
+  const headWind     = computeHeadwind(params.windSpeedKph ?? 0, params.windAngleDeg ?? 0);
+  const crossLatN    = crosswindLateralForceN(
+    params.windSpeedKph ?? 0, params.windAngleDeg ?? 0, rhoAir, aeroReferenceArea,
+  );
+  // Crosswind reduces available μ for cornering (lateral force budget)
+  const crosswindMuPenalty = Math.min(0.15, crossLatN / (mass * G * peakMuEff));
+  const peakMuWithWind = peakMuEff * (1 - crosswindMuPenalty);
+
   const DEG_TO_RAD = Math.PI / 180;
 
   return {
     mass,
-    peakMu:            peakMuEff,
+    peakMu:            peakMuWithWind,
     brakingCapG,
     aeroCL:            params.aeroCL,
     aeroCD,
     aeroReferenceArea,
-    dragForce:         (V: number) => 0.5 * RHO_AIR * V * V * aeroReferenceArea * aeroCD,
+    dragForce:         (V: number) => {
+      const Veff = V + headWind;  // headwind adds to effective airspeed
+      return 0.5 * rhoAir * Veff * Veff * aeroReferenceArea * aeroCD;
+    },
     driveForce:        (V: number) => computeMaxDriveForce(V, params),
     combSlipBrakeFrac: 0.4,
     frontCaNPerRad:    corneringStiffnessNPerDeg / DEG_TO_RAD,
     rearCaNPerRad:     (rearCorneringStiffnessNPerDeg ?? corneringStiffnessNPerDeg) / DEG_TO_RAD,
     maxVehicleSpeedMs: computeMaxSpeed(params),
+    rhoAir,
+    headwindMs:        headWind,
+    tyreCompound:      params.tyreCompound ?? 'medium',
+    driverAggression:  params.driverAggression ?? 0.5,
   };
 }

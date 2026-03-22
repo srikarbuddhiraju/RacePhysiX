@@ -15,6 +15,8 @@
  * Reference: Milliken & Milliken RCVD App.B (Simple Lap Simulation)
  */
 
+import { tyreWearFactor, tyreLifeFraction, type TyreCompound } from './tyreWear';
+
 const G       = 9.81;
 const RHO_AIR = 1.225;   // kg/m³
 
@@ -810,6 +812,13 @@ export interface LapSimInput {
   /** Power-limited top speed (m/s). Caps maxCornerSpeed so high-CL fast corners
    *  don't produce physically impossible speeds (iteration divergence fix). */
   maxVehicleSpeedMs?: number;
+  // ── Stage 24 — Ambient conditions ────────────────────────────────────────
+  rhoAir?:           number;    // kg/m³ — air density (replaces hardcoded 1.225 when set)
+  headwindMs?:       number;    // m/s — net headwind speed (adds to drag)
+  // ── Stage 23 — Tyre compound wear ────────────────────────────────────────
+  tyreCompound?:     string;    // compound for wear model
+  // ── Stage 25 — Driver aggression ─────────────────────────────────────────
+  driverAggression?: number;    // 0–1
 }
 
 // ── Per-segment and lap result ────────────────────────────────────────────────
@@ -841,11 +850,12 @@ export interface LapResult {
  *  Stage 13B: friction circle — lateral capacity reduced by corner-entry braking demand. */
 function maxCornerSpeed(R: number, inp: LapSimInput): number {
   const { mass, peakMu, aeroCL, aeroReferenceArea: A } = inp;
+  const rho         = inp.rhoAir ?? RHO_AIR;
   const brakeFrac   = inp.combSlipBrakeFrac ?? 0;           // 0 = no combined-slip correction
   const brakeDemand = inp.brakingCapG * brakeFrac;          // g units
   let V = Math.sqrt(peakMu * G * R);  // initial guess (no aero)
   for (let i = 0; i < 10; i++) {
-    const downforce = 0.5 * RHO_AIR * V * V * A * aeroCL;
+    const downforce = 0.5 * rho * V * V * A * aeroCL;
     const muEff = peakMu * (mass * G + downforce) / (mass * G);
     // Stage 13B: ay_max = sqrt(muEff² − brakeDemand²) — friction circle
     const ayMaxG = brakeDemand > 0
@@ -863,7 +873,8 @@ function maxCornerSpeed(R: number, inp: LapSimInput): number {
 /** Brake deceleration at speed V, accounting for aero (aerodynamic braking boost). */
 function brakeDecel(V: number, inp: LapSimInput): number {
   const { mass, aeroCL, aeroReferenceArea: A } = inp;
-  const downforce = 0.5 * RHO_AIR * V * V * A * aeroCL;
+  const rho = inp.rhoAir ?? RHO_AIR;
+  const downforce = 0.5 * rho * V * V * A * aeroCL;
   // More downforce → more brake force available (friction limit rises)
   const aeroBoost = downforce * inp.peakMu;
   return inp.brakingCapG * G + aeroBoost / mass;
@@ -1104,6 +1115,8 @@ export interface LapData {
   muFraction:        number;    // effective μ fraction vs optimal (1.0 = perfect)
   fuelMassKg:        number;    // fuel remaining at start of this lap
   gapToFastestSec:   number;    // delta to fastest lap (0 for the fastest lap itself)
+  tyreWearFraction:  number;    // 0 = new tyre, 1 = past cliff (Stage 23)
+  wearFactor:        number;    // mechanical μ multiplier from wear (0.55–1.0) (Stage 23)
 }
 
 export interface RaceResult {
@@ -1143,16 +1156,27 @@ export function simulateRace(
   let tyreTempC = startTyreTempC;
 
   for (let lap = 1; lap <= numLaps; lap++) {
+    // Stage 25: Aggression affects tyre heating rate
+    const aggression     = baseInp.driverAggression ?? 0.5;
+    const aggressDegRate = DEG_RATE * (1 + 0.4 * aggression);
+
     // Tyre temperature evolution (before lap starts — affects this lap's μ)
     if (tyreTempC < optTyreTempC) {
       tyreTempC += (optTyreTempC - tyreTempC) * (1 - Math.exp(-1 / WARMUP_TC));
     } else {
-      tyreTempC += DEG_RATE;
+      tyreTempC += aggressDegRate;
     }
 
     // μ fraction: Gaussian bell centred at optTyreTempC
     const dt = tyreTempC - optTyreTempC;
     const muFraction = floorMu + (1 - floorMu) * Math.exp(-(dt * dt) / (2 * halfWidthC * halfWidthC));
+
+    // Stage 23: Mechanical tyre wear factor (on top of thermal)
+    const compound = (baseInp.tyreCompound ?? 'medium') as TyreCompound;
+    // Aggressive drivers see faster wear (effective lap count scaled up)
+    const effectiveLap = lap * (1 + 0.4 * aggression);
+    const wearFactor   = tyreWearFactor(effectiveLap, compound);
+    const lifeFrac     = tyreLifeFraction(effectiveLap, compound);
 
     // Fuel remaining at START of this lap (lap 1 = full load)
     const fuelMassKg = Math.max(0, fuelLoadKg - (lap - 1) * fuelBurnRateKgPerLap);
@@ -1164,7 +1188,7 @@ export function simulateRace(
     const lapInp: LapSimInput = {
       ...baseInp,
       mass:    Math.max(lapMass, baseInp.mass * 0.5),  // safety floor
-      peakMu:  baseInp.peakMu * muFraction,
+      peakMu:  baseInp.peakMu * muFraction * wearFactor,
     };
 
     const lapResult = computeLapTime(layout, lapInp);
@@ -1218,6 +1242,8 @@ export function simulateRace(
       lap, lapTimeSec: lapResult.totalTimeSec,
       s1Sec, s2Sec, s3Sec,
       tyreTempC, muFraction, fuelMassKg,
+      tyreWearFraction: lifeFrac,
+      wearFactor,
       gapToFastestSec: 0,  // filled below
     });
   }

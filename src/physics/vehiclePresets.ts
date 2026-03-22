@@ -71,6 +71,9 @@ const ROAD_CAR: VehiclePreset = {
     rearCamberDeg:  -0.5,
     frontToeDeg:     0.05,  // slight toe-in front
     rearToeDeg:      0.15,
+    tyreCompound: 'medium',
+    altitudeM: 0, ambientTempC: 20, windSpeedKph: 0, windAngleDeg: 0,
+    driverAggression: 0.5,
   },
   coeffs: { B: 10.0, C: 1.30, peakMu: 1.00, E: -1.50 },
 };
@@ -127,6 +130,9 @@ const FORMULA_STUDENT: VehiclePreset = {
     rearCamberDeg:  -1.5,
     frontToeDeg:     0.0,   // zero toe front (minimise straight-line drag)
     rearToeDeg:      0.2,
+    tyreCompound: 'soft',
+    altitudeM: 0, ambientTempC: 20, windSpeedKph: 0, windAngleDeg: 0,
+    driverAggression: 0.7,
   },
   coeffs: { B: 12.0, C: 1.30, peakMu: 1.80, E: -0.80 },
 };
@@ -183,6 +189,9 @@ const GT3: VehiclePreset = {
     rearCamberDeg:  -1.5,
     frontToeDeg:     0.0,
     rearToeDeg:      0.3,   // rear toe-in for high-speed stability
+    tyreCompound: 'medium',
+    altitudeM: 0, ambientTempC: 20, windSpeedKph: 0, windAngleDeg: 0,
+    driverAggression: 0.8,
   },
   coeffs: { B: 10.0, C: 1.35, peakMu: 1.60, E: -0.70 },
 };
@@ -240,6 +249,9 @@ const FORMULA_1: VehiclePreset = {
     rearCamberDeg:  -2.5,
     frontToeDeg:    -0.05,  // slight toe-out front (reduces scrub in slow corners)
     rearToeDeg:      0.1,   // minimal rear toe-in (ground effect provides stability)
+    tyreCompound: 'soft',
+    altitudeM: 0, ambientTempC: 30, windSpeedKph: 0, windAngleDeg: 0,
+    driverAggression: 0.9,
   },
   coeffs: { B: 15.0, C: 1.40, peakMu: 2.00, E: -1.00 },
 };

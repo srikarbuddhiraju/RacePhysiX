@@ -58,6 +58,15 @@ export interface VehicleParams {
   rearCamberDeg:   number;           // deg — static setup camber rear axle
   frontToeDeg:     number;           // deg — front toe (+ve = toe-in, −ve = toe-out)
   rearToeDeg:      number;           // deg — rear toe (+ve = toe-in)
+  // ── Stage 23 — Tyre compound ─────────────────────────────────────────────────
+  tyreCompound:    string;           // 'soft' | 'medium' | 'hard' | 'inter' | 'wet'
+  // ── Stage 24 — Ambient conditions ───────────────────────────────────────────
+  altitudeM:       number;           // m — circuit altitude above sea level (0 = sea level)
+  ambientTempC:    number;           // °C — ambient air temperature (affects air density)
+  windSpeedKph:    number;           // km/h — wind speed (0 = no wind)
+  windAngleDeg:    number;           // deg — 0=headwind, 90=crosswind, 180=tailwind
+  // ── Stage 25 — Driver model ──────────────────────────────────────────────────
+  driverAggression: number;          // 0.0 (cautious) – 1.0 (pushing hard)
 }
 
 export type Balance = 'understeer' | 'neutral' | 'oversteer';
