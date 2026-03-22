@@ -72,11 +72,19 @@ function buildHandlingCurve(
 
   // Stage 13A: derive per-axle B from cornering stiffness (B = Cα / (C × peakMu × Fz0))
   // Stage 22: toe-in increases effective Cα → higher B (RCVD §2.3.3).
+  // Stage 28: pressure scales Cα^0.35, scales peak μ by (p_nom/p)^0.10.
   const k_toe_hc = 0.12;
-  const CαF_Nrad = (corneringStiffnessNPerDeg / DEG_TO_RAD) * (1 + k_toe_hc * Math.abs(params.frontToeDeg ?? 0));
-  const CαR_Nrad = ((rearCorneringStiffnessNPerDeg ?? corneringStiffnessNPerDeg) / DEG_TO_RAD) * (1 + k_toe_hc * Math.abs(params.rearToeDeg ?? 0));
-  const B_front  = CαF_Nrad / (C * peakMu * Fz0);
-  const B_rear   = CαR_Nrad / (C * peakMu * Fz0);
+  const P_NOM_hc = 2.0;
+  const pF_hc = Math.max(0.5, params.frontTyrePressureBar ?? 2.0);
+  const pR_hc = Math.max(0.5, params.rearTyrePressureBar  ?? 2.0);
+  const pressCαF_hc = Math.pow(pF_hc / P_NOM_hc, 0.35);
+  const pressCαR_hc = Math.pow(pR_hc / P_NOM_hc, 0.35);
+  const pressMuF_hc = Math.pow(P_NOM_hc / pF_hc, 0.10);
+  const pressMuR_hc = Math.pow(P_NOM_hc / pR_hc, 0.10);
+  const CαF_Nrad = (corneringStiffnessNPerDeg / DEG_TO_RAD) * (1 + k_toe_hc * Math.abs(params.frontToeDeg ?? 0)) * pressCαF_hc;
+  const CαR_Nrad = ((rearCorneringStiffnessNPerDeg ?? corneringStiffnessNPerDeg) / DEG_TO_RAD) * (1 + k_toe_hc * Math.abs(params.rearToeDeg ?? 0)) * pressCαR_hc;
+  const B_front  = CαF_Nrad / (C * (peakMu * pressMuF_hc) * Fz0);
+  const B_rear   = CαR_Nrad / (C * (peakMu * pressMuR_hc) * Fz0);
 
   // Stage 9: limit is reduced when load sensitivity is active (μ_eff < μ₀ at high loads)
   const peakMuEff  = loadSensitiveMu(Fz0 * 1.5, Fz0, peakMu, qFz); // effective mu at ~1.5× nominal load
@@ -196,16 +204,28 @@ export function computePacejkaModel(params: VehicleParams, coeffs: PacejkaCoeffs
   const FyFrontReq = mass * ay_ms2 * (b / L);
   const FyRearReq  = mass * ay_ms2 * (a / L);
 
-  // Stage 22: subtract camber thrust from required Fy before solving slip angle.
+  // Stage 22+28: subtract camber thrust from required Fy before solving slip angle.
   // Cγ = 0.05 × Cα (rad); negative camber (deg < 0) → positive thrust aids cornering.
+  // Stage 28: Cα and peakMu scale with pressure.
   const DEG2RAD = Math.PI / 180;
-  const Cα_F_eff = (params.corneringStiffnessNPerDeg / DEG2RAD) * (1 + 0.12 * Math.abs(params.frontToeDeg ?? 0));
-  const Cα_R_eff = ((params.rearCorneringStiffnessNPerDeg ?? params.corneringStiffnessNPerDeg) / DEG2RAD) * (1 + 0.12 * Math.abs(params.rearToeDeg ?? 0));
+  const P_NOM_pm = 2.0;
+  const pF_pm = Math.max(0.5, params.frontTyrePressureBar ?? 2.0);
+  const pR_pm = Math.max(0.5, params.rearTyrePressureBar  ?? 2.0);
+  const pressCαF_pm = Math.pow(pF_pm / P_NOM_pm, 0.35);
+  const pressCαR_pm = Math.pow(pR_pm / P_NOM_pm, 0.35);
+  const pressMuF_pm = Math.pow(P_NOM_pm / pF_pm, 0.10);
+  const pressMuR_pm = Math.pow(P_NOM_pm / pR_pm, 0.10);
+  const Cα_F_eff = (params.corneringStiffnessNPerDeg / DEG2RAD) * (1 + 0.12 * Math.abs(params.frontToeDeg ?? 0)) * pressCαF_pm;
+  const Cα_R_eff = ((params.rearCorneringStiffnessNPerDeg ?? params.corneringStiffnessNPerDeg) / DEG2RAD) * (1 + 0.12 * Math.abs(params.rearToeDeg ?? 0)) * pressCαR_pm;
   const ΔFy_F22 = -0.05 * Cα_F_eff * (params.frontCamberDeg ?? 0) * DEG2RAD;
   const ΔFy_R22 = -0.05 * Cα_R_eff * (params.rearCamberDeg  ?? 0) * DEG2RAD;
+  // Apply pressure-scaled B per axle and pressure-scaled peakMu for slip angle solving
+  const B_front_pm = Cα_F_eff / (C * (peakMu * pressMuF_pm) * Fz0);
+  const B_rear_pm  = Cα_R_eff / (C * (peakMu * pressMuR_pm) * Fz0);
 
-  const frontSlipAngleRad = solveSlipAngleTyreAxle(Math.max(0, FyFrontReq - ΔFy_F22), lt.FzFR, lt.FzFL, Math.abs(FxFrontNet), B, C, peakMu, E, qFz, Fz0);
-  const rearSlipAngleRad  = solveSlipAngleTyreAxle(Math.max(0, FyRearReq  - ΔFy_R22), lt.FzRR, lt.FzRL, Math.abs(FxRearNet),  B, C, peakMu, E, qFz, Fz0);
+  // Stage 28: use pressure-scaled B and peakMu per axle
+  const frontSlipAngleRad = solveSlipAngleTyreAxle(Math.max(0, FyFrontReq - ΔFy_F22), lt.FzFR, lt.FzFL, Math.abs(FxFrontNet), B_front_pm, C, peakMu * pressMuF_pm, E, qFz, Fz0);
+  const rearSlipAngleRad  = solveSlipAngleTyreAxle(Math.max(0, FyRearReq  - ΔFy_R22), lt.FzRR, lt.FzRL, Math.abs(FxRearNet),  B_rear_pm,  C, peakMu * pressMuR_pm, E, qFz, Fz0);
 
   const frontSlipAngleDeg = frontSlipAngleRad * RAD_TO_DEG;
   const rearSlipAngleDeg  = rearSlipAngleRad  * RAD_TO_DEG;

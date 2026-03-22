@@ -39,12 +39,21 @@ export function computeBicycleModel(params: VehicleParams): PhysicsResult {
   const CαF = CαF_base * (1 + k_toe * Math.abs(params.frontToeDeg ?? 0));
   const CαR = CαR_base * (1 + k_toe * Math.abs(params.rearToeDeg  ?? 0));
 
+  // ── Stage 28: Tyre Pressure ────────────────────────────────────────────────
+  // Cα scales with pressure^0.35 (Pacejka §4.3.1). Reference: 2.0 bar.
+  const P_NOM = 2.0;
+  const pF = Math.max(0.5, params.frontTyrePressureBar ?? 2.0);
+  const pR = Math.max(0.5, params.rearTyrePressureBar  ?? 2.0);
+  const CαF_final = CαF * Math.pow(pF / P_NOM, 0.35);
+  const CαR_final = CαR * Math.pow(pR / P_NOM, 0.35);
+
   // Camber thrust: Fy_γ = Cγ × γ, where Cγ = 0.05 × Cα (RCVD §2.3.5; typical radial racing tyre).
   // Negative setup camber (γ < 0) → camber thrust aids lateral force → reduces required slip angle.
   // Sign: ΔFy = -k_camber × Cα × camberDeg × DEG_TO_RAD  (negative camber → positive thrust in corner direction)
+  // Use pressure-scaled Cα since camber thrust scales with actual contact stiffness.
   const k_camber = 0.05;
-  const ΔFy_F = -k_camber * CαF * (params.frontCamberDeg ?? 0) * DEG_TO_RAD;
-  const ΔFy_R = -k_camber * CαR * (params.rearCamberDeg  ?? 0) * DEG_TO_RAD;
+  const ΔFy_F = -k_camber * CαF_final * (params.frontCamberDeg ?? 0) * DEG_TO_RAD;
+  const ΔFy_R = -k_camber * CαR_final * (params.rearCamberDeg  ?? 0) * DEG_TO_RAD;
 
   // ── Geometry ──────────────────────────────────────────────────────────────
   // Wf/W = b/L  →  b = frontWeightFraction × L
@@ -55,8 +64,8 @@ export function computeBicycleModel(params: VehicleParams): PhysicsResult {
   // ── Understeer gradient ───────────────────────────────────────────────────
   // Gillespie eq.6.15: K = (m/L) × (b/CαF − a/CαR)  [rad/(m/s²)]
   // K > 0: understeer, K < 0: oversteer, K = 0: neutral
-  // Stage 13A: separate front/rear Cα. With equal Cα: reduces to (m/L)×(b−a)/Cα.
-  const K = (mass / L) * (b / CαF - a / CαR); // rad/(m/s²)
+  // Stage 13A: separate front/rear Cα. Stage 28: use pressure-scaled values.
+  const K = (mass / L) * (b / CαF_final - a / CαR_final); // rad/(m/s²)
   const underSteerGradientDegPerG = K * G * RAD_TO_DEG;
 
   // ── Lateral acceleration (circular motion) ────────────────────────────────
@@ -73,9 +82,10 @@ export function computeBicycleModel(params: VehicleParams): PhysicsResult {
   const rearLateralForceN  = mass * lateralAccelerationMss * (a / L);
 
   // ── Slip angles (linear tyre: α = (Fy − Fy_camber) / Cα_eff) ────────────
-  // Stage 13A: use per-axle stiffness. Stage 22: subtract camber thrust from required Fy.
-  const frontSlipAngleDeg = ((frontLateralForceN - ΔFy_F) / CαF) * RAD_TO_DEG;
-  const rearSlipAngleDeg  = ((rearLateralForceN  - ΔFy_R) / CαR) * RAD_TO_DEG;
+  // Stage 13A: use per-axle stiffness. Stage 22: subtract camber thrust.
+  // Stage 28: use pressure-scaled Cα for both slip angle and camber thrust.
+  const frontSlipAngleDeg = ((frontLateralForceN - ΔFy_F) / CαF_final) * RAD_TO_DEG;
+  const rearSlipAngleDeg  = ((rearLateralForceN  - ΔFy_R) / CαR_final) * RAD_TO_DEG;
 
   // ── Steer angles (handling equation: δ = L/R + K·ay) ─────────────────────
   const kinematicSteerAngleDeg = (L / R) * RAD_TO_DEG;

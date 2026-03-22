@@ -80,6 +80,8 @@ const BASE: VehicleParams = {
   driverAggression: 0.5,
   diffType: 'open', lsdLockingPercent: 0,
   brakeDiscMassKg: 6.0, brakeOptTempC: 400, brakeHalfWidthC: 200, brakeFloorMu: 0.65,
+  frontTyrePressureBar: 2.0, rearTyrePressureBar: 2.0,
+  frontRideHeightMm: 100, rearRideHeightMm: 105,
 };
 
 let allPassed = true;

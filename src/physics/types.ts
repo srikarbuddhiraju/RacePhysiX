@@ -75,6 +75,12 @@ export interface VehicleParams {
   brakeOptTempC:       number;       // °C — optimal brake disc operating temperature (peak friction)
   brakeHalfWidthC:     number;       // °C — Gaussian half-width (fade severity)
   brakeFloorMu:        number;       // 0–1 — minimum braking μ fraction at extreme temperatures
+  // ── Stage 28 — Tyre pressure ─────────────────────────────────────────────────
+  frontTyrePressureBar: number;      // bar — hot inflation pressure, front axle
+  rearTyrePressureBar:  number;      // bar — hot inflation pressure, rear axle
+  // ── Stage 29 — Ride height & rake ───────────────────────────────────────────
+  frontRideHeightMm: number;         // mm — front axle static ride height
+  rearRideHeightMm:  number;         // mm — rear axle static ride height
 }
 
 export type Balance = 'understeer' | 'neutral' | 'oversteer';

@@ -335,6 +335,27 @@ export function ParameterPanel({ params, onChange, powerUnit, onPowerUnitChange 
           })()}
         </div>
 
+        <div className="param-section-label">Ride Height &amp; Rake (Stage 29)</div>
+        <SliderRow cfg={{ label: 'Front ride height', key: 'frontRideHeightMm', min: 25, max: 200, step: 5, unit: 'mm', format: v => v.toFixed(0), tip: 'Front axle static ride height. Affects aerodynamic balance and ground clearance. F1: 25–40mm. GT3: 50–70mm. Road: 120–160mm. Lower front = more front downforce (rake effect).' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Rear ride height', key: 'rearRideHeightMm', min: 25, max: 200, step: 5, unit: 'mm', format: v => v.toFixed(0), tip: 'Rear axle static ride height. Rake = rear − front. Positive rake increases front wing proximity to ground → more front downforce. F1 uses ~5–15mm positive rake.' }} params={params} set={set} />
+        <div className="param-derived">
+          {(() => {
+            const frontH = params.frontRideHeightMm ?? 100;
+            const rearH  = params.rearRideHeightMm  ?? 105;
+            const wbMm   = params.wheelbase * 1000;
+            const rake   = rearH - frontH;
+            const rakeAngle = Math.atan(rake / wbMm) * 180 / Math.PI;
+            const balShift  = -(0.015 * rakeAngle);
+            const h_min  = Math.min(frontH, rearH);
+            const clBoost = params.aeroCL > 2.0 ? (0.20 * Math.max(0, 1 - h_min / 80) * 100) : 0;
+            return (
+              <span>
+                Rake: {rake > 0 ? '+' : ''}{rake} mm ({rakeAngle.toFixed(2)}°) · Aero balance shift: {balShift >= 0 ? '+' : ''}{(balShift * 100).toFixed(1)}% front{clBoost > 0 ? ` · CL boost: +${clBoost.toFixed(0)}%` : ''}
+              </span>
+            );
+          })()}
+        </div>
+
         <div className="param-section-label">Braking</div>
         <SliderRow cfg={{ label: 'Braking',    key: 'brakingG',  min: 0, max: 1.5, step: 0.05, unit: 'g', format: v => v.toFixed(2), tip: 'Applied braking deceleration. 0 = coasting. 0.5g = gentle; 1.0g = firm; 1.5g = maximum ABS-limited stop. Shifts weight to front axle, reduces rear lateral grip.' }} params={params} set={set} />
         <SliderRow cfg={{ label: 'Brake bias', key: 'brakeBias', min: 0.40, max: 0.90, step: 0.01, unit: '(−)', format: v => `${(v*100).toFixed(0)}%F / ${((1-v)*100).toFixed(0)}%R`, tip: 'Fraction of brake force on front axle. 0.65 = 65F/35R typical road. More front bias = stable but front tyres saturate early. More rear = faster yaw but rear lock risk.' }} params={params} set={set} />
@@ -418,6 +439,30 @@ export function ParameterPanel({ params, onChange, powerUnit, onPowerUnitChange 
             };
             const d = info[c] ?? info['medium'];
             return <span>Cliff: lap ~{d.cliff} · Wear: {d.rate} · {d.note}</span>;
+          })()}
+        </div>
+
+        <div className="param-section-label">Tyre Pressure (Stage 28)</div>
+        <SliderRow cfg={{ label: 'Front pressure', key: 'frontTyrePressureBar', min: 1.0, max: 3.5, step: 0.05, unit: 'bar', format: v => v.toFixed(2), tip: 'Hot inflation pressure — front axle. Racing slicks: 1.4–2.0 bar. Road tyres: 2.0–2.8 bar. Higher pressure → stiffer but smaller contact patch (less peak μ).' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Rear pressure', key: 'rearTyrePressureBar', min: 1.0, max: 3.5, step: 0.05, unit: 'bar', format: v => v.toFixed(2), tip: 'Hot inflation pressure — rear axle. Usually ±0.1 bar of front to tune balance. Under-inflation: bigger contact patch → more grip but heat risk. Over-inflation: stiff response, less grip.' }} params={params} set={set} />
+        <div className="param-derived">
+          {(() => {
+            const P_NOM = 2.0;
+            const pF = Math.max(0.5, params.frontTyrePressureBar ?? 2.2);
+            const pR = Math.max(0.5, params.rearTyrePressureBar  ?? 2.2);
+            const cαF = Math.pow(pF / P_NOM, 0.35);
+            const cαR = Math.pow(pR / P_NOM, 0.35);
+            const muF = Math.pow(P_NOM / pF, 0.10);
+            const muR = Math.pow(P_NOM / pR, 0.10);
+            // Cold pressure estimate (ideal gas: p_cold = p_hot × T_cold / T_hot)
+            const T_cold = 20 + 273.15;
+            const T_hot_F = (params.tyreOptTempC ?? 85) + 273.15;
+            const pColdF = (pF * T_cold / T_hot_F);
+            return (
+              <span>
+                Front: Cα ×{cαF.toFixed(2)}, μ ×{muF.toFixed(3)} · Rear: Cα ×{cαR.toFixed(2)}, μ ×{muR.toFixed(3)} · Cold set: {pColdF.toFixed(2)} bar
+              </span>
+            );
           })()}
         </div>
 
