@@ -4,6 +4,44 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
+## Session 24 — 2026-03-22  |  branch: `feature/stage26-27-physics` (IN PROGRESS)
+
+### Status: IN PROGRESS
+
+### Done this session:
+
+**Stage 26 — Differential Model**
+- `src/physics/differential.ts` — NEW: `diffTractionFactor()` and `diffYawMoment()` for open/LSD/locked diffs
+- `src/physics/types.ts`: `diffType` + `lsdLockingPercent` fields on VehicleParams
+- `src/physics/vehicleInput.ts`: imports diff functions, computes diffFactor, applies to driveForce, returns diffTractionFactor/diffYawMomentNm
+- `src/App.tsx`: DEFAULT_PARAMS `diffType: 'open'`, `lsdLockingPercent: 50`
+- `src/physics/vehiclePresets.ts`: diff fields on all 4 presets (Road=open, FS/GT3/F1=lsd)
+- `src/components/ParameterPanel.tsx`: Differential section in Vehicle tab (3-button selector + LSD locking slider + derived traction/yaw display)
+
+**Stage 27 — Brake Temperature Model**
+- `src/physics/brakeTemp.ts` — NEW: `brakeHeatRisePerLap()`, `brakeDiscCoolingPerLap()`, `brakeFadeFactorFromTemp()`
+- `src/physics/types.ts`: `brakeDiscMassKg`, `brakeOptTempC`, `brakeHalfWidthC`, `brakeFloorMu` on VehicleParams
+- `src/physics/laptime.ts`: imports brakeTemp functions; `LapSimInput` has optional brake temp fields; `LapData` has `brakeDiscTempC` + `brakeFadeFactor`; `simulateRace` evolves brake temp per lap and applies fade to `brakingCapG`
+- `src/App.tsx`: DEFAULT_PARAMS brake temp defaults
+- `src/physics/vehiclePresets.ts`: brake temp fields on all 4 presets (road=heavy/low-temp, F1=light/high-temp)
+- `src/components/ParameterPanel.tsx`: Brake Temperature section in Aero tab (4 sliders + derived heat rise / opt window)
+
+**Fixtures updated:** `validate.ts` + `test-extended.ts` BASE fixtures include Stage 26/27 fields
+
+### Build: ✅ 0 TypeScript errors | All 21 checks pass
+
+### Pending:
+- [ ] Browser verify: diff selector, LSD locking slider, brake temp sliders, race sim shows brakeDiscTempC/brakeFadeFactor in LapData
+- [ ] git commit on `feature/stage26-27-physics`
+
+### Key files
+- `src/physics/differential.ts` — Stage 26 diff model
+- `src/physics/brakeTemp.ts` — Stage 27 brake thermal model
+- `src/physics/laptime.ts` — LapData + simulateRace updated
+- `src/physics/vehicleInput.ts` — diff factor wired into driveForce
+
+---
+
 ## Session 23 — 2026-03-22  |  branch: `feature/stage18-22-product` (IN PROGRESS)
 
 ### Status: IN PROGRESS 🔧

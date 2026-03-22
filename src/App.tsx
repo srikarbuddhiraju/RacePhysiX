@@ -84,6 +84,14 @@ const DEFAULT_PARAMS: VehicleParams = {
   windAngleDeg:    0,
   // Stage 25 — Driver
   driverAggression: 0.5,
+  // Stage 26 — Differential
+  diffType:            'open',
+  lsdLockingPercent:   50,
+  // Stage 27 — Brake temperature
+  brakeDiscMassKg:     6.0,
+  brakeOptTempC:       400,
+  brakeHalfWidthC:     200,
+  brakeFloorMu:        0.65,
 };
 
 function loadInitialParams(): VehicleParams {
