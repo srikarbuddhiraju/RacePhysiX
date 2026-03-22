@@ -10,6 +10,7 @@ import { TRACK_PRESETS } from './physics/laptime';
 import type { LapResult, RaceResult, TrackLayout } from './physics/laptime';
 import type { VehicleParams, PacejkaCoeffs } from './physics/types';
 import { buildLapSimInput } from './physics/vehicleInput';
+import { VehiclePresetSelector } from './components/VehiclePresetSelector';
 import './App.css';
 
 // ── URL hash persistence ──────────────────────────────────────────────────────
@@ -110,8 +111,14 @@ export function App() {
   const pacejka      = useMemo(() => computePacejkaModel(params, coeffs),    [params, coeffs]);
   const lapSimInput  = useMemo(() => buildLapSimInput(params, coeffs),       [params, coeffs]);
 
+  const handlePresetSelect = useCallback((p: VehicleParams, c: PacejkaCoeffs) => {
+    setParams(p);
+    setCoeffs(c);
+  }, [setParams]);
+
   return (
     <div className="app">
+      <VehiclePresetSelector onSelect={handlePresetSelect} />
       {/* Top row: param panel | 3D view | results */}
       <div className="app-main">
         <ParameterPanel params={params} onChange={setParams} />

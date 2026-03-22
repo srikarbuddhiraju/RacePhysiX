@@ -4,6 +4,54 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
+## Session 23 — 2026-03-22  |  branch: `feature/stage18-22-product` (IN PROGRESS)
+
+### Status: IN PROGRESS 🔧
+
+### Context
+Bash tool broken — shell CWD points to deleted ApexSim folder. All git/build commands fail.
+File edits via Read/Write/Edit tools work fine. Restarting Claude from `/home/.../RacePhysiX`.
+
+### Done this session:
+- CLAUDE.md: Stages 18–22 added to roadmap (vehicle presets, onboarding, setup comparison, about, camber+toe)
+- CLAUDE.md: Stage 15 Track editor marked ✅ done, Stage 16 ✅ done, circuit count 22, tests 424
+- `src/physics/vehiclePresets.ts` — NEW: 4 presets (Road Car, Formula Student, GT3, F1) with full VehicleParams + PacejkaCoeffs
+- `src/components/VehiclePresetSelector.tsx` — NEW: horizontal preset button row, tooltip on hover
+- `src/App.tsx` — wired: import + `handlePresetSelect` callback + `<VehiclePresetSelector>` above app-main
+- `src/components/WelcomeBanner.tsx` — NEW: first-visit dismissible banner (localStorage flag `racephysix_welcomed_v1`)
+
+### NOT YET DONE (next session):
+- [ ] Wire `<WelcomeBanner>` into `App.tsx` (written but not imported/placed)
+- [ ] Build verify: `npm run build` — check for TypeScript errors
+- [ ] Stage 20: Setup comparison (A vs B) — save baseline → Δ lap time
+- [ ] Stage 21: About / methodology section
+- [ ] Stage 22: Camber + toe
+- [ ] git: create branch `feature/stage18-22-product`, commit all above, push
+
+### Key file locations
+- Presets: `src/physics/vehiclePresets.ts`
+- Selector component: `src/components/VehiclePresetSelector.tsx`
+- Welcome banner: `src/components/WelcomeBanner.tsx`
+- App wiring: `src/App.tsx` — `handlePresetSelect` + `<VehiclePresetSelector>`
+
+---
+
+## Session 22 — 2026-03-22  |  branch: `main`
+
+### Status: COMPLETE ✅
+
+### Changes shipped:
+- Docs: all remaining ApexSim → RacePhysiX references updated across CLAUDE.md, physics-reference docs, project-overview.md
+- CLAUDE.md: Stage 16 marked ✅ done, Stage 17 racing line added, circuit count 14→22, test count 309→424
+- Old `ApexSim` local folder deleted
+- Deployed to Cloudflare Pages ✅ (`racephysix.srikarbuddhiraju.com`)
+
+### Open
+- [x] Logo design (pending Srikar direction)
+- [x] Stage 15: Track editor — already implemented in LapTimePanel ✓
+
+---
+
 ## Session 21 — 2026-03-22  |  branch: `main` (merged)
 
 ### Status: COMPLETE ✅
@@ -24,7 +72,7 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ### Open
 - [x] Browser verify: all panels, new Tyres & Fuel tab, live timer, dual lap time, S/F marker ✓
-- [ ] Deploy to Cloudflare Pages
+- [x] Deploy to Cloudflare Pages ✓
 
 ---
 
