@@ -202,6 +202,17 @@ export function ParameterPanel({ params, onChange, powerUnit, onPowerUnitChange 
             </>;
           })()}
         </div>
+
+        <div className="param-section-label">Driver Model (Stage 25)</div>
+        <SliderRow cfg={{ label: 'Aggression', key: 'driverAggression', min: 0.0, max: 1.0, step: 0.05, unit: '(−)', format: v => `${(v * 100).toFixed(0)}%`, tip: 'Driver aggression level. Higher = pushes tyres harder → slightly faster corner speeds and braking, but higher tyre wear rate and faster heat build-up. 50% = typical race pace.' }} params={params} set={set} />
+        <div className="param-derived">
+          {(() => {
+            const a = params.driverAggression ?? 0.5;
+            const style = a < 0.3 ? 'Conservative' : a < 0.6 ? 'Measured' : a < 0.8 ? 'Aggressive' : 'Maximum attack';
+            const wearMod = `${((1 + 0.4 * a) * 100).toFixed(0)}%`;
+            return <span>{style} · Tyre wear rate: {wearMod} of base · Heat rate: {((1 + 0.4 * a)).toFixed(2)}×</span>;
+          })()}
+        </div>
       </>}
 
       {/* ── Suspension tab ─────────────────────────────────────────────────── */}
@@ -290,11 +301,59 @@ export function ParameterPanel({ params, onChange, powerUnit, onPowerUnitChange 
             })()}
           </div>
         )}
+
+        <div className="param-section-label">Ambient Conditions (Stage 24)</div>
+        <SliderRow cfg={{ label: 'Altitude', key: 'altitudeM', min: 0, max: 5000, step: 50, unit: 'm', format: v => v.toFixed(0), tip: 'Circuit altitude above sea level. Higher altitude = lower air density = less drag AND less downforce. Mexico City: 2240m, Spa: 430m, sea level: 0m.' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Ambient temp', key: 'ambientTempC', min: -10, max: 50, step: 1, unit: '°C', format: v => v.toFixed(0), tip: 'Air temperature affects air density (ρ ∝ 1/T). Hot weather: lower density → less drag and downforce. Also affects tyre operating window.' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Wind speed', key: 'windSpeedKph', min: 0, max: 120, step: 5, unit: 'km/h', format: v => v.toFixed(0), tip: 'Wind speed. Headwind increases drag and slows straights; tailwind reduces drag; crosswind creates lateral force reducing cornering capacity.' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Wind angle', key: 'windAngleDeg', min: 0, max: 180, step: 5, unit: '°', format: v => `${v.toFixed(0)}° ${v < 30 ? '(headwind)' : v > 150 ? '(tailwind)' : v > 60 && v < 120 ? '(crosswind)' : ''}`, tip: '0° = pure headwind (into the car). 90° = pure crosswind (from the side). 180° = pure tailwind (from behind). Average circuit effect varies by corner.' }} params={params} set={set} />
+        <div className="param-derived">
+          {(() => {
+            const T_K = (params.ambientTempC ?? 20) + 273.15;
+            const rho = 1.225 * (288.15 / T_K) * Math.exp(-(params.altitudeM ?? 0) / 8500);
+            return <span>Air density: <strong>{rho.toFixed(3)} kg/m³</strong> ({rho < 1.1 ? 'thin — less drag & downforce' : rho > 1.25 ? 'dense — more drag & downforce' : 'near standard'})</span>;
+          })()}
+        </div>
       </>}
 
 
       {/* ── Tyres & Fuel tab ───────────────────────────────────────────────── */}
       {tab === 'tyres' && <>
+        <div className="param-section-label">Tyre Compound (Stage 23)</div>
+        <div style={{ display: 'flex', gap: 4, padding: '4px 0 4px 0', flexWrap: 'wrap' }}>
+          {(['soft', 'medium', 'hard', 'inter', 'wet'] as const).map(c => {
+            const active = (params.tyreCompound ?? 'medium') === c;
+            const col = c === 'soft' ? '#ef4444' : c === 'medium' ? '#f59e0b' : c === 'hard' ? '#9ca3af' : c === 'inter' ? '#22c55e' : '#3b82f6';
+            return (
+              <button key={c}
+                onClick={() => onChange({ ...params, tyreCompound: c })}
+                style={{
+                  padding: '3px 10px', fontSize: 10, fontWeight: active ? 700 : 400,
+                  background: active ? `${col}22` : 'transparent',
+                  border: `1px solid ${active ? col : 'var(--border-color)'}`,
+                  borderRadius: 4, color: active ? col : 'var(--label-color)',
+                  cursor: 'pointer', textTransform: 'capitalize',
+                }}>
+                {c === 'inter' ? 'Inter' : c.charAt(0).toUpperCase() + c.slice(1)}
+              </button>
+            );
+          })}
+        </div>
+        <div className="param-derived" style={{ marginBottom: 8 }}>
+          {(() => {
+            const c = params.tyreCompound ?? 'medium';
+            const info: Record<string, { cliff: number; rate: string; note: string }> = {
+              soft:   { cliff: 14, rate: 'high',      note: 'Graining laps 1–4. Fastest pace, shortest stint.' },
+              medium: { cliff: 22, rate: 'moderate',  note: 'Balanced pace and durability. Default race tyre.' },
+              hard:   { cliff: 36, rate: 'low',       note: 'Lowest degradation. Suitable for long stints.' },
+              inter:  { cliff: 18, rate: 'high',      note: 'Wet / damp conditions. Graining on dry track.' },
+              wet:    { cliff: 12, rate: 'very high', note: 'Full wet. Very fast wear on dry surface.' },
+            };
+            const d = info[c] ?? info['medium'];
+            return <span>Cliff: lap ~{d.cliff} · Wear: {d.rate} · {d.note}</span>;
+          })()}
+        </div>
+
         <div className="param-section-label">Tyre (Stage 9)</div>
         <SliderRow cfg={{ label: 'Load sensitivity', key: 'tyreLoadSensitivity', min: 0, max: 0.30, step: 0.01, unit: '(−)', format: v => v.toFixed(2), tip: 'Pacejka load sensitivity qFz: how much μ degrades as tyre load exceeds the nominal (static) value. 0 = linear (no sensitivity). 0.10 = typical road tyre. 0.20 = high sensitivity. At 1.5× nominal load and qFz=0.10, effective μ drops by ~5%. Increases slip angles and load-transfer penalty at high cornering loads.' }} params={params} set={set} />
         <div className="param-derived">
@@ -339,7 +398,10 @@ export function ParameterPanel({ params, onChange, powerUnit, onPowerUnitChange 
         Stage 9: Pacejka load sensitivity (degressive μ with Fz)<br />
         Stage 10: Gear model (torque curve · ratio progression · optimal gear selection)<br />
         Stage 11: Tyre thermal model (bell-curve μ vs temperature)<br />
-        Stage 22: Camber thrust + toe preload (effective Cα + Fy offset)
+        Stage 22: Camber thrust + toe preload (effective Cα + Fy offset)<br />
+        Stage 23: Tyre wear model (compound warmup · linear wear · cliff)<br />
+        Stage 24: Ambient conditions (air density · headwind · crosswind grip penalty)<br />
+        Stage 25: Driver model (aggression → wear rate + tyre heat rate)
       </div>
     </div>
   );

@@ -75,6 +75,15 @@ const DEFAULT_PARAMS: VehicleParams = {
   rearCamberDeg:  -0.5,
   frontToeDeg:     0.05,  // deg — slight toe-in front
   rearToeDeg:      0.15,  // deg — toe-in rear (stability)
+  // Stage 23 — Tyre compound
+  tyreCompound:    'medium',
+  // Stage 24 — Ambient
+  altitudeM:       0,
+  ambientTempC:    20,
+  windSpeedKph:    0,
+  windAngleDeg:    0,
+  // Stage 25 — Driver
+  driverAggression: 0.5,
 };
 
 function loadInitialParams(): VehicleParams {
