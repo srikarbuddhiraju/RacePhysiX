@@ -64,6 +64,31 @@ export function buildLapSimInput(params: VehicleParams, coeffs: PacejkaCoeffs): 
   const clBoost = params.aeroCL > 2.0 ? 0.20 * Math.max(0, 1 - h_min / 80) : 0;
   const effectiveAeroCL = params.aeroCL * (1 + clBoost);
 
+  // Stage 33: Track rubber — grip builds up on racing line across session
+  const rubberLevel = params.trackRubberLevel ?? 0.5;
+  const peakMuWithRubber = peakMuWithPressure * (1 + 0.15 * rubberLevel);
+
+  // Stage 34: Wet track grip penalty — depends on compound
+  const wetness = params.trackWetness ?? 0.0;
+  const compound = params.tyreCompound ?? 'medium';
+  let wetGripFactor: number;
+  if (compound === 'wet') {
+    // Full wet tyre: best at wetness 0.7–1.0, terrible when dry
+    wetGripFactor = wetness < 0.3
+      ? 0.55 + wetness * 0.45 / 0.3
+      : 0.55 + 0.65 * Math.min(1, (wetness - 0.3) / 0.7);
+    // Peak at wetness=1.0: factor ~1.05 relative to dry slick on dry track
+    wetGripFactor = Math.min(1.05, wetGripFactor);
+  } else if (compound === 'inter') {
+    // Inter: optimal at 0.3–0.5 wetness
+    const peak = Math.exp(-((wetness - 0.4) * (wetness - 0.4)) / (2 * 0.2 * 0.2));
+    wetGripFactor = 0.65 + 0.45 * peak;
+  } else {
+    // Dry slick (soft/medium/hard): grip falls with wetness
+    wetGripFactor = Math.max(0.30, 1.0 - 0.70 * wetness);
+  }
+  const peakMuFinal = peakMuWithRubber * wetGripFactor;
+
   // Stage 26: Differential model — traction efficiency and yaw moment
   const diffFactor = diffTractionFactor({
     mass, peakMu: peakMuWithWind,
@@ -83,9 +108,26 @@ export function buildLapSimInput(params: VehicleParams, coeffs: PacejkaCoeffs): 
     lsdLockingPercent: params.lsdLockingPercent ?? 0,
   });
 
+  // Stage 32: Traction Control
+  const tcOn = params.tcEnabled ?? false;
+  const tcThresh = params.tcSlipThreshold ?? 0.15;
+  const drivenAxleFrac = params.drivetrainType === 'FWD'
+    ? params.frontWeightFraction
+    : (1 - params.frontWeightFraction);
+  const Fz_driven = mass * G * drivenAxleFrac;
+  // TC allows a small slip ratio above the pure friction limit for maximum acceleration
+  const tc_limit_N = peakMuFinal * Fz_driven * (1 + tcThresh * 0.5);
+
+  // Stage 35: ERS — adds electric motor power at corner exits
+  const ersOn   = params.ersEnabled ?? false;
+  const ersPowerW = (params.ersPowerKW ?? 0) * 1000;
+  const stratMult: Record<string, number> = { full: 1.0, attack: 1.15, saving: 0.70 };
+  const ersDeployMult = stratMult[params.ersDeployStrategy ?? 'full'] ?? 1.0;
+  const ersEffectivePowerW = ersOn ? ersPowerW * ersDeployMult : 0;
+
   return {
     mass,
-    peakMu:            peakMuWithPressure,
+    peakMu:            peakMuFinal,
     brakingCapG,
     aeroCL:            effectiveAeroCL,
     aeroCD,
@@ -94,7 +136,14 @@ export function buildLapSimInput(params: VehicleParams, coeffs: PacejkaCoeffs): 
       const Veff = V + headWind;  // headwind adds to effective airspeed
       return 0.5 * rhoAir * Veff * Veff * aeroReferenceArea * aeroCD;
     },
-    driveForce:        (V: number) => computeMaxDriveForce(V, params) * diffFactor,
+    driveForce:        (V: number) => {
+      const raw = computeMaxDriveForce(V, params) * diffFactor;
+      const ersForce = (ersEffectivePowerW > 0 && V > 0.5)
+        ? Math.min(ersEffectivePowerW / V, mass * G * peakMuFinal * 0.6)
+        : 0;
+      const total = raw + ersForce;
+      return tcOn ? Math.min(total, tc_limit_N) : total;
+    },
     combSlipBrakeFrac: 0.4,
     frontCaNPerRad:    corneringStiffnessNPerDeg / DEG_TO_RAD,
     rearCaNPerRad:     (rearCorneringStiffnessNPerDeg ?? corneringStiffnessNPerDeg) / DEG_TO_RAD,

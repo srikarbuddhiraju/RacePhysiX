@@ -47,24 +47,67 @@ export function engineTorque(rpm: number, peakPowerW: number, peakRpm: number): 
 }
 
 /**
+ * Full engine torque curve incorporating curve shape.
+ * Falls back to simple flat-torque model if new params are not set.
+ * Stage 31.
+ */
+export function engineTorqueFull(rpm: number, params: VehicleParams): number {
+  const { enginePowerKW, enginePeakRpm, engineRedlineRpm } = params;
+  const peakPowerW  = enginePowerKW * 1000;
+  const omegaPeak   = enginePeakRpm * TWO_PI / 60;
+  const T_ref       = peakPowerW / omegaPeak;   // Nm — reference from P/ω
+
+  const T_peak      = params.engineMaxTorqueNm   ?? T_ref;
+  const torquePeakRpm = params.engineTorquePeakRpm ?? enginePeakRpm;
+  const curveType   = params.engineCurveType     ?? 'na';
+
+  if (rpm <= 0) return 0;
+
+  if (curveType === 'electric') {
+    // Flat torque from 0 to peak-power RPM, then constant power
+    if (rpm <= enginePeakRpm) return T_peak;
+    return peakPowerW / (rpm * TWO_PI / 60);
+  }
+
+  if (curveType === 'turbo') {
+    const boostRpm = params.turboBoostRpm ?? 2500;
+    if (rpm < 500)      return T_peak * 0.15;
+    if (rpm < boostRpm) {
+      const t = (rpm - 500) / Math.max(1, boostRpm - 500);
+      return T_peak * (0.15 + 0.85 * t);
+    }
+    if (rpm <= enginePeakRpm) return T_peak;
+    return peakPowerW / (rpm * TWO_PI / 60);
+  }
+
+  // NA — bell curve: rise linearly to peak torque, fall gently to redline
+  if (rpm < 500)           return T_peak * 0.20;
+  if (rpm <= torquePeakRpm) {
+    const t = (rpm - 500) / Math.max(1, torquePeakRpm - 500);
+    return T_peak * (0.20 + 0.80 * t);
+  }
+  const t = (rpm - torquePeakRpm) / Math.max(1, engineRedlineRpm - torquePeakRpm);
+  return T_peak * Math.max(0.68, 1.0 - 0.32 * t);
+}
+
+/**
  * Maximum wheel drive force at speed V, selecting the optimal gear (highest force).
  * Returns N, capped at 1g traction (mass × G).
  * At near-zero speed returns traction-limited force directly.
  */
 export function computeMaxDriveForce(V: number, params: VehicleParams): number {
   const {
-    mass, enginePowerKW,
+    mass,
     gearCount, firstGearRatio, topGearRatio,
     finalDriveRatio, wheelRadiusM,
-    enginePeakRpm, engineRedlineRpm,
+    engineRedlineRpm,
   } = params;
 
   const tractionLimit = mass * G * 1.0;
 
   if (V < 0.5) return tractionLimit;   // P/V → ∞ at standstill — traction limited
 
-  const peakPowerW = enginePowerKW * 1000;
-  const ratios     = generateGearRatios(gearCount, firstGearRatio, topGearRatio);
+  const ratios = generateGearRatios(gearCount, firstGearRatio, topGearRatio);
 
   let maxForce = 0;
 
@@ -76,7 +119,7 @@ export function computeMaxDriveForce(V: number, params: VehicleParams): number {
     if (rpm > engineRedlineRpm) continue;   // over redline — skip
     if (rpm < 500)              continue;   // below idle    — skip
 
-    const T      = engineTorque(rpm, peakPowerW, enginePeakRpm);
+    const T      = engineTorqueFull(rpm, params);
     const Fwheel = T * ratio * finalDriveRatio / wheelRadiusM;
 
     if (Fwheel > maxForce) maxForce = Fwheel;

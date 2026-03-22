@@ -17,7 +17,7 @@ import { computeAero } from './aero';
 import { computeBraking } from './braking';
 import { runSimulation } from './dynamics14dof';
 import { SCENARIOS } from './scenarios';
-import { engineTorque, generateGearRatios, computeMaxDriveForce, computeMaxSpeed } from './gearModel';
+import { engineTorque, engineTorqueFull, generateGearRatios, computeMaxDriveForce, computeMaxSpeed } from './gearModel';
 import { computeTyreTempFactor, computeTyreEffectiveMu } from './tyreTemp';
 import { optimiseSetup, OPTIMISE_BOUNDS } from './optimise';
 import { computeLapTime, TRACK_PRESETS } from './laptime';
@@ -82,6 +82,11 @@ const BASE: VehicleParams = {
   brakeDiscMassKg: 6.0, brakeOptTempC: 400, brakeHalfWidthC: 200, brakeFloorMu: 0.65,
   frontTyrePressureBar: 2.0, rearTyrePressureBar: 2.0,
   frontRideHeightMm: 100, rearRideHeightMm: 105,
+  engineCurveType: 'na', engineMaxTorqueNm: 260, engineTorquePeakRpm: 3500, turboBoostRpm: 2500,
+  tcEnabled: false, tcSlipThreshold: 0.12,
+  trackRubberLevel: 0.5,
+  trackWetness: 0.0,
+  ersEnabled: false, ersPowerKW: 0, ersBatteryKJ: 1000, ersDeployStrategy: 'full',
 };
 
 let allPassed = true;
@@ -385,12 +390,16 @@ console.log('\nCheck 11 — Stage 10: Gear model (T_peak, F at 10 m/s, max speed
   allPassed = check('Check 11a: T_peak = P/ω_peak (260.43 Nm)', tPeak_actual, tPeak_exp, 0.1) && allPassed;
 
   // 11b: F at V=10 m/s in G1
-  // F_exp = T_peak × ratio × FD / R = 260.43 × 3.0 × 3.9 / 0.32 = 9540.9 N
+  // At V=10: rpm = (10/0.32)×3.0×3.9×60/2π ≈ 3491 rpm
+  // Stage 31 NA curve at 3491 rpm: T = engineTorqueFull(3491, BASE)
+  // F_exp = T(3491) × ratio1 × FD / R
   const ratio1   = generateGearRatios(6, 3.0, 0.72)[0];  // should be 3.0
-  const F_exp_10 = tPeak_exp * ratio1 * 3.9 / 0.32;
+  const rpm_at10 = (10 / 0.32) * 3.0 * 3.9 * 60 / TWO_PI;
+  const T_at10   = engineTorqueFull(rpm_at10, BASE);
+  const F_exp_10 = T_at10 * ratio1 * 3.9 / 0.32;
   const F_actual = computeMaxDriveForce(10, BASE);
   console.log(`  F @ 10 m/s = ${F_actual.toFixed(1)} N (expected ${F_exp_10.toFixed(1)} N)`);
-  allPassed = check('Check 11b: F @ 10 m/s (G1 optimal) matches hand-calc (±5 N)', F_actual, F_exp_10, 5) && allPassed;
+  allPassed = check('Check 11b: F @ 10 m/s (G1 optimal) matches engineTorqueFull curve (±5 N)', F_actual, F_exp_10, 5) && allPassed;
 
   // 11c: max speed in top gear at redline
   const vMax_exp    = (6500 * TWO_PI / 60) * 0.32 / (0.72 * 3.9);  // 77.57 m/s
