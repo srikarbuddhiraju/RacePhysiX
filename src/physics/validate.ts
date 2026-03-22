@@ -401,11 +401,13 @@ console.log('\nCheck 11 — Stage 10: Gear model (T_peak, F at 10 m/s, max speed
   console.log(`  F @ 10 m/s = ${F_actual.toFixed(1)} N (expected ${F_exp_10.toFixed(1)} N)`);
   allPassed = check('Check 11b: F @ 10 m/s (G1 optimal) matches engineTorqueFull curve (±5 N)', F_actual, F_exp_10, 5) && allPassed;
 
-  // 11c: max speed in top gear at redline
-  const vMax_exp    = (6500 * TWO_PI / 60) * 0.32 / (0.72 * 3.9);  // 77.57 m/s
+  // 11c: max speed — min(gearbox, power-drag).
+  // Gearbox: (6500×2π/60)×0.32/(0.72×3.9) = 77.57 m/s
+  // Power-drag: (150000 / (0.5×1.225×2.0×0.30))^(1/3) ≈ 74.19 m/s (binding for BASE)
+  const vMax_exp    = Math.pow(150000 / (0.5 * 1.225 * 2.0 * 0.30), 1 / 3);
   const vMax_actual = computeMaxSpeed(BASE);
   console.log(`  V_max = ${vMax_actual.toFixed(2)} m/s = ${(vMax_actual*3.6).toFixed(1)} km/h (expected ${vMax_exp.toFixed(2)} m/s)`);
-  allPassed = check('Check 11c: max speed in top gear (±0.5 m/s)', vMax_actual, vMax_exp, 0.5) && allPassed;
+  allPassed = check('Check 11c: max speed = min(gearbox, power-drag) (±0.5 m/s)', vMax_actual, vMax_exp, 0.5) && allPassed;
 }
 
 // ─── Check 12: Stage 11 — Tyre thermal model ─────────────────────────────────

@@ -129,10 +129,27 @@ export function computeMaxDriveForce(V: number, params: VehicleParams): number {
 }
 
 /**
- * Maximum vehicle speed: redline in top gear.
- * V_max = (redlineRpm × 2π/60) × wheelRadiusM / (topGearRatio × finalDriveRatio)
+ * Maximum vehicle speed: minimum of gearbox-limited and power-drag-limited top speed.
+ *
+ * 1. Gearbox: V = (redlineRpm × 2π/60) × wheelRadiusM / (topGearRatio × finalDriveRatio)
+ * 2. Power-drag balance: at top speed, drive = drag → P = 0.5·ρ·A·CD·V³
+ *    → V = (P / (0.5·ρ·A·CD))^(1/3)
+ *
+ * The gearbox limit alone is wrong for high-revving cars with tall gear ratios:
+ * F1 (15000 rpm, OD 0.65, FDR 3.10) gives 265 m/s (954 km/h) — physically impossible.
+ * Power-drag for F1 (800 kW, CD=1.05, A=1.50) gives 93.9 m/s (338 km/h) — correct.
  */
 export function computeMaxSpeed(params: VehicleParams): number {
+  // 1. Gearbox-limited top speed
   const omegaRedline = params.engineRedlineRpm * TWO_PI / 60;
-  return omegaRedline * params.wheelRadiusM / (params.topGearRatio * params.finalDriveRatio);
+  const vGearbox = omegaRedline * params.wheelRadiusM / (params.topGearRatio * params.finalDriveRatio);
+
+  // 2. Power-drag-limited top speed
+  const RHO = 1.225;
+  const dragCoeff = 0.5 * RHO * params.aeroReferenceArea * params.aeroCD;
+  const vPowerDrag = dragCoeff > 0
+    ? Math.pow(params.enginePowerKW * 1000 / dragCoeff, 1 / 3)
+    : vGearbox;
+
+  return Math.min(vGearbox, vPowerDrag);
 }
