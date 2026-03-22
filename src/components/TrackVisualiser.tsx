@@ -308,11 +308,10 @@ function buildGpsZoneOverlay(
       : vTop;  // aero-dominated: no grip limit on this corner — use power-limited top speed
   }
 
-  // 6. Forward + backward Euler passes (4 iterations) — minimum-time speed profile
+  // 6. Forward + backward Euler passes — minimum-time speed profile
   //    Backward pass: speed-dependent braking → aBrake(V) = aBrakeBase + kAero·V²
-  //    (aero downforce adds grip proportional to V², RCVD §6.4 / Milliken ch.8)
-  const V: number[] = [...vMax];
-  for (let iter = 0; iter < 4; iter++) {
+  //    8 iterations for tighter convergence at the lap boundary.
+  const fwdBwd = () => {
     for (let i = 0; i < N; i++) {
       const Fd   = inp.driveForce(V[i]) - inp.dragForce(V[i]);
       const aD   = Math.max(0, Fd / inp.mass);
@@ -320,15 +319,22 @@ function buildGpsZoneOverlay(
       V[i+1] = Math.min(V[i+1], vNxt, vTop);
     }
     for (let i = N; i > 0; i--) {
-      const aBrakeV = aBrakeBase + kAero * V[i] * V[i];  // aero adds grip at speed
+      const aBrakeV = aBrakeBase + kAero * V[i] * V[i];
       const vEnt    = Math.sqrt(V[i] * V[i] + 2 * aBrakeV * dsReal);
       V[i-1] = Math.min(V[i-1], vEnt);
     }
-  }
-  // Q2: reconcile lap-boundary speed discontinuity
+  };
+  const V: number[] = [...vMax];
+  for (let iter = 0; iter < 8; iter++) fwdBwd();
+
+  // Q2: reconcile lap-boundary — V[0] and V[N] represent the same physical point.
+  // After reconciliation, re-run 4 passes so the corrected boundary speed propagates
+  // through V[1]…V[N-1]. Without this, V[1] was computed from the pre-correction V[0]
+  // (= vTop), creating an instant speed jump on the first animation frame after S/F.
   const vBoundary = Math.min(V[0], V[N]);
   V[0] = vBoundary;
   V[N] = vBoundary;
+  for (let iter = 0; iter < 4; iter++) fwdBwd();
 
   // 7. Zone classification per segment midpoint
   const zones:  TracePoint['zone'][] = new Array(N).fill('full-throttle' as TracePoint['zone']);

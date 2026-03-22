@@ -13,11 +13,27 @@ import { buildLapSimInput } from './physics/vehicleInput';
 import { VehiclePresetSelector } from './components/VehiclePresetSelector';
 import { WelcomeBanner } from './components/WelcomeBanner';
 import { type PowerUnit } from './utils/units';
+import { VEHICLE_PRESETS } from './physics/vehiclePresets';
 import './App.css';
 
 // ── URL hash persistence ──────────────────────────────────────────────────────
-// Only encode params that differ from defaults — keeps URLs short for typical usage.
+// Short URLs: preset match → "#p=f1", diff from defaults → base64 of changed keys only.
+function paramsMatchPreset(p: VehicleParams): string | null {
+  const pRec = p as unknown as Record<string, unknown>;
+  for (const preset of VEHICLE_PRESETS) {
+    const prRec = preset.params as unknown as Record<string, unknown>;
+    const allMatch = Object.keys(preset.params).every(k => pRec[k] === prRec[k]);
+    if (allMatch) return preset.id;
+  }
+  return null;
+}
+
 function encodeParams(p: VehicleParams): string {
+  // If params exactly match a preset, use short preset ID
+  const presetId = paramsMatchPreset(p);
+  if (presetId) return `p=${presetId}`;
+
+  // Otherwise encode only keys that differ from defaults
   const diff: Partial<VehicleParams> = {};
   let hasDiff = false;
   const pRec = p as unknown as Record<string, unknown>;
@@ -31,8 +47,20 @@ function encodeParams(p: VehicleParams): string {
   if (!hasDiff) return '';
   try { return btoa(JSON.stringify(diff)); } catch { return ''; }
 }
-function decodeParams(hash: string): Partial<VehicleParams> {
-  try { return JSON.parse(atob(hash.replace(/^#/, ''))) as Partial<VehicleParams>; } catch { return {}; }
+
+function decodeParams(hash: string): { params: Partial<VehicleParams>; presetId: string | null } {
+  const raw = hash.replace(/^#/, '');
+  // Short preset ID format
+  if (raw.startsWith('p=')) {
+    const id = raw.slice(2);
+    const preset = VEHICLE_PRESETS.find(pr => pr.id === id);
+    if (preset) return { params: preset.params, presetId: id };
+  }
+  try {
+    return { params: JSON.parse(atob(raw)) as Partial<VehicleParams>, presetId: null };
+  } catch {
+    return { params: {}, presetId: null };
+  }
 }
 
 const DEFAULT_PARAMS: VehicleParams = {
@@ -131,9 +159,15 @@ const DEFAULT_PARAMS: VehicleParams = {
 
 function loadInitialParams(): VehicleParams {
   if (window.location.hash.length > 1) {
-    const decoded = decodeParams(window.location.hash);
-    if (decoded && typeof decoded === 'object' && 'mass' in decoded) {
-      return { ...DEFAULT_PARAMS, ...decoded };
+    const { params: decoded, presetId } = decodeParams(window.location.hash);
+    if (decoded && typeof decoded === 'object' && Object.keys(decoded).length > 0) {
+      const result = presetId
+        ? (decoded as VehicleParams)          // preset: decoded IS the full params
+        : { ...DEFAULT_PARAMS, ...decoded };  // diff: merge over defaults
+      // Re-compress URL (replaces old full-blob URLs with short form)
+      const compressed = encodeParams(result);
+      history.replaceState(null, '', compressed ? `#${compressed}` : window.location.pathname);
+      return result;
     }
   }
   return DEFAULT_PARAMS;
