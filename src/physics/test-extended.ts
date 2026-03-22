@@ -20,7 +20,7 @@ import { computeAero }                           from './aero';
 import { computeBraking }                        from './braking';
 import { pacejkaFy, findPeakAlpha }              from './pacejka';
 import { computeLapTime, TRACK_PRESETS }         from './laptime';
-import { engineTorque, generateGearRatios, computeMaxDriveForce } from './gearModel';
+import { engineTorque, engineTorqueFull, generateGearRatios, computeMaxDriveForce } from './gearModel';
 import { optimiseSetup, OPTIMISE_BOUNDS, OPTIMISABLE_KEYS } from './optimise';
 import { computeTyreTempFactor, computeTyreEffectiveMu, computeTyreGripCurve } from './tyreTemp';
 import type { VehicleParams, PacejkaCoeffs }     from './types';
@@ -105,6 +105,11 @@ const BASE: VehicleParams = {
   brakeDiscMassKg: 6.0, brakeOptTempC: 400, brakeHalfWidthC: 200, brakeFloorMu: 0.65,
   frontTyrePressureBar: 2.0, rearTyrePressureBar: 2.0,
   frontRideHeightMm: 100, rearRideHeightMm: 105,
+  engineCurveType: 'na', engineMaxTorqueNm: 260, engineTorquePeakRpm: 3500, turboBoostRpm: 2500,
+  tcEnabled: false, tcSlipThreshold: 0.12,
+  trackRubberLevel: 0.5,
+  trackWetness: 0.0,
+  ersEnabled: false, ersPowerKW: 0, ersBatteryKJ: 1000, ersDeployStrategy: 'full',
 };
 
 const COEFFS: PacejkaCoeffs = { B: 11.5, C: 1.28, peakMu: 1.20, E: -1.5 };
@@ -629,12 +634,13 @@ const T_PEAK   = P_W / omegaPk;  // 260.43 Nm
 // I4: Optimal gear selection — at low speed, G1 gives max force
 {
   // At V=5 m/s all gears have rpm < redline; G1 (highest ratio) gives max force
+  // Stage 31: use engineTorqueFull for expected (NA curve, torquePeakRpm=3500)
   const ratios = generateGearRatios(6, 3.0, 0.72);
   const V = 5;
   let g1Force = 0, g2Force = 0;
   for (let i = 0; i < 2; i++) {
     const rpm = (V / 0.32) * ratios[i] * 3.9 * 60 / TWO_PI;
-    const t   = engineTorque(rpm, P_W, 5500);
+    const t   = engineTorqueFull(rpm, GEAR_PARAMS);
     const f   = t * ratios[i] * 3.9 / 0.32;
     if (i === 0) g1Force = f;
     if (i === 1) g2Force = f;

@@ -126,7 +126,7 @@ export function ParameterPanel({ params, onChange, powerUnit, onPowerUnitChange 
             className={`param-tab ${tab === t ? 'param-tab--active' : ''}`}
             onClick={() => setTab(t)}
           >
-            {t === 'vehicle' ? 'Vehicle' : t === 'suspension' ? 'Susp.' : t === 'aero' ? 'Aero' : 'Tyres & Fuel'}
+            {t === 'vehicle' ? 'Vehicle' : t === 'suspension' ? 'Susp.' : t === 'aero' ? 'Aero & Braking' : 'Tyres & Fuel'}
           </button>
         ))}
       </div>
@@ -203,6 +203,40 @@ export function ParameterPanel({ params, onChange, powerUnit, onPowerUnitChange 
           })()}
         </div>
 
+        <div className="param-section-label">Torque Curve (Stage 31)</div>
+        <div style={{ display: 'flex', gap: 4, padding: '4px 0 4px 0' }}>
+          {(['na', 'turbo', 'electric'] as const).map(c => {
+            const active = (params.engineCurveType ?? 'na') === c;
+            const labels: Record<string, string> = { na: 'Natural Asp.', turbo: 'Turbo', electric: 'Electric' };
+            return (
+              <button key={c} onClick={() => onChange({ ...params, engineCurveType: c })}
+                style={{
+                  padding: '3px 10px', fontSize: 10, fontWeight: active ? 700 : 400,
+                  background: active ? 'rgba(99,102,241,0.20)' : 'transparent',
+                  border: `1px solid ${active ? '#6366f1' : 'var(--border-color)'}`,
+                  borderRadius: 4, color: active ? '#a5b4fc' : 'var(--label-color)',
+                  cursor: 'pointer', whiteSpace: 'nowrap',
+                }}>{labels[c]}</button>
+            );
+          })}
+        </div>
+        <SliderRow cfg={{ label: 'Peak torque', key: 'engineMaxTorqueNm', min: 50, max: 1000, step: 5, unit: 'Nm', format: v => v.toFixed(0), tip: 'Maximum engine torque. Road: 200–400 Nm. GT3: 500–700 Nm. F1 hybrid: 600+ Nm. Electric: 500–1500 Nm at 0 RPM.' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Torque peak RPM', key: 'engineTorquePeakRpm', min: 1000, max: 14000, step: 100, unit: 'rpm', format: v => v.toFixed(0), tip: 'RPM at which max torque occurs. Diesel: 1800–2500. Road petrol: 3000–4500. Sports NA: 5000–7000. F1: ~8000–10000 RPM.' }} params={params} set={set} />
+        {(params.engineCurveType ?? 'na') === 'turbo' && (
+          <SliderRow cfg={{ label: 'Boost onset', key: 'turboBoostRpm', min: 1000, max: 5000, step: 100, unit: 'rpm', format: v => v.toFixed(0), tip: 'RPM at which turbo boost pressure builds. Below this: minimal torque (turbo lag). Above: flat torque plateau. Road turbo: 1800–2500 RPM. Race turbo: 3000–4500 RPM.' }} params={params} set={set} />
+        )}
+        <div className="param-derived">
+          {(() => {
+            const TWO_PI = 2 * Math.PI;
+            const peakPowerW = (params.enginePowerKW ?? 150) * 1000;
+            const omegaPeak = (params.enginePeakRpm ?? 5500) * TWO_PI / 60;
+            const T_ref = peakPowerW / omegaPeak;
+            const T_peak = params.engineMaxTorqueNm ?? T_ref;
+            const powerAtTorquePeak = T_peak * (params.engineTorquePeakRpm ?? params.enginePeakRpm ?? 5500) * TWO_PI / 60 / 1000;
+            return <span>Power at torque peak: <strong>{powerAtTorquePeak.toFixed(0)} kW</strong> · Torque at peak power: <strong>{T_ref.toFixed(0)} Nm</strong></span>;
+          })()}
+        </div>
+
         <div className="param-section-label">Driver Model (Stage 25)</div>
         <SliderRow cfg={{ label: 'Aggression', key: 'driverAggression', min: 0.0, max: 1.0, step: 0.05, unit: '(−)', format: v => `${(v * 100).toFixed(0)}%`, tip: 'Driver aggression level. Higher = pushes tyres harder → slightly faster corner speeds and braking, but higher tyre wear rate and faster heat build-up. 50% = typical race pace.' }} params={params} set={set} />
         <div className="param-derived">
@@ -258,6 +292,80 @@ export function ParameterPanel({ params, onChange, powerUnit, onPowerUnitChange 
             );
           })()}
         </div>
+
+        <div className="param-section-label">Traction Control (Stage 32)</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
+          <button
+            onClick={() => onChange({ ...params, tcEnabled: !(params.tcEnabled ?? false) })}
+            style={{
+              padding: '3px 12px', fontSize: 10, fontWeight: 700,
+              background: (params.tcEnabled ?? false) ? 'rgba(34,197,94,0.15)' : 'transparent',
+              border: `1px solid ${(params.tcEnabled ?? false) ? '#22c55e' : 'var(--border-color)'}`,
+              borderRadius: 4, color: (params.tcEnabled ?? false) ? '#86efac' : 'var(--label-color)',
+              cursor: 'pointer',
+            }}>
+            {(params.tcEnabled ?? false) ? 'TC ON' : 'TC OFF'}
+          </button>
+          <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>
+            {(params.tcEnabled ?? false) ? 'Wheelspin limited' : 'No intervention'}
+          </span>
+        </div>
+        {(params.tcEnabled ?? false) && (
+          <SliderRow cfg={{ label: 'Slip threshold', key: 'tcSlipThreshold', min: 0.02, max: 0.30, step: 0.01, unit: '(−)', format: v => `${(v * 100).toFixed(0)}%`, tip: 'Slip ratio at which TC intervenes. 5% = very aggressive TC (little wheelspin). 20% = permissive TC (allows some wheelspin for warmth). F1 uses ~5–8%.' }} params={params} set={set} />
+        )}
+        <div className="param-derived">
+          {(() => {
+            const G = 9.81;
+            const drivenFrac = params.drivetrainType === 'FWD' ? params.frontWeightFraction : (1 - params.frontWeightFraction);
+            const Fz = params.mass * G * drivenFrac;
+            const limitKN = (0.9 * Fz / 1000).toFixed(1);
+            return <span>Driven axle load: <strong>{(Fz / 1000).toFixed(2)} kN</strong> · Est. traction limit: ~{limitKN} kN</span>;
+          })()}
+        </div>
+
+        <div className="param-section-label">ERS / Hybrid (Stage 35)</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
+          <button
+            onClick={() => onChange({ ...params, ersEnabled: !(params.ersEnabled ?? false) })}
+            style={{
+              padding: '3px 12px', fontSize: 10, fontWeight: 700,
+              background: (params.ersEnabled ?? false) ? 'rgba(99,102,241,0.20)' : 'transparent',
+              border: `1px solid ${(params.ersEnabled ?? false) ? '#6366f1' : 'var(--border-color)'}`,
+              borderRadius: 4, color: (params.ersEnabled ?? false) ? '#a5b4fc' : 'var(--label-color)',
+              cursor: 'pointer',
+            }}>
+            {(params.ersEnabled ?? false) ? 'ERS ON' : 'ERS OFF'}
+          </button>
+        </div>
+        {(params.ersEnabled ?? false) && (<>
+          <SliderRow cfg={{ label: 'ERS power', key: 'ersPowerKW', min: 10, max: 300, step: 10, unit: 'kW', format: v => v.toFixed(0), tip: 'MGU-K maximum deployment power. F1 2024: 120 kW. Road hybrid (PHEV): 50–100 kW. Hypercar: 200–300 kW. Adds to ICE power at corner exits.' }} params={params} set={set} />
+          <SliderRow cfg={{ label: 'Battery (per lap)', key: 'ersBatteryKJ', min: 200, max: 8000, step: 100, unit: 'kJ', format: v => v.toFixed(0), tip: 'Max energy available per lap from battery. F1: 4000 kJ (regulation limit). Road hybrid: 1000–3000 kJ. Higher = longer deployment window per lap.' }} params={params} set={set} />
+          <div style={{ display: 'flex', gap: 4, padding: '4px 0' }}>
+            {(['saving', 'full', 'attack'] as const).map(s => {
+              const active = (params.ersDeployStrategy ?? 'full') === s;
+              const labels: Record<string, string> = { saving: 'Saving', full: 'Full', attack: 'Attack' };
+              const colors: Record<string, string> = { saving: '#3b82f6', full: '#6366f1', attack: '#ef4444' };
+              const col = colors[s];
+              return (
+                <button key={s} onClick={() => onChange({ ...params, ersDeployStrategy: s })}
+                  style={{
+                    padding: '3px 10px', fontSize: 10, fontWeight: active ? 700 : 400,
+                    background: active ? `${col}22` : 'transparent',
+                    border: `1px solid ${active ? col : 'var(--border-color)'}`,
+                    borderRadius: 4, color: active ? col : 'var(--label-color)', cursor: 'pointer',
+                  }}>{labels[s]}</button>
+              );
+            })}
+          </div>
+          <div className="param-derived">
+            {(() => {
+              const stratMult: Record<string, number> = { full: 1.0, attack: 1.15, saving: 0.70 };
+              const eff = (params.ersPowerKW ?? 0) * (stratMult[params.ersDeployStrategy ?? 'full'] ?? 1.0);
+              const totalPower = (params.enginePowerKW ?? 150) + eff;
+              return <span>Effective deploy: <strong>{eff.toFixed(0)} kW</strong> · System peak: <strong>{totalPower.toFixed(0)} kW</strong></span>;
+            })()}
+          </div>
+        </>)}
       </>}
 
       {/* ── Suspension tab ─────────────────────────────────────────────────── */}
@@ -407,6 +515,30 @@ export function ParameterPanel({ params, onChange, powerUnit, onPowerUnitChange 
 
       {/* ── Tyres & Fuel tab ───────────────────────────────────────────────── */}
       {tab === 'tyres' && <>
+        <div className="param-section-label">Track Condition (Stage 33)</div>
+        <SliderRow cfg={{ label: 'Track rubber', key: 'trackRubberLevel', min: 0.0, max: 1.0, step: 0.05, unit: '(−)', format: v => v < 0.15 ? `${(v*100).toFixed(0)}% (green)` : v > 0.85 ? `${(v*100).toFixed(0)}% (fully rubbed)` : `${(v*100).toFixed(0)}%`, tip: 'Rubber build-up on the racing line. 0% = first lap on a green circuit — lowest grip. 50% = mid-session. 100% = heavily rubbed-in — up to +15% peak grip vs green.' }} params={params} set={set} />
+        <div className="param-derived" style={{ marginBottom: 6 }}>
+          {(() => {
+            const r = params.trackRubberLevel ?? 0.5;
+            const boost = (r * 0.15 * 100).toFixed(1);
+            const label = r < 0.2 ? 'Green track — qualifying lap 1 conditions' : r < 0.5 ? 'Damp rubber — early practice' : r < 0.8 ? 'Good rubber — race conditions' : 'Fully rubbed in — peak track grip';
+            return <span>+{boost}% grip vs green · {label}</span>;
+          })()}
+        </div>
+        <SliderRow cfg={{ label: 'Track wetness', key: 'trackWetness', min: 0.0, max: 1.0, step: 0.05, unit: '(−)', format: v => v < 0.1 ? 'Dry' : v < 0.35 ? 'Damp' : v < 0.65 ? 'Wet' : v < 0.85 ? 'Very wet' : 'Standing water', tip: 'Surface water level. 0 = bone dry. 0.3 = damp (post-rain, drying). 0.5 = wet (light rain). 1.0 = standing water. Choose compound to match: inter for damp, wet tyre for heavy rain.' }} params={params} set={set} />
+        <div className="param-derived" style={{ marginBottom: 6 }}>
+          {(() => {
+            const w = params.trackWetness ?? 0.0;
+            const c = params.tyreCompound ?? 'medium';
+            let grip: number;
+            if (c === 'wet') { grip = Math.min(1.05, 0.55 + w * 0.5); }
+            else if (c === 'inter') { const p = Math.exp(-((w-0.4)*(w-0.4))/(2*0.04)); grip = 0.65 + 0.45*p; }
+            else { grip = Math.max(0.30, 1.0 - 0.70 * w); }
+            const rec = w < 0.2 ? 'Slick recommended' : w < 0.45 ? 'Inter recommended' : 'Full wet recommended';
+            return <span>Wet grip factor: <strong>×{grip.toFixed(2)}</strong> on {c} · {rec}</span>;
+          })()}
+        </div>
+
         <div className="param-section-label">Tyre Compound (Stage 23)</div>
         <div style={{ display: 'flex', gap: 4, padding: '4px 0 4px 0', flexWrap: 'wrap' }}>
           {(['soft', 'medium', 'hard', 'inter', 'wet'] as const).map(c => {

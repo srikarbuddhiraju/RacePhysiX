@@ -81,6 +81,23 @@ export interface VehicleParams {
   // ── Stage 29 — Ride height & rake ───────────────────────────────────────────
   frontRideHeightMm: number;         // mm — front axle static ride height
   rearRideHeightMm:  number;         // mm — rear axle static ride height
+  // ── Stage 31 — Engine torque curve ──────────────────────────────────────────
+  engineCurveType:     string;   // 'na' | 'turbo' | 'electric'
+  engineMaxTorqueNm:   number;   // Nm — peak engine torque
+  engineTorquePeakRpm: number;   // RPM at which max torque occurs
+  turboBoostRpm:       number;   // RPM at which turbo boost comes in (turbo only)
+  // ── Stage 32 — Traction control ──────────────────────────────────────────────
+  tcEnabled:        boolean;  // traction control on/off
+  tcSlipThreshold:  number;   // 0.05–0.30 — slip ratio trigger (higher = less intervention)
+  // ── Stage 33 — Track rubber evolution ────────────────────────────────────────
+  trackRubberLevel: number;   // 0.0 = green track, 1.0 = fully rubbed in
+  // ── Stage 34 — Track wetness ─────────────────────────────────────────────────
+  trackWetness: number;   // 0.0 = bone dry, 1.0 = standing water
+  // ── Stage 35 — ERS / Hybrid ──────────────────────────────────────────────────
+  ersEnabled:         boolean;  // ERS system present and active
+  ersPowerKW:         number;   // kW — MGU-K max deploy power
+  ersBatteryKJ:       number;   // kJ — max energy available per lap
+  ersDeployStrategy:  string;   // 'full' | 'saving' | 'attack'
 }
 
 export type Balance = 'understeer' | 'neutral' | 'oversteer';

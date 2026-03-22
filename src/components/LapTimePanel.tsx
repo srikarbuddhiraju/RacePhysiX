@@ -103,8 +103,15 @@ export function LapTimePanel({
   const [strategyRunning, setStrategyRunning] = useState(false);
   const [pitStopSec,      setPitStopSec]      = useState<number>(25);
 
-  // Stage 20 — Setup Comparison
-  const [baseline, setBaseline] = useState<{ timeSec: number; label: string } | null>(null);
+  // Stage 20 / 36 — Setup Comparison
+  const [baseline, setBaseline] = useState<{
+    timeSec: number;
+    s1Sec: number; s2Sec: number; s3Sec: number;
+    label: string;
+    powerKW: number;
+    mass: number;
+    peakMu: number;
+  } | null>(null);
   const [numLaps,     setNumLaps]     = useState<number>(10);
   const [startTempC,  setStartTempC]  = useState<number>(30);
 
@@ -406,7 +413,14 @@ export function LapTimePanel({
       {/* Stage 20 — Setup comparison */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <button
-          onClick={() => setBaseline({ timeSec: result.totalTimeSec, label: effectiveLayout.name })}
+          onClick={() => setBaseline({
+            timeSec: result.totalTimeSec,
+            s1Sec: 0, s2Sec: 0, s3Sec: 0,
+            label: `${params.vehicleClass} ${new Date().toLocaleTimeString()}`,
+            powerKW: params.enginePowerKW,
+            mass: params.mass,
+            peakMu: inpBuilder(params).peakMu,
+          })}
           title="Save current lap time as baseline for comparison"
           style={{
             padding: '3px 10px', fontSize: 9, fontWeight: 600,
@@ -446,6 +460,31 @@ export function LapTimePanel({
           </>
         )}
       </div>
+
+      {/* Stage 36 — Multi-car comparison param cards */}
+      {baseline && (() => {
+        const inp = inpBuilder(params);
+        return (
+          <div style={{ padding: '6px 8px', borderRadius: 5, background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', fontSize: 9, marginTop: 4 }}>
+            <div style={{ display: 'flex', gap: 12, marginBottom: 4, alignItems: 'center' }}>
+              <span style={{ color: 'var(--text-faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>vs {baseline.label}</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4 }}>
+              {[
+                { label: 'Mass', a: `${baseline.mass} kg`, b: `${params.mass} kg`, better: params.mass < baseline.mass },
+                { label: 'Power', a: `${baseline.powerKW} kW`, b: `${params.enginePowerKW} kW`, better: params.enginePowerKW > baseline.powerKW },
+                { label: 'Peak μ', a: baseline.peakMu.toFixed(2), b: inp.peakMu.toFixed(2), better: inp.peakMu > baseline.peakMu },
+              ].map(({ label, a, b, better }) => (
+                <div key={label} style={{ background: 'var(--bg)', borderRadius: 3, padding: '2px 5px' }}>
+                  <div style={{ color: 'var(--text-dim)', fontSize: 8 }}>{label}</div>
+                  <div style={{ color: 'var(--text-faint)', fontSize: 8 }}>A: {a}</div>
+                  <div style={{ color: better ? '#86efac' : '#f87171', fontSize: 8 }}>B: {b}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Setup optimiser */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

@@ -98,6 +98,23 @@ const DEFAULT_PARAMS: VehicleParams = {
   // Stage 29 — Ride height & rake
   frontRideHeightMm: 100,
   rearRideHeightMm:  105,
+  // Stage 31 — Engine torque curve
+  engineCurveType: 'na',
+  engineMaxTorqueNm: 260,
+  engineTorquePeakRpm: 3500,
+  turboBoostRpm: 2500,
+  // Stage 32 — Traction control
+  tcEnabled: false,
+  tcSlipThreshold: 0.12,
+  // Stage 33 — Track rubber evolution
+  trackRubberLevel: 0.5,
+  // Stage 34 — Track wetness
+  trackWetness: 0.0,
+  // Stage 35 — ERS / Hybrid
+  ersEnabled: false,
+  ersPowerKW: 120,
+  ersBatteryKJ: 4000,
+  ersDeployStrategy: 'full',
 };
 
 function loadInitialParams(): VehicleParams {
