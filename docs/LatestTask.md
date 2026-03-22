@@ -4,55 +4,53 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
-## Session 24 — 2026-03-22  |  branch: `main` (COMPLETE ✅)
+## Session 25 — 2026-03-22  |  branch: `main` (COMPLETE ✅)
 
 ### Completed this session
 
-**Stages 23–36 implemented, tested, merged, deployed to Cloudflare Pages**
+**Bug fixes deployed to main + Cloudflare Pages**
 
-| Stage | Feature | Key files |
+| Fix | Root cause | Files |
 |---|---|---|
-| 23 | Tyre wear (soft/medium/hard/inter/wet, cliff, graining) | `tyreWear.ts` |
-| 24 | Ambient conditions (ISA air density, headwind, crosswind) | `ambient.ts` |
-| 25 | Driver model (aggression → heat rate, wear, μ) | `vehicleInput.ts` |
-| 26 | Differential (open/LSD/locked traction efficiency) | `differential.ts` |
-| 27 | Brake temperature (disc heat, Gaussian fade) | `brakeTemp.ts` |
-| 28 | Tyre pressure (Cα × p^0.35, μ × p^-0.10) | `bicycleModel`, `pacejkaModel` |
-| 29 | Ride height & rake (aero balance shift, CL boost) | `vehicleInput.ts` |
-| 30 | Race strategy optimizer (1/2-stop brute-force) | `strategyOptimiser.ts` |
-| 31 | Engine torque curve (NA/turbo/electric) | `gearModel.ts` |
-| 32 | Traction control (TC clip on driven axle) | `vehicleInput.ts` |
-| 33 | Track rubber evolution (+15% grip fully rubbed) | `vehicleInput.ts` |
-| 34 | Wet track / drying line (per-compound grip curve) | `vehicleInput.ts` |
-| 35 | ERS / Hybrid deployment (MGU-K, deploy strategies) | `vehicleInput.ts` |
-| 36 | Multi-car comparison (mass/power/μ vs baseline) | `LapTimePanel.tsx` |
+| Top speed 800-900 kph for F1/GT3 | `computeMaxSpeed` used only gearbox limit (redline-in-top-gear), ignoring power-drag balance. F1 gave 954 kph. | `gearModel.ts`, `validate.ts` |
+| Speed jumps 200→338 kph at S/F | `vBoundary` was set after Euler passes — V[1]…V[N-1] still computed from old V[0]=vTop. Post-reconciliation passes not run. | `TrackVisualiser.tsx` |
+| Animation always starts at S/F (zero feel) | `startRef.current = timestamp` always started at tGps=0 (S/F). | `TrackVisualiser.tsx` |
+| URL too long (~500 chars for presets) | Full params blob always encoded, even for presets. | `App.tsx` |
+| No reset button | — | `VehiclePresetSelector.tsx`, `App.tsx` |
 
-**Also:** Aero tab → "Aero & Braking". Global kW/BHP/PS unit toggle. Tooltip layout fixed.
+**Fix details:**
+- `computeMaxSpeed` now `min(gearbox, power-drag)`: F1 338 kph ✓, GT3 279 kph ✓, Road 273 kph ✓, FS 172 kph ✓
+- TrackVisualiser: 4→8 main Euler iters + 4 post-reconciliation passes to propagate corrected V[0]
+- Rolling start: `startRef` offset by random fraction of lap time on first load
+- URL: preset → `#p=f1` (7 chars), diff-only encoding for custom params, old URLs auto-recompressed on load
+- Reset button in Vehicle row — restores all params + Pacejka coeffs, clears URL hash
+- All 21 physics checks pass, 0 TS errors
 
 ### State
-- All merged to `main`, pushed, Cloudflare Pages auto-deployed
+- All on `main`, pushed, Cloudflare Pages auto-deployed (commit `9148667`)
 - Dev server: `http://localhost:5173/`
 - Physics: 21/21 checks pass | 424/424 extended tests pass
-- Build: 718 modules, 0 TypeScript errors
-- All 4 presets carry all Stage 18–36 fields
+- 0 TypeScript errors
 
 ### Next session plan
-1. **Browser verify** — end-to-end check all Stages 23–36 in UI
-2. **Stage 37** — Track banking/elevation (lateral g correction, gradient drag/assist)
-3. **Stage 38** — Data export (CSV/JSON lap + race data download)
+1. **Browser verify** — end-to-end check all Stages 23–36 in UI (speeds, compound selector, strategy optimizer, ERS, multi-car comparison)
+2. **Stage 37** — Track banking/elevation (lateral g correction on banked corners, gradient drag/assist on hills)
+3. **Stage 38** — Data export (CSV/JSON download of lap + race simulation data)
 4. **Stage 39** — Telemetry replay (upload CSV from data logger, overlay vs sim)
-5. **Docs update** — After all technical changes: update README + all user-facing docs to reflect Stages 23–39
+5. **Docs update** — README + all user-facing docs updated after Stages 37–39 complete
 
 ---
 
-## Session 23 — 2026-03-22  |  COMPLETE ✅
+## Session 24 — 2026-03-22  |  COMPLETE ✅
 
-Stages 18–22: vehicle presets, welcome banner, setup comparison, about/methodology,
-camber+toe. Global kW/BHP/PS toggle. Merged to main.
+Stages 23–36: tyre wear, ambient, driver model, differential, brake temp, tyre pressure,
+ride height, strategy optimizer, torque curve, TC, rubber, wet track, ERS, multi-car comparison.
+Aero tab → "Aero & Braking". kW/BHP/PS toggle. All 4 presets carry all fields.
 
 ---
 
-## Sessions 1–22 — COMPLETE / MERGED
+## Sessions 1–23 — COMPLETE / MERGED
 
 Stages 1–22: full physics from bicycle model through camber+toe.
+Stage 18–22: presets, onboarding, setup comparison, about, camber+toe.
 22 GPS circuits. 424/424 tests. See git history.
