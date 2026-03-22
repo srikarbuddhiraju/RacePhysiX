@@ -53,6 +53,11 @@ export interface VehicleParams {
   // ── Race simulation ──────────────────────────────────────────────────────────
   fuelLoadKg:              number;   // kg — fuel mass at race start (e.g. 45 for road, 2 for short sprint)
   fuelBurnRateKgPerLap:    number;   // kg/lap — fuel consumed per lap (e.g. 2.5 road, 1.7 F1)
+  // ── Stage 22 — Camber + Toe ─────────────────────────────────────────────────
+  frontCamberDeg:  number;           // deg — static setup camber front axle (neg = negative camber, race setup)
+  rearCamberDeg:   number;           // deg — static setup camber rear axle
+  frontToeDeg:     number;           // deg — front toe (+ve = toe-in, −ve = toe-out)
+  rearToeDeg:      number;           // deg — rear toe (+ve = toe-in)
 }
 
 export type Balance = 'understeer' | 'neutral' | 'oversteer';

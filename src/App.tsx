@@ -11,6 +11,7 @@ import type { LapResult, RaceResult, TrackLayout } from './physics/laptime';
 import type { VehicleParams, PacejkaCoeffs } from './physics/types';
 import { buildLapSimInput } from './physics/vehicleInput';
 import { VehiclePresetSelector } from './components/VehiclePresetSelector';
+import { WelcomeBanner } from './components/WelcomeBanner';
 import './App.css';
 
 // ── URL hash persistence ──────────────────────────────────────────────────────
@@ -68,6 +69,11 @@ const DEFAULT_PARAMS: VehicleParams = {
   // Race simulation
   fuelLoadKg:             45,
   fuelBurnRateKgPerLap:   2.5,
+  // Stage 22 — Camber + Toe
+  frontCamberDeg: -1.5,   // deg — negative camber (road default)
+  rearCamberDeg:  -0.5,
+  frontToeDeg:     0.05,  // deg — slight toe-in front
+  rearToeDeg:      0.15,  // deg — toe-in rear (stability)
 };
 
 function loadInitialParams(): VehicleParams {
@@ -119,6 +125,7 @@ export function App() {
   return (
     <div className="app">
       <VehiclePresetSelector onSelect={handlePresetSelect} />
+      <WelcomeBanner />
       {/* Top row: param panel | 3D view | results */}
       <div className="app-main">
         <ParameterPanel params={params} onChange={setParams} />

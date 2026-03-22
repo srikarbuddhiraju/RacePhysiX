@@ -29,8 +29,22 @@ export function computeBicycleModel(params: VehicleParams): PhysicsResult {
   } = params;
 
   const speedMs = speedKph / 3.6;
-  const CαF = corneringStiffnessNPerDeg / DEG_TO_RAD;  // N/rad, front axle (Stage 13A)
-  const CαR = ((rearCorneringStiffnessNPerDeg ?? corneringStiffnessNPerDeg)) / DEG_TO_RAD;  // N/rad, rear axle
+  const CαF_base = corneringStiffnessNPerDeg / DEG_TO_RAD;  // N/rad, front axle (Stage 13A)
+  const CαR_base = ((rearCorneringStiffnessNPerDeg ?? corneringStiffnessNPerDeg)) / DEG_TO_RAD;  // N/rad, rear axle
+
+  // ── Stage 22: Camber + Toe ────────────────────────────────────────────────
+  // Toe-in pre-loads the tyre contact patch → increased effective cornering stiffness.
+  // Reference: RCVD §2.3.3; k_toe = 0.12 → each 1° toe ≈ +12% effective Cα.
+  const k_toe = 0.12;
+  const CαF = CαF_base * (1 + k_toe * Math.abs(params.frontToeDeg ?? 0));
+  const CαR = CαR_base * (1 + k_toe * Math.abs(params.rearToeDeg  ?? 0));
+
+  // Camber thrust: Fy_γ = Cγ × γ, where Cγ = 0.05 × Cα (RCVD §2.3.5; typical radial racing tyre).
+  // Negative setup camber (γ < 0) → camber thrust aids lateral force → reduces required slip angle.
+  // Sign: ΔFy = -k_camber × Cα × camberDeg × DEG_TO_RAD  (negative camber → positive thrust in corner direction)
+  const k_camber = 0.05;
+  const ΔFy_F = -k_camber * CαF * (params.frontCamberDeg ?? 0) * DEG_TO_RAD;
+  const ΔFy_R = -k_camber * CαR * (params.rearCamberDeg  ?? 0) * DEG_TO_RAD;
 
   // ── Geometry ──────────────────────────────────────────────────────────────
   // Wf/W = b/L  →  b = frontWeightFraction × L
@@ -58,10 +72,10 @@ export function computeBicycleModel(params: VehicleParams): PhysicsResult {
   const frontLateralForceN = mass * lateralAccelerationMss * (b / L);
   const rearLateralForceN  = mass * lateralAccelerationMss * (a / L);
 
-  // ── Slip angles (linear tyre: α = Fy / Cα) ───────────────────────────────
-  // Stage 13A: use per-axle stiffness
-  const frontSlipAngleDeg = (frontLateralForceN / CαF) * RAD_TO_DEG;
-  const rearSlipAngleDeg  = (rearLateralForceN  / CαR) * RAD_TO_DEG;
+  // ── Slip angles (linear tyre: α = (Fy − Fy_camber) / Cα_eff) ────────────
+  // Stage 13A: use per-axle stiffness. Stage 22: subtract camber thrust from required Fy.
+  const frontSlipAngleDeg = ((frontLateralForceN - ΔFy_F) / CαF) * RAD_TO_DEG;
+  const rearSlipAngleDeg  = ((rearLateralForceN  - ΔFy_R) / CαR) * RAD_TO_DEG;
 
   // ── Steer angles (handling equation: δ = L/R + K·ay) ─────────────────────
   const kinematicSteerAngleDeg = (L / R) * RAD_TO_DEG;

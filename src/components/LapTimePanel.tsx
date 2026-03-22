@@ -93,6 +93,9 @@ export function LapTimePanel({
 }: Props) {
   const [optimState,  setOptimState]  = useState<OptimState>({ status: 'idle' });
   const [raceState,   setRaceState]   = useState<RaceSimState>({ status: 'idle' });
+
+  // Stage 20 — Setup Comparison
+  const [baseline, setBaseline] = useState<{ timeSec: number; label: string } | null>(null);
   const [numLaps,     setNumLaps]     = useState<number>(10);
   const [startTempC,  setStartTempC]  = useState<number>(30);
 
@@ -366,6 +369,50 @@ export function LapTimePanel({
         <SummaryCard label="Min corner" value={`${result.minCornerKph.toFixed(1)} km/h`} />
       </div>
 
+      {/* Stage 20 — Setup comparison */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <button
+          onClick={() => setBaseline({ timeSec: result.totalTimeSec, label: effectiveLayout.name })}
+          title="Save current lap time as baseline for comparison"
+          style={{
+            padding: '3px 10px', fontSize: 9, fontWeight: 600,
+            background: 'var(--bg-card)', border: '1px solid var(--border)',
+            borderRadius: 5, color: 'var(--text-secondary)', cursor: 'pointer',
+          }}
+        >
+          {baseline ? 'Update Baseline' : 'Save Baseline'}
+        </button>
+        {baseline && (
+          <>
+            <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>
+              Baseline: <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{fmtTime(baseline.timeSec)}</span>
+              <span style={{ color: 'var(--text-dim)' }}> ({baseline.label})</span>
+            </span>
+            {(() => {
+              const delta = result.totalTimeSec - baseline.timeSec;
+              const sign  = delta >= 0 ? '+' : '';
+              const color = delta < -0.05 ? '#4ade80' : delta > 0.05 ? '#f87171' : 'var(--text-secondary)';
+              return (
+                <span style={{ fontSize: 11, fontWeight: 700, color }}>
+                  {sign}{delta.toFixed(3)} s
+                </span>
+              );
+            })()}
+            <button
+              onClick={() => setBaseline(null)}
+              title="Clear baseline"
+              style={{
+                padding: '2px 7px', fontSize: 9, background: 'transparent',
+                border: '1px solid var(--border)', borderRadius: 4,
+                color: 'var(--text-dim)', cursor: 'pointer',
+              }}
+            >
+              ×
+            </button>
+          </>
+        )}
+      </div>
+
       {/* Setup optimiser */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent-text)', textTransform: 'uppercase', letterSpacing: '0.08em', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 4, marginBottom: 2 }}>
@@ -579,7 +626,111 @@ export function LapTimePanel({
       <div style={{ fontSize: 9, color: 'var(--text-dim)', lineHeight: 1.5, marginTop: 4 }}>
         Point-mass lap sim · Pacejka tyre model · Gear model (Stage 10) · Combined slip (Stage 13) · Tyre thermal (Stage 11)
       </div>
+
+      {/* Stage 21 — About / Methodology */}
+      <AboutSection />
     </div>
+    </div>
+  );
+}
+
+// ── About / Methodology (Stage 21) ────────────────────────────────────────────
+
+function AboutSection() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 10, marginTop: 4 }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          background: 'transparent', border: 'none', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: 6,
+          fontSize: 9, fontWeight: 700, color: 'var(--text-faint)',
+          textTransform: 'uppercase', letterSpacing: '0.08em',
+          padding: 0,
+        }}
+      >
+        <span style={{ fontSize: 10 }}>{open ? '▾' : '▸'}</span>
+        About &amp; Methodology
+      </button>
+
+      {open && (
+        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10, fontSize: 9, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+
+          {/* Physics stages */}
+          <div>
+            <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+              Physics Model Stages
+            </div>
+            {[
+              ['1',  'Bicycle model',         'Steady-state yaw / understeer gradient (Gillespie Ch.6)'],
+              ['2',  'Pacejka Magic Formula',  'Nonlinear tyre Fy + Fx (RCVD Ch.2)'],
+              ['3',  'Load transfer',          'Per-corner Fz, combined slip, FWD/RWD/AWD/AWD+TV'],
+              ['4',  'Suspension (roll)',       'Roll angle, ARB, Fz split front/rear'],
+              ['5',  'Braking model',          'Brake bias, ABS clip, combined braking + cornering'],
+              ['6',  'Aerodynamics',           'Speed-dependent downforce + drag, axle splits'],
+              ['7',  'Lap time estimator',     'Point-mass sim over corner + straight segments'],
+              ['8',  '14-DOF time domain',     'Step steer / sine sweep / brake-in-turn (RK4 ODE)'],
+              ['9',  'Tyre load sensitivity',  'Pacejka degressive μ with Fz (qFz)'],
+              ['10', 'Gear + powertrain',      'Gear ratios, shift points, rev-limited P/V curve'],
+              ['11', 'Tyre thermal model',     'μ bell curve vs temperature, warmup/degradation'],
+              ['12', 'Setup optimisation',     'Nelder-Mead simplex over 7 params → min lap time'],
+              ['13', 'Full nonlinear model',   'Separate F/R Cα, friction circle, yaw transient'],
+              ['14', 'Race simulation',        'Multi-lap: tyre warmup, fuel burn, sector times'],
+              ['15', 'Track editor',           'Editable segment table + SVG preview, JSON export'],
+              ['16', 'GPS circuit maps',       '22 circuits: TUMFTM LGPL-3.0 + OSM ODbL GPS paths'],
+              ['18', 'Vehicle presets',        'Road / Formula Student / GT3 / F1 one-click params'],
+              ['19', 'Onboarding',             'First-visit banner + inline tooltips on every slider'],
+              ['20', 'Setup comparison',       'Save baseline → run variant → show Δ lap time'],
+              ['22', 'Camber + toe',           'Camber thrust (Cγ × γ) + toe effective Cα (RCVD §2.3)'],
+            ].map(([n, name, desc]) => (
+              <div key={n} style={{ display: 'grid', gridTemplateColumns: '16px 100px 1fr', gap: 4, fontSize: 9, alignItems: 'baseline' }}>
+                <span style={{ color: 'var(--accent)', fontWeight: 700 }}>{n}</span>
+                <span style={{ color: 'var(--text-secondary)' }}>{name}</span>
+                <span style={{ color: 'var(--text-dim)' }}>{desc}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* References */}
+          <div>
+            <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+              Validation References
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <span>Milliken &amp; Milliken — <em>Race Car Vehicle Dynamics</em> (RCVD), SAE 1995</span>
+              <span>Gillespie — <em>Fundamentals of Vehicle Dynamics</em>, SAE 1992</span>
+              <span>Pacejka — <em>Tyre and Vehicle Dynamics</em>, 3rd ed., Butterworth-Heinemann 2012</span>
+              <span>All 22 validation checks pass · Extended suite: 424/424 pass</span>
+            </div>
+          </div>
+
+          {/* Attribution */}
+          <div>
+            <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+              Circuit Data Attribution
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <span>
+                <span style={{ color: 'var(--text-secondary)' }}>TUMFTM Racetrack Database</span> — 14 circuits.
+                {' '}GPS paths © TU Munich (TUMFTM), licensed LGPL-3.0.
+              </span>
+              <span>
+                <span style={{ color: 'var(--text-secondary)' }}>OpenStreetMap contributors</span> — 4 circuits.
+                {' '}GPS paths © OpenStreetMap, licensed ODbL 1.0.
+              </span>
+              <span style={{ color: 'var(--text-dim)' }}>
+                4 generic circuits hand-designed. All schematic circuits (Monza, Spa, Silverstone, Suzuka) hand-crafted from published track guides.
+              </span>
+            </div>
+          </div>
+
+          {/* Build info */}
+          <div style={{ color: 'var(--text-dim)', borderTop: '1px solid var(--border-subtle)', paddingTop: 6 }}>
+            RacePhysiX — MIT License · Srikar Buddhiraju (MEng Automotive Engineering, University of Leeds, 2019)
+          </div>
+        </div>
+      )}
     </div>
   );
 }

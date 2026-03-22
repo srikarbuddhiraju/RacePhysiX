@@ -67,6 +67,10 @@ const ROAD_CAR: VehiclePreset = {
     engineRedlineRpm: 6500,
     fuelLoadKg:           45,
     fuelBurnRateKgPerLap: 2.5,
+    frontCamberDeg: -1.5,   // typical road/sport setup
+    rearCamberDeg:  -0.5,
+    frontToeDeg:     0.05,  // slight toe-in front
+    rearToeDeg:      0.15,
   },
   coeffs: { B: 10.0, C: 1.30, peakMu: 1.00, E: -1.50 },
 };
@@ -119,6 +123,10 @@ const FORMULA_STUDENT: VehiclePreset = {
     engineRedlineRpm: 13500,
     fuelLoadKg:           3,
     fuelBurnRateKgPerLap: 0.4,
+    frontCamberDeg: -2.5,   // aggressive FS setup: tight autocross cornering
+    rearCamberDeg:  -1.5,
+    frontToeDeg:     0.0,   // zero toe front (minimise straight-line drag)
+    rearToeDeg:      0.2,
   },
   coeffs: { B: 12.0, C: 1.30, peakMu: 1.80, E: -0.80 },
 };
@@ -171,6 +179,10 @@ const GT3: VehiclePreset = {
     engineRedlineRpm: 8200,
     fuelLoadKg:           65,
     fuelBurnRateKgPerLap: 4.0,
+    frontCamberDeg: -3.0,   // FIA GT3 homologated setup range
+    rearCamberDeg:  -1.5,
+    frontToeDeg:     0.0,
+    rearToeDeg:      0.3,   // rear toe-in for high-speed stability
   },
   coeffs: { B: 10.0, C: 1.35, peakMu: 1.60, E: -0.70 },
 };
@@ -224,6 +236,10 @@ const FORMULA_1: VehiclePreset = {
     engineRedlineRpm: 15000,
     fuelLoadKg:           110,
     fuelBurnRateKgPerLap: 3.5,
+    frontCamberDeg: -3.5,   // FIA F1 2024 — max allowed ≈ −3.5°F / −2.5°R
+    rearCamberDeg:  -2.5,
+    frontToeDeg:    -0.05,  // slight toe-out front (reduces scrub in slow corners)
+    rearToeDeg:      0.1,   // minimal rear toe-in (ground effect provides stability)
   },
   coeffs: { B: 15.0, C: 1.40, peakMu: 2.00, E: -1.00 },
 };
