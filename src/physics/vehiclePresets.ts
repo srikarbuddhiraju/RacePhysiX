@@ -76,6 +76,8 @@ const ROAD_CAR: VehiclePreset = {
     driverAggression: 0.5,
     diffType: 'open', lsdLockingPercent: 0,
     brakeDiscMassKg: 8.0, brakeOptTempC: 300, brakeHalfWidthC: 180, brakeFloorMu: 0.70,
+    frontTyrePressureBar: 2.2, rearTyrePressureBar: 2.2,
+    frontRideHeightMm: 130, rearRideHeightMm: 135,
   },
   coeffs: { B: 10.0, C: 1.30, peakMu: 1.00, E: -1.50 },
 };
@@ -137,6 +139,8 @@ const FORMULA_STUDENT: VehiclePreset = {
     driverAggression: 0.7,
     diffType: 'lsd', lsdLockingPercent: 60,
     brakeDiscMassKg: 4.0, brakeOptTempC: 450, brakeHalfWidthC: 200, brakeFloorMu: 0.65,
+    frontTyrePressureBar: 1.5, rearTyrePressureBar: 1.4,
+    frontRideHeightMm: 35, rearRideHeightMm: 45,
   },
   coeffs: { B: 12.0, C: 1.30, peakMu: 1.80, E: -0.80 },
 };
@@ -198,6 +202,8 @@ const GT3: VehiclePreset = {
     driverAggression: 0.8,
     diffType: 'lsd', lsdLockingPercent: 75,
     brakeDiscMassKg: 5.5, brakeOptTempC: 600, brakeHalfWidthC: 250, brakeFloorMu: 0.60,
+    frontTyrePressureBar: 1.8, rearTyrePressureBar: 1.8,
+    frontRideHeightMm: 55, rearRideHeightMm: 65,
   },
   coeffs: { B: 10.0, C: 1.35, peakMu: 1.60, E: -0.70 },
 };
@@ -260,6 +266,8 @@ const FORMULA_1: VehiclePreset = {
     driverAggression: 0.9,
     diffType: 'lsd', lsdLockingPercent: 90,
     brakeDiscMassKg: 3.5, brakeOptTempC: 700, brakeHalfWidthC: 300, brakeFloorMu: 0.55,
+    frontTyrePressureBar: 1.7, rearTyrePressureBar: 1.7,
+    frontRideHeightMm: 30, rearRideHeightMm: 40,
   },
   coeffs: { B: 15.0, C: 1.40, peakMu: 2.00, E: -1.00 },
 };

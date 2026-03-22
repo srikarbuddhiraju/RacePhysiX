@@ -1,5 +1,6 @@
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { computeLapTime, simulateRace, TRACK_PRESETS } from '../physics/laptime';
+import { optimiseRaceStrategy, fmtTime as fmtStratTime, type StrategyResult } from '../physics/strategyOptimiser';
 import type { TrackLayout, TrackSegment, LapResult, RaceResult, LapSimInput } from '../physics/laptime';
 import { optimiseSetup, OPTIMISE_BOUNDS, OPTIMISABLE_KEYS } from '../physics/optimise';
 import type { OptimiseResult } from '../physics/optimise';
@@ -97,6 +98,11 @@ export function LapTimePanel({
   const [optimState,  setOptimState]  = useState<OptimState>({ status: 'idle' });
   const [raceState,   setRaceState]   = useState<RaceSimState>({ status: 'idle' });
 
+  // Stage 30 — Race Strategy Optimiser
+  const [strategyResult,  setStrategyResult]  = useState<StrategyResult[] | null>(null);
+  const [strategyRunning, setStrategyRunning] = useState(false);
+  const [pitStopSec,      setPitStopSec]      = useState<number>(25);
+
   // Stage 20 — Setup Comparison
   const [baseline, setBaseline] = useState<{ timeSec: number; label: string } | null>(null);
   const [numLaps,     setNumLaps]     = useState<number>(10);
@@ -180,6 +186,31 @@ export function LapTimePanel({
       }
     }, 0);
   };
+
+  const handleOptimiseStrategy = useCallback(() => {
+    setStrategyRunning(true);
+    setStrategyResult(null);
+    setTimeout(() => {
+      try {
+        const inp = inpBuilder(params);
+        const lapResult = computeLapTime(effectiveLayout, inp);
+        const results = optimiseRaceStrategy(
+          numLaps,
+          lapResult.totalTimeSec,
+          params.tyreOptTempC,
+          params.tyreTempHalfWidthC,
+          params.tyreTempFloorMu,
+          params.driverAggression ?? 0.5,
+          pitStopSec,
+        );
+        setStrategyResult(results);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setStrategyRunning(false);
+      }
+    }, 0);
+  }, [params, effectiveLayout, inpBuilder, numLaps, pitStopSec]);
 
   // ── Track editor helpers ──────────────────────────────────────────────────
 
@@ -527,6 +558,77 @@ export function LapTimePanel({
           <RaceResultTable result={raceState.result} />
         )}
       </div>
+
+      {/* ── Strategy Optimiser ─────────────────────────────────────── */}
+        <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 10, marginTop: 6, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Race Strategy
+            </span>
+            <span style={{ fontSize: 9, color: 'var(--text-faint)' }}>
+              Pit stop loss:
+            </span>
+            <input
+              type="number" min={10} max={60} value={pitStopSec}
+              onChange={e => setPitStopSec(Math.max(10, Math.min(60, parseInt(e.target.value) || 25)))}
+              style={{ width: 38, fontSize: 9, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 3, color: 'var(--text-secondary)', padding: '1px 4px', textAlign: 'center' }}
+            />
+            <span style={{ fontSize: 9, color: 'var(--text-faint)' }}>s</span>
+            <button
+              onClick={handleOptimiseStrategy}
+              disabled={strategyRunning}
+              style={{
+                padding: '4px 12px', fontSize: 10, fontWeight: 700,
+                background: strategyRunning ? 'var(--bg-card)' : 'rgba(99,102,241,0.20)',
+                border: `1px solid ${strategyRunning ? 'var(--border)' : '#6366f1'}`,
+                borderRadius: 5, color: strategyRunning ? 'var(--text-muted)' : '#a5b4fc',
+                cursor: strategyRunning ? 'default' : 'pointer',
+              }}
+            >
+              {strategyRunning ? 'Optimising…' : '⚡ Optimise Strategy'}
+            </button>
+          </div>
+
+          {strategyResult && strategyResult.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {strategyResult.map((s, i) => {
+                const compoundColor: Record<string, string> = {
+                  soft: '#ef4444', medium: '#f59e0b', hard: '#9ca3af',
+                  inter: '#22c55e', wet: '#3b82f6',
+                };
+                const isBest = i === 0;
+                return (
+                  <div key={i} style={{
+                    padding: '5px 8px', borderRadius: 5, fontSize: 9,
+                    background: isBest ? 'rgba(99,102,241,0.12)' : 'var(--bg-card)',
+                    border: `1px solid ${isBest ? '#6366f1' : 'var(--border-subtle)'}`,
+                    display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
+                  }}>
+                    {isBest && <span style={{ color: '#a5b4fc', fontWeight: 700, fontSize: 8 }}>OPTIMAL</span>}
+                    <span style={{ color: 'var(--text-faint)' }}>{s.numStops}-stop</span>
+                    <span style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                      {s.stints.map((st, j) => (
+                        <span key={j} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          {j > 0 && <span style={{ color: 'var(--text-dim)', fontSize: 8 }}>→pit{s.pitLaps[j-1]}→</span>}
+                          <span style={{ color: compoundColor[st.compound] ?? 'var(--text-secondary)', fontWeight: 700, textTransform: 'capitalize' }}>
+                            {st.compound.charAt(0).toUpperCase()}
+                          </span>
+                          <span style={{ color: 'var(--text-dim)' }}>({st.stintLaps}L)</span>
+                        </span>
+                      ))}
+                    </span>
+                    <span style={{ marginLeft: 'auto', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                      {fmtStratTime(s.totalTimeSec)}
+                    </span>
+                  </div>
+                );
+              })}
+              <div style={{ fontSize: 8, color: 'var(--text-dim)', fontStyle: 'italic' }}>
+                Dry compounds only · Grip model: thermal × mechanical wear · Same tyre rules apply
+              </div>
+            </div>
+          )}
+        </div>
 
       {/* Track Editor */}
       <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 10, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 8 }}>

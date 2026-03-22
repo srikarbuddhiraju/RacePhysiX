@@ -45,6 +45,25 @@ export function buildLapSimInput(params: VehicleParams, coeffs: PacejkaCoeffs): 
 
   const DEG_TO_RAD = Math.PI / 180;
 
+  // Stage 28: Tyre pressure — contact patch area scales peakMu
+  const P_NOM = 2.0;
+  const pAvg = ((params.frontTyrePressureBar ?? 2.0) + (params.rearTyrePressureBar ?? 2.0)) / 2;
+  const pressMuFactor = Math.pow(P_NOM / Math.max(0.5, pAvg), 0.10);
+  const peakMuWithPressure = peakMuWithWind * pressMuFactor;
+
+  // Stage 29: Ride height → aero balance shift + ground effect CL boost
+  const frontH = params.frontRideHeightMm ?? 100;
+  const rearH  = params.rearRideHeightMm  ?? 100;
+  const wheelbaseMm = params.wheelbase * 1000;
+  const rakeAngleDeg = Math.atan((rearH - frontH) / wheelbaseMm) * (180 / Math.PI);
+  const effectiveAeroBalance = Math.max(0.25, Math.min(0.75,
+    params.aeroBalance - 0.015 * rakeAngleDeg
+  ));
+  void effectiveAeroBalance; // informational — aeroBalance not in LapSimInput
+  const h_min = Math.min(frontH, rearH);
+  const clBoost = params.aeroCL > 2.0 ? 0.20 * Math.max(0, 1 - h_min / 80) : 0;
+  const effectiveAeroCL = params.aeroCL * (1 + clBoost);
+
   // Stage 26: Differential model — traction efficiency and yaw moment
   const diffFactor = diffTractionFactor({
     mass, peakMu: peakMuWithWind,
@@ -66,9 +85,9 @@ export function buildLapSimInput(params: VehicleParams, coeffs: PacejkaCoeffs): 
 
   return {
     mass,
-    peakMu:            peakMuWithWind,
+    peakMu:            peakMuWithPressure,
     brakingCapG,
-    aeroCL:            params.aeroCL,
+    aeroCL:            effectiveAeroCL,
     aeroCD,
     aeroReferenceArea,
     dragForce:         (V: number) => {

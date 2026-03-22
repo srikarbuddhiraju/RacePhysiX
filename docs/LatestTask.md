@@ -4,6 +4,49 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
+## Session 25 — 2026-03-22  |  branch: `feature/stage28-30-physics` (IN PROGRESS)
+
+### Status: IN PROGRESS
+
+### Done this session:
+
+**Stage 28 — Tyre Pressure Model**
+- `src/physics/types.ts`: `frontTyrePressureBar` + `rearTyrePressureBar` fields on VehicleParams
+- `src/physics/bicycleModel.ts`: pressure scaling `Cα(p) = Cα_nom × (p/p_nom)^0.35` applied after toe effect and used in camber thrust, understeer gradient, and slip angles
+- `src/physics/pacejkaModel.ts`: pressure scales B (via Cα) and peakMu `(p_nom/p)^0.10` in both `buildHandlingCurve` and `computePacejkaModel` slip angle solving
+- `src/physics/vehicleInput.ts`: average axle pressure scales peakMu via contact-patch factor
+- `src/App.tsx`: DEFAULT_PARAMS `frontTyrePressureBar: 2.2, rearTyrePressureBar: 2.2`
+- `src/physics/vehiclePresets.ts`: pressure fields on all 4 presets (Road=2.2, FS=1.5/1.4, GT3=1.8, F1=1.7)
+- `src/components/ParameterPanel.tsx`: Tyre Pressure section in Tyres tab (2 sliders + Cα/μ/cold-set derived display)
+
+**Stage 29 — Ride Height & Rake**
+- `src/physics/types.ts`: `frontRideHeightMm` + `rearRideHeightMm` fields on VehicleParams
+- `src/physics/vehicleInput.ts`: rake angle → effective aero balance shift; ground-effect CL boost (aeroCL > 2.0); `effectiveAeroCL` passed to LapSimInput
+- `src/App.tsx`: DEFAULT_PARAMS `frontRideHeightMm: 100, rearRideHeightMm: 105`
+- `src/physics/vehiclePresets.ts`: ride height on all 4 presets (Road=130/135, FS=35/45, GT3=55/65, F1=30/40)
+- `src/components/ParameterPanel.tsx`: Ride Height & Rake section in Aero tab (2 sliders + rake angle/balance shift/CL boost derived display)
+
+**Stage 30 — Race Strategy Optimiser**
+- `src/physics/strategyOptimiser.ts` — NEW: brute-force 1-stop/2-stop enumeration over dry compounds (soft/medium/hard), thermal+wear grip model per stint, pit stop time loss, deduplication, top-6 results
+- `src/components/LapTimePanel.tsx`: import, 3 new state vars, `handleOptimiseStrategy` callback, Strategy Optimiser UI section (pit stop input, optimise button, result cards with OPTIMAL badge)
+
+**Fixtures updated:** `validate.ts` + `test-extended.ts` BASE fixtures include Stage 28/29 fields (pressure=2.0 bar, rideHeight=100/105mm)
+
+### Build: ✅ 0 TypeScript errors (718 modules) | All 21 checks pass | 424/424 extended tests pass
+
+### Pending:
+- [ ] Browser verify: pressure sliders, ride height sliders, strategy optimiser button + results
+- [ ] git commit on `feature/stage28-30-physics`
+
+### Key files
+- `src/physics/strategyOptimiser.ts` — Stage 30 strategy optimiser
+- `src/physics/types.ts` — new VehicleParams fields
+- `src/physics/vehicleInput.ts` — pressure + ride height effects wired into LapSimInput
+- `src/components/ParameterPanel.tsx` — Stage 28/29 UI
+- `src/components/LapTimePanel.tsx` — Stage 30 UI
+
+---
+
 ## Session 24 — 2026-03-22  |  branch: `feature/stage26-27-physics` (IN PROGRESS)
 
 ### Status: IN PROGRESS

@@ -92,6 +92,12 @@ const DEFAULT_PARAMS: VehicleParams = {
   brakeOptTempC:       400,
   brakeHalfWidthC:     200,
   brakeFloorMu:        0.65,
+  // Stage 28 — Tyre pressure
+  frontTyrePressureBar: 2.2,
+  rearTyrePressureBar:  2.2,
+  // Stage 29 — Ride height & rake
+  frontRideHeightMm: 100,
+  rearRideHeightMm:  105,
 };
 
 function loadInitialParams(): VehicleParams {
