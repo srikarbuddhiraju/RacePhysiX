@@ -524,7 +524,13 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
     const pathEl = pathRef.current;
     const tr = traceRef.current;
     if (!pathEl || tr.length < 2) { rafRef.current = requestAnimationFrame(tick); return; }
-    if (startRef.current === null) startRef.current = timestamp;
+    if (startRef.current === null) {
+      // Rolling start: place car at a random mid-lap position so animation
+      // doesn't always launch from S/F line. Also prevents S/F speed "spike" on load.
+      const gpsA = gpsAnimRef.current;
+      const lapMs = gpsA ? gpsA.lapTimeSec * 1000 : traceTotalTime * 1000;
+      startRef.current = timestamp - Math.random() * lapMs / playSpeedRef.current;
+    }
     // If a large gap occurred (tab backgrounded), advance startRef to absorb excess time
     if (realDelta > 200 && startRef.current !== null) {
       startRef.current += (realDelta - 200);

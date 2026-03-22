@@ -16,8 +16,18 @@ import { type PowerUnit } from './utils/units';
 import './App.css';
 
 // ── URL hash persistence ──────────────────────────────────────────────────────
+// Only encode params that differ from defaults — keeps URLs short for typical usage.
 function encodeParams(p: VehicleParams): string {
-  try { return btoa(JSON.stringify(p)); } catch { return ''; }
+  const diff: Partial<VehicleParams> = {};
+  let hasDiff = false;
+  for (const key of Object.keys(DEFAULT_PARAMS) as (keyof VehicleParams)[]) {
+    if ((p as Record<string, unknown>)[key] !== (DEFAULT_PARAMS as Record<string, unknown>)[key]) {
+      (diff as Record<string, unknown>)[key] = (p as Record<string, unknown>)[key];
+      hasDiff = true;
+    }
+  }
+  if (!hasDiff) return '';
+  try { return btoa(JSON.stringify(diff)); } catch { return ''; }
 }
 function decodeParams(hash: string): Partial<VehicleParams> {
   try { return JSON.parse(atob(hash.replace(/^#/, ''))) as Partial<VehicleParams>; } catch { return {}; }
@@ -148,7 +158,17 @@ export function App() {
   const setParams = useCallback((p: VehicleParams) => {
     setParamsRaw(p);
     const encoded = encodeParams(p);
-    if (encoded) history.replaceState(null, '', `#${encoded}`);
+    if (encoded) {
+      history.replaceState(null, '', `#${encoded}`);
+    } else {
+      history.replaceState(null, '', window.location.pathname);
+    }
+  }, []);
+
+  const resetToDefaults = useCallback(() => {
+    setParamsRaw(DEFAULT_PARAMS);
+    setCoeffs(DEFAULT_PACEJKA_COEFFS);
+    history.replaceState(null, '', window.location.pathname);
   }, []);
 
   useEffect(() => {
@@ -166,7 +186,7 @@ export function App() {
 
   return (
     <div className="app">
-      <VehiclePresetSelector onSelect={handlePresetSelect} powerUnit={powerUnit} onPowerUnitChange={setPowerUnit} />
+      <VehiclePresetSelector onSelect={handlePresetSelect} onReset={resetToDefaults} powerUnit={powerUnit} onPowerUnitChange={setPowerUnit} />
       <WelcomeBanner />
       {/* Top row: param panel | 3D view | results */}
       <div className="app-main">

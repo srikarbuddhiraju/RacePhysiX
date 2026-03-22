@@ -13,6 +13,7 @@ import { type PowerUnit, fmtPower } from '../utils/units';
 
 interface Props {
   onSelect:           (params: VehicleParams, coeffs: PacejkaCoeffs) => void;
+  onReset:            () => void;
   powerUnit:          PowerUnit;
   onPowerUnitChange:  (u: PowerUnit) => void;
 }
@@ -22,8 +23,8 @@ function formatDesc(desc: string, kw: number, unit: PowerUnit): string {
   return desc.replace(/\d+ kW/, fmtPower(kw, unit));
 }
 
-export function VehiclePresetSelector({ onSelect, powerUnit, onPowerUnitChange }: Props) {
-  const [activeId, setActiveId] = useState<string>('road');
+export function VehiclePresetSelector({ onSelect, onReset, powerUnit, onPowerUnitChange }: Props) {
+  const [activeId, setActiveId] = useState<string | null>('road');
   const [tooltip,  setTooltip]  = useState<string | null>(null);
 
   return (
@@ -73,6 +74,30 @@ export function VehiclePresetSelector({ onSelect, powerUnit, onPowerUnitChange }
           </button>
         );
       })}
+
+      {/* Reset to defaults */}
+      <button
+        title="Reset all parameters to default values"
+        onMouseEnter={() => setTooltip('Reset all parameters to defaults')}
+        onMouseLeave={() => setTooltip(null)}
+        onClick={() => { setActiveId(null); onReset(); }}
+        style={{
+          padding: '4px 10px',
+          fontSize: 11,
+          fontWeight: 500,
+          background: 'transparent',
+          border: '1px solid var(--border-color)',
+          borderRadius: 4,
+          color: 'var(--label-color)',
+          cursor: 'pointer',
+          transition: 'all 0.15s',
+          whiteSpace: 'nowrap',
+          flexShrink: 0,
+          opacity: 0.6,
+        }}
+      >
+        Reset
+      </button>
 
       {/* Tooltip — inline, right of buttons, truncates if needed */}
       <span style={{
