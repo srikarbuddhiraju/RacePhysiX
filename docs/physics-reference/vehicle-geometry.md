@@ -1,4 +1,4 @@
-# Vehicle Geometry — ApexSim Physics Reference
+# Vehicle Geometry — RacePhysiX Physics Reference
 *Reference for Claude. Validates against: Milliken & Milliken (Race Car Vehicle Dynamics), Gillespie (Fundamentals of Vehicle Dynamics)*
 
 ---

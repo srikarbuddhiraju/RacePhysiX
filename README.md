@@ -15,8 +15,9 @@ and immediately see the effect on handling balance, cornering speed, braking dis
 across 19 real-world circuits.
 
 It is aimed at anyone who wants to understand how a car's setup affects its on-track behaviour:
-motorsport engineering students, sim racers building an intuition for setup, or hobbyists exploring
-the physics behind understeer, oversteer, and the Pacejka tyre model.
+motorsport engineering students, sim racers building an intuition for setup, hobbyists exploring
+the physics behind understeer, oversteer, and the Pacejka tyre model, and Formula Student / FSAE
+teams using it as a quick setup reference tool.
 
 ---
 

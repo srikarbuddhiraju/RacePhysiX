@@ -1,5 +1,7 @@
 {
   "name": "racephysix",
+  "description": "Browser-based vehicle dynamics and lap time simulator — Pacejka tyre model, bicycle model, race simulation",
+  "keywords": ["vehicle dynamics", "lap time simulator", "Pacejka", "tyre model", "motorsport", "understeer", "oversteer", "Formula Student", "race engineering"],
   "private": true,
   "version": "0.1.0",
   "type": "module",

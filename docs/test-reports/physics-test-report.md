@@ -1,4 +1,4 @@
-# ApexSim Physics Test Report — 2026-03-15
+# RacePhysiX Physics Test Report — 2026-03-15
 
 ## Build & TypeScript
 PASS. 0 errors. Build 4.62s. Advisory: index chunk 1097 kB (non-blocking for v1).

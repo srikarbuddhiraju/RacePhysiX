@@ -1,4 +1,4 @@
-# Latest Task — ApexSim
+# Latest Task — RacePhysiX
 
 Rolling log. 200-line limit — trim oldest entries when exceeded.
 
@@ -179,7 +179,7 @@ Monza: braking zone appeared AFTER Parabolica, not before.
 - [x] Run `npx tsx src/physics/test-extended.ts` — 303/303 ✓
 - [ ] Commit Stage 16+17+18 changes
 - [ ] Merge `feature/stage16-gps-circuit-maps` → `main`
-- [ ] Deploy to Cloudflare Pages (apexsim.srikarbuddhiraju.com)
+- [ ] Deploy to Cloudflare Pages (racephysix.srikarbuddhiraju.com)
 - [ ] Browser verify: GPS circuits show braking zones before corners (T1 La Source should be RED)
 
 **🟢 WATCH**

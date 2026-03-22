@@ -252,12 +252,6 @@ export function LapTimePanel({
 
   const totalEditLength = editSegs.reduce((s, seg) => s + (seg.length || 0), 0);
 
-  const fmtLapTime = (sec: number) => {
-    const m = Math.floor(sec / 60);
-    const s = sec - m * 60;
-    return m > 0 ? `${m}:${s.toFixed(3).padStart(6, '0')}` : `${s.toFixed(3)}s`;
-  };
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
 
@@ -276,7 +270,8 @@ export function LapTimePanel({
           {(effectiveLayout.segments.reduce((s, seg) => s + seg.length, 0) / 1000).toFixed(3)} km
         </span>
         <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--accent-text)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>
-          {fmtLapTime(result.totalTimeSec)}
+          {fmtTime(result.totalTimeSec)}
+          <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--text-muted)', marginLeft: 6 }}>({result.totalTimeSec.toFixed(1)}s)</span>
         </span>
         <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>
           Top <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{result.maxSpeedKph.toFixed(0)} km/h</span>
@@ -322,7 +317,7 @@ export function LapTimePanel({
               <option key={k} value={k}>{TRACK_PRESETS[k].name}</option>
             ))}
           </optgroup>
-          <optgroup label="F1 / DTM">
+          <optgroup label="World Championship Circuits">
             {['monza', 'spa', 'silverstone', 'suzuka',
               'nurburgring_gp', 'bahrain', 'barcelona', 'hungaroring', 'montreal'].map(k => (
               <option key={k} value={k}>{TRACK_PRESETS[k].name}</option>
@@ -333,7 +328,7 @@ export function LapTimePanel({
               <option key={k} value={k}>{TRACK_PRESETS[k].name}</option>
             ))}
           </optgroup>
-          <optgroup label="European Touring (GPS)">
+          <optgroup label="International Circuits (GPS)">
             {['brands_hatch', 'hockenheim', 'spielberg', 'zandvoort', 'sao_paulo'].map(k => (
               <option key={k} value={k}>{TRACK_PRESETS[k].name}</option>
             ))}
@@ -373,7 +368,7 @@ export function LapTimePanel({
 
       {/* Setup optimiser */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent-text)', textTransform: 'uppercase', letterSpacing: '0.08em', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 4, marginBottom: 2 }}>
           Setup Optimiser
           <InfoTooltip text="Nelder-Mead optimisation over 7 setup parameters (springs, ARBs, aero, brake bias) to minimise lap time on the selected circuit. Spring/ARB effects are computed via load transfer → tyre load sensitivity → effective μ penalty." />
         </span>
@@ -407,6 +402,15 @@ export function LapTimePanel({
       <div style={{ fontSize: 9, color: 'var(--text-faint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
         Segment breakdown
       </div>
+      {/* Column headers */}
+      <div style={{ display: 'grid', gridTemplateColumns: '90px 48px 80px 48px 1fr 48px', alignItems: 'center', gap: 6, fontSize: 8, color: 'var(--text-faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        <span>Segment</span>
+        <span>Time</span>
+        <span>Speed</span>
+        <span>Length</span>
+        <span></span>
+        <span style={{ textAlign: 'right' }}>%</span>
+      </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         {result.segments.map((seg, i) => (
           <SegmentRow key={i} seg={seg} totalTime={result.totalTimeSec} />
@@ -416,7 +420,7 @@ export function LapTimePanel({
       {/* Race Simulation */}
       <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 10, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent-text)', textTransform: 'uppercase', letterSpacing: '0.08em', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 4, marginBottom: 2 }}>
             Race Simulation
             <InfoTooltip text="Multi-lap simulation with tyre thermal evolution and fuel burn. Tyre temp rises from cold start → optimal → degrades. μ follows a bell curve centred at optimal temp. Fuel mass reduction is modelled per-lap. Sectors split at 1/3 and 2/3 of track distance." />
           </span>
@@ -573,8 +577,7 @@ export function LapTimePanel({
       </div>
 
       <div style={{ fontSize: 9, color: 'var(--text-dim)', lineHeight: 1.5, marginTop: 4 }}>
-        Point-mass model — no gear shifts, no slip angle limits on straights.<br />
-        Accuracy improves with Stage 3–6 parameters tuned to the actual vehicle.
+        Point-mass lap sim · Pacejka tyre model · Gear model (Stage 10) · Combined slip (Stage 13) · Tyre thermal (Stage 11)
       </div>
     </div>
     </div>
@@ -770,6 +773,11 @@ function OptimResultCard({
         )}
         <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
           {fmtTime(result.baseTimeSec)} → {fmtTime(result.bestTimeSec)}
+          {improved && (
+            <span style={{ color: '#4ade80', fontWeight: 600, marginLeft: 6 }}>
+              Δ −{(result.baseTimeSec - result.bestTimeSec).toFixed(3)}s
+            </span>
+          )}
         </span>
         <span style={{ fontSize: 9, color: 'var(--text-dim)', marginLeft: 'auto' }}>{result.iterations} iterations</span>
         {improved && (
@@ -825,16 +833,16 @@ function SegmentRow({ seg, totalTime }: { seg: import('../physics/laptime').Segm
   const pct      = (seg.timeSec / totalTime) * 100;
   const color    = isCorner ? '#f87171' : '#60a5fa';
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '90px 48px 80px 1fr 48px', alignItems: 'center', gap: 6, fontSize: 10 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '90px 48px 80px 48px 1fr 48px', alignItems: 'center', gap: 6, fontSize: 10 }}>
       <span style={{ color: 'var(--text-secondary)', fontWeight: isCorner ? 600 : 400 }}>
         {seg.label}
-        {isCorner && seg.radius != null && (
-          <span style={{ color: 'var(--text-faint)', fontSize: 8, marginLeft: 4 }}>R={seg.radius}m</span>
-        )}
       </span>
       <span style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{fmtTime(seg.timeSec)}</span>
       <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', fontSize: 9 }}>
         {isCorner ? `${seg.minSpeedKph.toFixed(0)} km/h` : `${seg.minSpeedKph.toFixed(0)}→${seg.maxSpeedKph.toFixed(0)} km/h`}
+      </span>
+      <span style={{ color: 'var(--text-faint)', fontVariantNumeric: 'tabular-nums', fontSize: 9 }}>
+        {seg.length.toFixed(0)}m{isCorner && seg.radius != null ? ` · R${seg.radius}m` : ''}
       </span>
       <div style={{ height: 3, background: 'var(--border-subtle)', borderRadius: 2, overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 2 }} />

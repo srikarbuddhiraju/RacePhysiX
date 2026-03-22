@@ -8,7 +8,7 @@
  */
 
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ReferenceLine, ReferenceDot, ResponsiveContainer,
 } from 'recharts';
 import type { PacejkaResult, PhysicsResult } from '../physics/types';
@@ -72,7 +72,7 @@ export function HandlingDiagram({ pacejka, bicycle }: Props) {
           <XAxis
             dataKey="ayG"
             type="number"
-            tickFormatter={(v: number) => v.toFixed(2)}
+            tickFormatter={(v: number) => v.toFixed(1)}
             tick={{ fill: '#5a5a7a', fontSize: 10 }}
             label={{ value: 'Lat. accel. ay (g)', position: 'insideBottom', offset: -2, fill: '#4a4a6a', fontSize: 10 }}
           />
@@ -80,7 +80,7 @@ export function HandlingDiagram({ pacejka, bicycle }: Props) {
             domain={[-yRange, yRange]}
             tickFormatter={(v: number) => v.toFixed(1)}
             tick={{ fill: '#5a5a7a', fontSize: 10 }}
-            label={{ value: 'δ steer (deg)', angle: -90, position: 'insideLeft', offset: 10, fill: '#4a4a6a', fontSize: 10 }}
+            label={{ value: 'δ − L/R (deg)', angle: -90, position: 'insideLeft', offset: 10, fill: '#4a4a6a', fontSize: 10 }}
           />
 
           <Tooltip
@@ -88,6 +88,8 @@ export function HandlingDiagram({ pacejka, bicycle }: Props) {
             formatter={(value: unknown, name: unknown) => [`${Number(value).toFixed(3)}°`, String(name)]}
             labelFormatter={(label: unknown) => `ay = ${Number(label).toFixed(3)} g`}
           />
+
+          <Legend wrapperStyle={{ fontSize: 10, color: '#5a5a7a' }} iconType="line" />
 
           {/* Zero-correction reference */}
           <ReferenceLine y={0} stroke="#2a2a3a" strokeWidth={1} />

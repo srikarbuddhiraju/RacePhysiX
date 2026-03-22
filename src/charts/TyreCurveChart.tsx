@@ -35,7 +35,7 @@ export function TyreCurveChart({ result }: Props) {
 
   return (
     <div className="chart-block">
-      <div className="chart-title">Lateral Force Curve (Fy)</div>
+      <div className="chart-title">Pacejka Lateral Force — Fy vs Slip Angle α</div>
       <div className="chart-sub">Lateral force vs slip angle · front (blue) / rear (red)</div>
       <ResponsiveContainer width="100%" height={200}>
         <LineChart data={curveData} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>

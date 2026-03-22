@@ -829,8 +829,8 @@ function ViewLegend({ fyFrontColor, fyRearColor, balance, darkMode = true }: {
       </span>
       <LegendItem icon={<ArrowSvg color="#22d3ee" />} label="Wheel heading" />
       <LegendItem icon={<ArrowSvg color="#fde68a" />} label="Contact velocity (gap = α)" />
-      <LegendItem icon={<ArrowSvg color={fyFrontColor} />} label={`Front Fy (${balanceNote}) · blue=US red=OS`} />
-      <LegendItem icon={<ArrowSvg color={fyRearColor}  />} label="Rear Fy" />
+      <LegendItem icon={<ArrowSvg color={fyFrontColor} />} label={`Front Fy (${balanceNote}) · blue=understeer`} />
+      <LegendItem icon={<ArrowSvg color={fyRearColor}  />} label="Rear Fy (red=oversteer)" />
       <LegendItem icon={<ArrowSvg color="#60a5fa" />} label="Speed" />
       <LegendItem icon={<DotSvg   color="#facc15" />} label="CG" />
       <LegendItem icon={<DotSvg   color="#3a607a" />} label="Turn centre" />
@@ -895,7 +895,7 @@ function TyreCompoundBadge({ mu }: { mu: number }) {
             {compound.name}
           </div>
           <div style={{ fontSize: 8, color: 'var(--text-faint)', marginTop: 1 }}>
-            peak &mu; = {mu.toFixed(2)}
+            peak μ = {mu.toFixed(2)}
           </div>
         </div>
       </div>
@@ -947,7 +947,7 @@ function CornerBar({ label, fz, max, staticFz }: { label: string; fz: number; ma
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, marginBottom: 2 }}>
         <span style={{ color: 'var(--text-faint)' }}>{label}</span>
-        <span style={{ color, fontVariantNumeric: 'tabular-nums' }}>{(fz / 1000).toFixed(2)}k</span>
+        <span style={{ color, fontVariantNumeric: 'tabular-nums' }}>{(fz / 1000).toFixed(2)} kN</span>
       </div>
       <div style={{ height: 3, background: 'var(--border-subtle)', borderRadius: 2, overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 2 }} />
@@ -967,7 +967,7 @@ function CornerLoadGauges({ pacejka, params }: { pacejka: PacejkaResult; params:
       borderRadius: 6, padding: '6px 8px', minWidth: 112,
     }}>
       <div style={{ fontSize: 8, color: 'var(--text-faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>
-        Corner loads
+        Corner loads (kN)
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px 10px' }}>
         <CornerBar label="FL" fz={FzFL} max={maxFz} staticFz={staticFz} />

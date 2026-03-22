@@ -96,3 +96,8 @@
   color: var(--text-primary);
   border-color: var(--accent);
 }
+
+@keyframes pulse-border {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(100,102,241,0.5); border-color: #6466f1; }
+  50%       { box-shadow: 0 0 0 3px rgba(100,102,241,0.0); border-color: #a0a0ff; }
+}

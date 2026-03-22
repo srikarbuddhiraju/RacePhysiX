@@ -1,11 +1,11 @@
-# Mechanics Fundamentals — ApexSim Physics Reference
+# Mechanics Fundamentals — RacePhysiX Physics Reference
 *Reference for Claude. Validates against: Milliken & Milliken (Race Car Vehicle Dynamics), Gillespie (Fundamentals of Vehicle Dynamics)*
 
 ---
 
-## Coordinate System — SAE J670 (chosen for ApexSim)
+## Coordinate System — SAE J670 (chosen for RacePhysiX)
 
-**ApexSim uses the SAE coordinate system.**
+**RacePhysiX uses the SAE coordinate system.**
 
 | Axis | Direction | Positive sense |
 |------|-----------|----------------|

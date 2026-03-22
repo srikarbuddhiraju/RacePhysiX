@@ -1,4 +1,4 @@
-# Tyre Model — Pacejka Magic Formula — ApexSim Physics Reference
+# Tyre Model — Pacejka Magic Formula — RacePhysiX Physics Reference
 *Reference for Claude. Validates against: Pacejka (Tyre and Vehicle Dynamics), Milliken & Milliken Appendix*
 
 ---

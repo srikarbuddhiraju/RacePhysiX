@@ -1,4 +1,4 @@
-# ConvoQA — ApexSim Decisions & Open Questions
+# ConvoQA — RacePhysiX Decisions & Open Questions
 
 Running log. Most recent session at top.
 
@@ -92,7 +92,7 @@ Running log. Most recent session at top.
 
 ### Decisions Made
 - **Tech stack**: Locked — TypeScript + React + Vite + Three.js + Recharts
-- **Hosting**: Cloudflare Pages — `apexsim.srikarbuddhiraju.com`
+- **Hosting**: Cloudflare Pages — `racephysix.srikarbuddhiraju.com`
 - **Validation standard**: 18 checks pass — Stages 1–3 (Gillespie) + Stages 4–6 (hand-calc)
 - **Export format**: CSV (params + results) + SVG (chart)
 - **URL sharing**: btoa/atob over JSON.stringify(params)
@@ -104,7 +104,7 @@ Running log. Most recent session at top.
 ## Session 1 — 2026-03-15
 
 ### Decisions Made
-- **Project name**: ApexSim
+- **Project name**: RacePhysiX
 - **Physics accuracy standard**: Validate against Milliken & Milliken AND real-world data
 - **Session start checklist**: ConvoQAClaude.md + lessons.md + LatestTask.md
 - **Physics reference docs**: `docs/physics-reference/`, 200-line limit each

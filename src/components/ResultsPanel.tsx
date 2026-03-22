@@ -68,8 +68,8 @@ export function ResultsPanel({ result, pacejka }: Props) {
       <div className="metrics-grid">
         <Metric
           label="Lat. acceleration"
-          value={result.lateralAccelerationG.toFixed(3)}
-          sub={<>g <span style={{ fontSize: 9, color: 'var(--text-faint)' }}>({(result.lateralAccelerationG * 9.81).toFixed(2)} m/s²)</span></>}
+          value={`${result.lateralAccelerationG.toFixed(3)}g`}
+          sub={<><span style={{ fontSize: 9, color: 'var(--text-faint)' }}>({(result.lateralAccelerationG * 9.81).toFixed(2)} m/s²)</span></>}
           tip="Centripetal acceleration in the corner = V²/R divided by g. At 1g the car is at the grip limit of a typical road tyre. This drives all lateral tyre forces."
         />
         <Metric

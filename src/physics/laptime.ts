@@ -130,7 +130,7 @@ export const TRACK_PRESETS: Record<string, TrackLayout> = {
       { type: 'straight', length: 75                                               },
       { type: 'corner',   length: 18,  radius: 55, direction: 'right', label: 'Ascari T3'      },  // racing line R
       { type: 'straight', length: 200                                               },  // short run to Parabolica
-      { type: 'corner',   length: 208, radius: 48, direction: 'left',  label: 'Parabolica'     },  // long left sweep (~153°) — tightened to real racing line R
+      { type: 'corner',   length: 208, radius: 80, direction: 'left',  label: 'Parabolica'     },  // R80m, ~149° sweep — real Parabolica geometry
       { type: 'straight', length: 1538, label: 'Pit straight'                     },  // reduced 200m to maintain 5793m total
     ],
   },
