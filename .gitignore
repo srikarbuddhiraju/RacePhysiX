@@ -4,3 +4,4 @@ dist
 *.local
 .env
 docs/marketing.md
+docs/Textbooks/
