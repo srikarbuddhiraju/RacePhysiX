@@ -20,9 +20,11 @@ import './App.css';
 function encodeParams(p: VehicleParams): string {
   const diff: Partial<VehicleParams> = {};
   let hasDiff = false;
+  const pRec = p as unknown as Record<string, unknown>;
+  const dRec = DEFAULT_PARAMS as unknown as Record<string, unknown>;
   for (const key of Object.keys(DEFAULT_PARAMS) as (keyof VehicleParams)[]) {
-    if ((p as Record<string, unknown>)[key] !== (DEFAULT_PARAMS as Record<string, unknown>)[key]) {
-      (diff as Record<string, unknown>)[key] = (p as Record<string, unknown>)[key];
+    if (pRec[key] !== dRec[key]) {
+      (diff as unknown as Record<string, unknown>)[key] = pRec[key];
       hasDiff = true;
     }
   }
