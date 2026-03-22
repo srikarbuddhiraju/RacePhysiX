@@ -26,18 +26,27 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 - Reset button in Vehicle row — restores all params + Pacejka coeffs, clears URL hash
 - All 21 physics checks pass, 0 TS errors
 
+**Also this session:**
+- Security audit: 0 vulnerabilities, no XSS vectors, no secrets, no external calls
+- Removed copyrighted textbook PDFs from git history (git filter-repo + force push)
+- Added `docs/Textbooks/` and `docs/marketing.md` to .gitignore
+- Created `docs/marketing.md` (private, gitignored) — working doc for marketing strategy
+- Discussed marketing: phases 1–4, target audiences, content ideas, community seeding plan
+
 ### State
-- All on `main`, pushed, Cloudflare Pages auto-deployed (commit `9148667`)
+- All on `main`, pushed, Cloudflare Pages auto-deployed (commit `eb1e3e1`)
 - Dev server: `http://localhost:5173/`
 - Physics: 21/21 checks pass | 424/424 extended tests pass
-- 0 TypeScript errors
+- 0 TypeScript errors, 0 npm vulnerabilities
+- Git history clean — no PDFs, no secrets
 
 ### Next session plan
 1. **Browser verify** — end-to-end check all Stages 23–36 in UI (speeds, compound selector, strategy optimizer, ERS, multi-car comparison)
 2. **Stage 37** — Track banking/elevation (lateral g correction on banked corners, gradient drag/assist on hills)
 3. **Stage 38** — Data export (CSV/JSON download of lap + race simulation data)
 4. **Stage 39** — Telemetry replay (upload CSV from data logger, overlay vs sim)
-5. **Docs update** — README + all user-facing docs updated after Stages 37–39 complete
+5. **Docs + README** — User-facing docs, README, in-app landing copy (prerequisite for marketing)
+6. **Marketing Phase 1** — Screenshots/GIF, first Reddit post (see `docs/marketing.md`)
 
 ---
 
