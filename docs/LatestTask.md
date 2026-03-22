@@ -36,11 +36,12 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 - Build: 718 modules, 0 TypeScript errors
 - All 4 presets carry all Stage 18–36 fields
 
-### Next session candidates
-- Browser verify all new stages end-to-end
-- Stage 37: track banking/elevation
-- Stage 38: data export (CSV/JSON lap + race data)
-- Stage 39: telemetry replay (upload real data, compare vs sim)
+### Next session plan
+1. **Browser verify** — end-to-end check all Stages 23–36 in UI
+2. **Stage 37** — Track banking/elevation (lateral g correction, gradient drag/assist)
+3. **Stage 38** — Data export (CSV/JSON lap + race data download)
+4. **Stage 39** — Telemetry replay (upload CSV from data logger, overlay vs sim)
+5. **Docs update** — After all technical changes: update README + all user-facing docs to reflect Stages 23–39
 
 ---
 
