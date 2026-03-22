@@ -4,9 +4,33 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
+## Session 21 — 2026-03-22  |  branch: `main` (merged)
+
+### Status: COMPLETE ✅
+
+### Changes shipped (feat/ui-premium-seo-physics-fixes):
+
+**Physics:** Monza Parabolica radius fixed (48→80m, was 248° sweep). F3 lap time bounds added for 5 TUMFTM circuits. 424/424 tests pass.
+
+**SEO:** `public/` created with `_redirects` (SPA routing), `robots.txt`, `sitemap.xml`, `_headers`. Meta description, Open Graph, Twitter Card, JSON-LD added to `index.html`. `package.json` description/keywords added. README updated with Formula Student.
+
+**TrackVisualiser:** Live lap timer · Lat G bar left=blue/right=pink · RPM clamped to redline · Zone legend backing card · S/F marker · GPS V[0]=V[N] fix · RAF dt cap (200ms).
+
+**LapTimePanel:** `▶ Animate Circuit` button with pulse animation · Dual lap time (mm:ss.s + raw s) · Segment breakdown column headers + length + radius columns · Circuit group labels fixed · Section headings upgraded · Δ delta after optimise · Disclaimer updated.
+
+**ParameterPanel:** New "Tyres & Fuel" 4th tab · Torque split label · (−) unit markers for dimensionless sliders · GT preset CL 0.90→1.90.
+
+**Charts/Results/TopDown:** Handling diagram Y-axis fixed (δ−L/R) + Legend added · Time Domain axis labels · Lateral g inline unit · TopDownView legend corrected · Corner loads kN · μ symbol fixed · Default aero → Road preset.
+
+### Open
+- [ ] Browser verify: all panels, new Tyres & Fuel tab, live timer, dual lap time, S/F marker
+- [ ] Deploy to Cloudflare Pages
+
+---
+
 ## Session 20 — 2026-03-21  |  branch: `feature/stage16-gps-circuit-maps`
 
-### Status: READY TO MERGE — browser verify pending (user action)
+### Status: COMPLETE (merged)
 
 ### ✅ 5 TUMFTM GPS circuits added (Session 20)
 
