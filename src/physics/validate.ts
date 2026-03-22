@@ -78,6 +78,8 @@ const BASE: VehicleParams = {
   tyreCompound: 'medium',
   altitudeM: 0, ambientTempC: 20, windSpeedKph: 0, windAngleDeg: 0,
   driverAggression: 0.5,
+  diffType: 'open', lsdLockingPercent: 0,
+  brakeDiscMassKg: 6.0, brakeOptTempC: 400, brakeHalfWidthC: 200, brakeFloorMu: 0.65,
 };
 
 let allPassed = true;

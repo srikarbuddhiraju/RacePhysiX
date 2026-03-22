@@ -16,6 +16,7 @@
  */
 
 import { tyreWearFactor, tyreLifeFraction, type TyreCompound } from './tyreWear';
+import { brakeFadeFactorFromTemp, brakeHeatRisePerLap, brakeDiscCoolingPerLap } from './brakeTemp';
 
 const G       = 9.81;
 const RHO_AIR = 1.225;   // kg/m³
@@ -819,6 +820,15 @@ export interface LapSimInput {
   tyreCompound?:     string;    // compound for wear model
   // ── Stage 25 — Driver aggression ─────────────────────────────────────────
   driverAggression?: number;    // 0–1
+  // ── Stage 26 — Differential model ────────────────────────────────────────
+  diffTractionFactor?:  number;   // 0.5–1.0 — drive force efficiency from diff type
+  diffYawMomentNm?:     number;   // Nm — yaw moment from diff (display only)
+  // ── Stage 27 — Brake temperature (race sim inputs) ───────────────────────
+  brakeDiscMassKg?:     number;
+  brakeOptTempC?:       number;
+  brakeHalfWidthC?:     number;
+  brakeFloorMu?:        number;
+  ambientTempC?:        number;
 }
 
 // ── Per-segment and lap result ────────────────────────────────────────────────
@@ -1117,6 +1127,8 @@ export interface LapData {
   gapToFastestSec:   number;    // delta to fastest lap (0 for the fastest lap itself)
   tyreWearFraction:  number;    // 0 = new tyre, 1 = past cliff (Stage 23)
   wearFactor:        number;    // mechanical μ multiplier from wear (0.55–1.0) (Stage 23)
+  brakeDiscTempC:    number;    // brake disc temperature at end of lap (Stage 27)
+  brakeFadeFactor:   number;    // braking μ fraction from thermal fade (1.0 = no fade) (Stage 27)
 }
 
 export interface RaceResult {
@@ -1155,6 +1167,11 @@ export function simulateRace(
   const laps: LapData[] = [];
   let tyreTempC = startTyreTempC;
 
+  // Stage 27: Brake temperature (start slightly warm — formation lap preheats)
+  const startBrakeTempC = (baseInp.ambientTempC ?? 20) + 40;
+  let brakeDiscTempC = startBrakeTempC;
+  let brakeFade = 1.0;  // brake fade factor for THIS lap (computed from previous lap's temp)
+
   for (let lap = 1; lap <= numLaps; lap++) {
     // Stage 25: Aggression affects tyre heating rate
     const aggression     = baseInp.driverAggression ?? 0.5;
@@ -1187,11 +1204,37 @@ export function simulateRace(
 
     const lapInp: LapSimInput = {
       ...baseInp,
-      mass:    Math.max(lapMass, baseInp.mass * 0.5),  // safety floor
-      peakMu:  baseInp.peakMu * muFraction * wearFactor,
+      mass:         Math.max(lapMass, baseInp.mass * 0.5),  // safety floor
+      peakMu:       baseInp.peakMu * muFraction * wearFactor,
+      brakingCapG:  baseInp.brakingCapG * brakeFade,        // Stage 27: brake fade
     };
 
     const lapResult = computeLapTime(layout, lapInp);
+
+    // Stage 27: Brake temperature evolution (update AFTER lap, used next lap)
+    const heatRise = brakeHeatRisePerLap(
+      lapInp.mass,
+      lapInp.brakingCapG,
+      lapResult.totalLengthM,
+      baseInp.brakeDiscMassKg ?? 6.0,
+    );
+    const cooling = brakeDiscCoolingPerLap(
+      brakeDiscTempC,
+      baseInp.ambientTempC ?? 20,
+      lapResult.totalTimeSec,
+      lapInp.brakingCapG,
+    );
+    brakeDiscTempC = Math.max(
+      baseInp.ambientTempC ?? 20,
+      brakeDiscTempC + heatRise - cooling,
+    );
+    // Compute brakeFade for NEXT lap from this lap's end temperature
+    brakeFade = brakeFadeFactorFromTemp(
+      brakeDiscTempC,
+      baseInp.brakeOptTempC  ?? 400,
+      baseInp.brakeHalfWidthC ?? 200,
+      baseInp.brakeFloorMu   ?? 0.65,
+    );
 
     // Sector splits at 1/3 and 2/3 of total distance
     const totalLen  = lapResult.totalLengthM;
@@ -1244,6 +1287,8 @@ export function simulateRace(
       tyreTempC, muFraction, fuelMassKg,
       tyreWearFraction: lifeFrac,
       wearFactor,
+      brakeDiscTempC,
+      brakeFadeFactor: brakeFade,
       gapToFastestSec: 0,  // filled below
     });
   }

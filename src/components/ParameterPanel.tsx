@@ -213,6 +213,51 @@ export function ParameterPanel({ params, onChange, powerUnit, onPowerUnitChange 
             return <span>{style} · Tyre wear rate: {wearMod} of base · Heat rate: {((1 + 0.4 * a)).toFixed(2)}×</span>;
           })()}
         </div>
+
+        <div className="param-section-label">Differential (Stage 26)</div>
+        <div style={{ display: 'flex', gap: 4, padding: '4px 0 4px 0', flexWrap: 'wrap' }}>
+          {(['open', 'lsd', 'locked'] as const).map(d => {
+            const active = (params.diffType ?? 'open') === d;
+            return (
+              <button key={d}
+                onClick={() => onChange({ ...params, diffType: d })}
+                style={{
+                  padding: '3px 12px', fontSize: 10, fontWeight: active ? 700 : 400,
+                  background: active ? 'rgba(99,102,241,0.20)' : 'transparent',
+                  border: `1px solid ${active ? '#6366f1' : 'var(--border-color)'}`,
+                  borderRadius: 4,
+                  color: active ? '#a5b4fc' : 'var(--label-color)',
+                  cursor: 'pointer', textTransform: 'capitalize',
+                }}>
+                {d === 'lsd' ? 'LSD' : d.charAt(0).toUpperCase() + d.slice(1)}
+              </button>
+            );
+          })}
+        </div>
+        {(params.diffType ?? 'open') === 'lsd' && (
+          <SliderRow cfg={{ label: 'LSD locking', key: 'lsdLockingPercent', min: 0, max: 100, step: 5, unit: '%', format: v => `${v.toFixed(0)}%`, tip: 'LSD locking coefficient. 0% = fully open (no locking torque). 100% = fully locked. Typical race LSD: 60–80%. Higher = better exit traction, more oversteer tendency (rear diff).' }} params={params} set={set} />
+        )}
+        <div className="param-derived">
+          {(() => {
+            const G = 9.81;
+            const diffT = params.diffType ?? 'open';
+            const κ = (params.lsdLockingPercent ?? 0) / 100;
+            const rearFrac = 1 - params.frontWeightFraction;
+            const FzAxle = params.drivetrainType === 'FWD'
+              ? params.mass * G * params.frontWeightFraction
+              : params.mass * G * rearFrac;
+            const ΔFz = Math.min(FzAxle * 0.45, params.mass * 0.9 * 0.7 * G * params.cgHeight / params.trackWidth);
+            let η = diffT === 'locked' ? 1.0 : diffT === 'lsd' ? 1 - 2*ΔFz*(1-κ)/FzAxle : 1 - 2*ΔFz/FzAxle;
+            η = Math.max(0.5, Math.min(1.0, η));
+            const yawSign = params.drivetrainType === 'FWD' ? '↙ understeer' : '↗ oversteer assist';
+            return (
+              <span>
+                Exit traction: <strong>{(η * 100).toFixed(0)}%</strong> of locked ·{' '}
+                Yaw: {diffT === 'open' ? 'none' : yawSign}
+              </span>
+            );
+          })()}
+        </div>
       </>}
 
       {/* ── Suspension tab ─────────────────────────────────────────────────── */}
@@ -301,6 +346,28 @@ export function ParameterPanel({ params, onChange, powerUnit, onPowerUnitChange 
             })()}
           </div>
         )}
+
+        <div className="param-section-label">Brake Temperature (Stage 27)</div>
+        <SliderRow cfg={{ label: 'Disc mass', key: 'brakeDiscMassKg', min: 2, max: 14, step: 0.5, unit: 'kg', format: v => v.toFixed(1), tip: 'Total disc mass across all 4 corners. Road car: 8–12 kg. Race car: 3–6 kg. Heavier discs store more heat energy before temperature rises (higher thermal mass).' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Optimal temp', key: 'brakeOptTempC', min: 100, max: 900, step: 25, unit: '°C', format: v => v.toFixed(0), tip: 'Disc temperature for peak braking performance. Road brake pads: 200–400°C. Performance pads: 400–600°C. Carbon-ceramic race brakes: 600–900°C. Too cold or too hot → fade.' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Fade width', key: 'brakeHalfWidthC', min: 50, max: 400, step: 25, unit: '°C', format: v => v.toFixed(0), tip: 'Gaussian half-width of fade curve. Narrow = temperature-sensitive brakes (e.g. carbon ceramic: ±100°C). Wide = more forgiving (road pads: ±200–250°C).' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Fade floor', key: 'brakeFloorMu', min: 0.30, max: 0.90, step: 0.05, unit: '(−)', format: v => v.toFixed(2), tip: 'Minimum braking μ fraction when brakes are far outside their optimal temperature window. 0.65 = retains 65% braking performance when cold or overheated.' }} params={params} set={set} />
+        <div className="param-derived">
+          {(() => {
+            const G = 9.81;
+            const cp = 460;
+            const brakingFrac = 0.17;
+            const lapLen = 3000; // rough 3km estimate
+            const brakingG = params.brakingG > 0 ? params.brakingG : 1.0;
+            const E = params.mass * brakingG * G * lapLen * brakingFrac;
+            const dT = E / ((params.brakeDiscMassKg ?? 6) * cp);
+            return (
+              <span>
+                Est. heat rise/lap: <strong>+{dT.toFixed(0)} °C</strong> · Opt window: {(params.brakeOptTempC ?? 400) - (params.brakeHalfWidthC ?? 200)}–{(params.brakeOptTempC ?? 400) + (params.brakeHalfWidthC ?? 200)} °C
+              </span>
+            );
+          })()}
+        </div>
 
         <div className="param-section-label">Ambient Conditions (Stage 24)</div>
         <SliderRow cfg={{ label: 'Altitude', key: 'altitudeM', min: 0, max: 5000, step: 50, unit: 'm', format: v => v.toFixed(0), tip: 'Circuit altitude above sea level. Higher altitude = lower air density = less drag AND less downforce. Mexico City: 2240m, Spa: 430m, sea level: 0m.' }} params={params} set={set} />

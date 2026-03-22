@@ -7,6 +7,7 @@ import { computeMaxDriveForce, computeMaxSpeed } from './gearModel';
 import type { VehicleParams, PacejkaCoeffs }     from './types';
 import type { LapSimInput }                       from './laptime';
 import { airDensity, headwindMs as computeHeadwind, crosswindLateralForceN } from './ambient';
+import { diffTractionFactor, diffYawMoment, type DiffType } from './differential';
 
 const G       = 9.81;
 
@@ -44,6 +45,25 @@ export function buildLapSimInput(params: VehicleParams, coeffs: PacejkaCoeffs): 
 
   const DEG_TO_RAD = Math.PI / 180;
 
+  // Stage 26: Differential model — traction efficiency and yaw moment
+  const diffFactor = diffTractionFactor({
+    mass, peakMu: peakMuWithWind,
+    cgHeight: params.cgHeight, trackWidth: params.trackWidth,
+    frontWeightFraction: params.frontWeightFraction,
+    drivetrainType: params.drivetrainType,
+    diffType: (params.diffType ?? 'open') as DiffType,
+    lsdLockingPercent: params.lsdLockingPercent ?? 0,
+  });
+
+  const diffYawNm = diffYawMoment({
+    mass, peakMu: peakMuWithWind,
+    cgHeight: params.cgHeight, trackWidth: params.trackWidth,
+    frontWeightFraction: params.frontWeightFraction,
+    drivetrainType: params.drivetrainType,
+    diffType: (params.diffType ?? 'open') as DiffType,
+    lsdLockingPercent: params.lsdLockingPercent ?? 0,
+  });
+
   return {
     mass,
     peakMu:            peakMuWithWind,
@@ -55,7 +75,7 @@ export function buildLapSimInput(params: VehicleParams, coeffs: PacejkaCoeffs): 
       const Veff = V + headWind;  // headwind adds to effective airspeed
       return 0.5 * rhoAir * Veff * Veff * aeroReferenceArea * aeroCD;
     },
-    driveForce:        (V: number) => computeMaxDriveForce(V, params),
+    driveForce:        (V: number) => computeMaxDriveForce(V, params) * diffFactor,
     combSlipBrakeFrac: 0.4,
     frontCaNPerRad:    corneringStiffnessNPerDeg / DEG_TO_RAD,
     rearCaNPerRad:     (rearCorneringStiffnessNPerDeg ?? corneringStiffnessNPerDeg) / DEG_TO_RAD,
@@ -64,5 +84,12 @@ export function buildLapSimInput(params: VehicleParams, coeffs: PacejkaCoeffs): 
     headwindMs:        headWind,
     tyreCompound:      params.tyreCompound ?? 'medium',
     driverAggression:  params.driverAggression ?? 0.5,
+    diffTractionFactor: diffFactor,
+    diffYawMomentNm:    diffYawNm,
+    brakeDiscMassKg:    params.brakeDiscMassKg ?? 6.0,
+    brakeOptTempC:      params.brakeOptTempC   ?? 400,
+    brakeHalfWidthC:    params.brakeHalfWidthC ?? 200,
+    brakeFloorMu:       params.brakeFloorMu    ?? 0.65,
+    ambientTempC:       params.ambientTempC    ?? 20,
   };
 }

@@ -67,6 +67,14 @@ export interface VehicleParams {
   windAngleDeg:    number;           // deg — 0=headwind, 90=crosswind, 180=tailwind
   // ── Stage 25 — Driver model ──────────────────────────────────────────────────
   driverAggression: number;          // 0.0 (cautious) – 1.0 (pushing hard)
+  // ── Stage 26 — Differential model ───────────────────────────────────────────
+  diffType:            string;       // 'open' | 'lsd' | 'locked'
+  lsdLockingPercent:   number;       // 0–100 — LSD locking coefficient (only used if diffType === 'lsd')
+  // ── Stage 27 — Brake temperature model ──────────────────────────────────────
+  brakeDiscMassKg:     number;       // kg — total disc mass (all 4 corners combined)
+  brakeOptTempC:       number;       // °C — optimal brake disc operating temperature (peak friction)
+  brakeHalfWidthC:     number;       // °C — Gaussian half-width (fade severity)
+  brakeFloorMu:        number;       // 0–1 — minimum braking μ fraction at extreme temperatures
 }
 
 export type Balance = 'understeer' | 'neutral' | 'oversteer';
