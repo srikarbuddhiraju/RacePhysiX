@@ -115,8 +115,9 @@ export function ParameterPanel({ params, onChange, powerUnit, onPowerUnitChange 
 
   return (
     <div className="param-panel">
-      <div className="param-title">RacePhysiX</div>
-      <div className="param-subtitle">Vehicle Dynamics Simulator</div>
+      {/* Logo — CSS swaps dark/light variant based on data-theme */}
+      <img src="/logo-dark.png"  className="logo-dark-theme"  alt="RacePhysiX" style={{ height: 36, width: 'auto', marginBottom: 12 }} />
+      <img src="/logo-light.png" className="logo-light-theme" alt="RacePhysiX" style={{ height: 36, width: 'auto', marginBottom: 12 }} />
 
       {/* ── Tab bar ────────────────────────────────────────────────────────── */}
       <div className="param-tabs">
