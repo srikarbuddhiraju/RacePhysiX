@@ -1,0 +1,529 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="3000"
+   height="1000"
+   viewBox="0 0 793.74997 264.58334"
+   version="1.1"
+   id="svg1"
+   sodipodi:docname="RacePhysiX"
+   inkscape:version="1.4.3 (0d15f75042, 2025-12-25)"
+   inkscape:export-filename="RacePhysiX.png"
+   inkscape:export-xdpi="300"
+   inkscape:export-ydpi="300"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#999999"
+     borderopacity="1"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="px"
+     showguides="true"
+     showgrid="true"
+     inkscape:zoom="1.0271535"
+     inkscape:cx="1969.0339"
+     inkscape:cy="403.54242"
+     inkscape:window-width="2560"
+     inkscape:window-height="1371"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs1">
+    <pattern
+       inkscape:collect="always"
+       xlink:href="#pattern35"
+       preserveAspectRatio="xMidYMid"
+       id="pattern41"
+       patternTransform="matrix(0.26458333,0,0,0.26458333,629.76002,233.58835)" />
+    <pattern
+       inkscape:collect="always"
+       xlink:href="#pattern35-64"
+       preserveAspectRatio="xMidYMid"
+       id="pattern39"
+       patternTransform="matrix(0.26458333,0,0,0.26458333,121.9555,-541.2028)" />
+    <pattern
+       inkscape:collect="always"
+       xlink:href="#pattern35-6"
+       preserveAspectRatio="xMidYMid"
+       id="pattern38"
+       patternTransform="matrix(0.26458333,0,0,0.26458333,-127.12035,729.90299)" />
+    <pattern
+       inkscape:collect="always"
+       xlink:href="#pattern35-5"
+       preserveAspectRatio="xMidYMid"
+       id="pattern37"
+       patternTransform="matrix(0.26458333,0,0,0.26458333,-636.52856,-21.803552)" />
+    <pattern
+       inkscape:collect="always"
+       xlink:href="#pattern33"
+       preserveAspectRatio="xMidYMid"
+       id="pattern36"
+       patternTransform="translate(-6.6406251e-6)" />
+    <pattern
+       inkscape:collect="always"
+       xlink:href="#pattern31"
+       preserveAspectRatio="xMidYMid"
+       id="pattern34"
+       patternTransform="translate(-6.6406251e-6)" />
+    <pattern
+       inkscape:collect="always"
+       xlink:href="#pattern30"
+       preserveAspectRatio="xMidYMid"
+       id="pattern32"
+       patternTransform="translate(-6.6406251e-6)" />
+    <pattern
+       patternUnits="userSpaceOnUse"
+       width="24.577468"
+       height="21.455389"
+       patternTransform="translate(2356.7893,882.85363)"
+       preserveAspectRatio="xMidYMid"
+       id="pattern30">
+      <path
+         sodipodi:type="star"
+         style="fill:#f16e00;fill-opacity:1;fill-rule:nonzero;stroke:#000000;stroke-width:0;stroke-linecap:square;stroke-linejoin:miter;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:markers fill stroke"
+         id="path30"
+         inkscape:flatsided="true"
+         sodipodi:sides="3"
+         sodipodi:cx="319.11429"
+         sodipodi:cy="21.128571"
+         sodipodi:r1="26.2311"
+         sodipodi:r2="13.11555"
+         sodipodi:arg1="1.5569083"
+         sodipodi:arg2="2.6041059"
+         inkscape:rounded="0"
+         inkscape:randomized="2.7755576e-17"
+         d="M 319.47857,47.357141 296.21754,8.3297667 341.64675,7.698804 Z"
+         inkscape:transform-center-x="0.026076669"
+         inkscape:transform-center-y="0.91601461"
+         transform="matrix(0.54100577,0,0,0.54100577,-160.2554,-4.1650974)" />
+    </pattern>
+    <pattern
+       patternUnits="userSpaceOnUse"
+       width="24.577469"
+       height="21.455389"
+       patternTransform="translate(2356.7893,882.85363)"
+       preserveAspectRatio="xMidYMid"
+       id="pattern31">
+      <rect
+         style="fill:url(#pattern32);stroke:none"
+         width="24.577469"
+         height="21.455389"
+         x="0"
+         y="0"
+         id="rect30" />
+    </pattern>
+    <pattern
+       patternUnits="userSpaceOnUse"
+       width="24.577469"
+       height="21.455389"
+       patternTransform="translate(2356.7893,882.85363)"
+       preserveAspectRatio="xMidYMid"
+       id="pattern33">
+      <rect
+         style="fill:url(#pattern34);stroke:none"
+         width="24.577469"
+         height="21.455389"
+         x="0"
+         y="0"
+         id="rect32" />
+    </pattern>
+    <pattern
+       patternUnits="userSpaceOnUse"
+       width="24.577469"
+       height="21.455389"
+       patternTransform="translate(2356.7893,882.85363)"
+       preserveAspectRatio="xMidYMid"
+       id="pattern35">
+      <rect
+         style="fill:url(#pattern36);stroke:none"
+         width="24.577469"
+         height="21.455389"
+         x="0"
+         y="0"
+         id="rect34" />
+    </pattern>
+    <pattern
+       patternUnits="userSpaceOnUse"
+       width="24.577469"
+       height="21.455389"
+       patternTransform="translate(2356.7893,882.85363)"
+       preserveAspectRatio="xMidYMid"
+       id="pattern35-5">
+      <rect
+         style="fill:url(#pattern36-7);stroke:none"
+         width="24.577469"
+         height="21.455389"
+         x="0"
+         y="0"
+         id="rect34-6" />
+    </pattern>
+    <pattern
+       inkscape:collect="always"
+       xlink:href="#pattern33-7"
+       preserveAspectRatio="xMidYMid"
+       id="pattern36-7"
+       patternTransform="translate(-6.6406251e-6)" />
+    <pattern
+       patternUnits="userSpaceOnUse"
+       width="24.577469"
+       height="21.455389"
+       patternTransform="translate(2356.7893,882.85363)"
+       preserveAspectRatio="xMidYMid"
+       id="pattern33-7">
+      <rect
+         style="fill:url(#pattern34-0);stroke:none"
+         width="24.577469"
+         height="21.455389"
+         x="0"
+         y="0"
+         id="rect32-4" />
+    </pattern>
+    <pattern
+       inkscape:collect="always"
+       xlink:href="#pattern31-6"
+       preserveAspectRatio="xMidYMid"
+       id="pattern34-0"
+       patternTransform="translate(-6.6406251e-6)" />
+    <pattern
+       patternUnits="userSpaceOnUse"
+       width="24.577469"
+       height="21.455389"
+       patternTransform="translate(2356.7893,882.85363)"
+       preserveAspectRatio="xMidYMid"
+       id="pattern31-6">
+      <rect
+         style="fill:url(#pattern32-7);stroke:none"
+         width="24.577469"
+         height="21.455389"
+         x="0"
+         y="0"
+         id="rect30-4" />
+    </pattern>
+    <pattern
+       inkscape:collect="always"
+       xlink:href="#pattern30-4"
+       preserveAspectRatio="xMidYMid"
+       id="pattern32-7"
+       patternTransform="translate(-6.6406251e-6)" />
+    <pattern
+       patternUnits="userSpaceOnUse"
+       width="24.577468"
+       height="21.455389"
+       patternTransform="translate(2356.7893,882.85363)"
+       preserveAspectRatio="xMidYMid"
+       id="pattern30-4">
+      <path
+         sodipodi:type="star"
+         style="fill:#f16e00;fill-opacity:1;fill-rule:nonzero;stroke:#000000;stroke-width:0;stroke-linecap:square;stroke-linejoin:miter;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:markers fill stroke"
+         id="path30-8"
+         inkscape:flatsided="true"
+         sodipodi:sides="3"
+         sodipodi:cx="319.11429"
+         sodipodi:cy="21.128571"
+         sodipodi:r1="26.2311"
+         sodipodi:r2="13.11555"
+         sodipodi:arg1="1.5569083"
+         sodipodi:arg2="2.6041059"
+         inkscape:rounded="0"
+         inkscape:randomized="2.7755576e-17"
+         d="M 319.47857,47.357141 296.21754,8.3297667 341.64675,7.698804 Z"
+         inkscape:transform-center-x="0.026076669"
+         inkscape:transform-center-y="0.91601461"
+         transform="matrix(0.54100577,0,0,0.54100577,-160.2554,-4.1650974)" />
+    </pattern>
+    <pattern
+       patternUnits="userSpaceOnUse"
+       width="24.577469"
+       height="21.455389"
+       patternTransform="translate(2356.7893,882.85363)"
+       preserveAspectRatio="xMidYMid"
+       id="pattern35-6">
+      <rect
+         style="fill:url(#pattern36-6);stroke:none"
+         width="24.577469"
+         height="21.455389"
+         x="0"
+         y="0"
+         id="rect34-64" />
+    </pattern>
+    <pattern
+       inkscape:collect="always"
+       xlink:href="#pattern33-2"
+       preserveAspectRatio="xMidYMid"
+       id="pattern36-6"
+       patternTransform="translate(-6.6406251e-6)" />
+    <pattern
+       patternUnits="userSpaceOnUse"
+       width="24.577469"
+       height="21.455389"
+       patternTransform="translate(2356.7893,882.85363)"
+       preserveAspectRatio="xMidYMid"
+       id="pattern33-2">
+      <rect
+         style="fill:url(#pattern34-9);stroke:none"
+         width="24.577469"
+         height="21.455389"
+         x="0"
+         y="0"
+         id="rect32-8" />
+    </pattern>
+    <pattern
+       inkscape:collect="always"
+       xlink:href="#pattern31-60"
+       preserveAspectRatio="xMidYMid"
+       id="pattern34-9"
+       patternTransform="translate(-6.6406251e-6)" />
+    <pattern
+       patternUnits="userSpaceOnUse"
+       width="24.577469"
+       height="21.455389"
+       patternTransform="translate(2356.7893,882.85363)"
+       preserveAspectRatio="xMidYMid"
+       id="pattern31-60">
+      <rect
+         style="fill:url(#pattern32-0);stroke:none"
+         width="24.577469"
+         height="21.455389"
+         x="0"
+         y="0"
+         id="rect30-7" />
+    </pattern>
+    <pattern
+       inkscape:collect="always"
+       xlink:href="#pattern30-1"
+       preserveAspectRatio="xMidYMid"
+       id="pattern32-0"
+       patternTransform="translate(-6.6406251e-6)" />
+    <pattern
+       patternUnits="userSpaceOnUse"
+       width="24.577468"
+       height="21.455389"
+       patternTransform="translate(2356.7893,882.85363)"
+       preserveAspectRatio="xMidYMid"
+       id="pattern30-1">
+      <path
+         sodipodi:type="star"
+         style="fill:#f16e00;fill-opacity:1;fill-rule:nonzero;stroke:#000000;stroke-width:0;stroke-linecap:square;stroke-linejoin:miter;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:markers fill stroke"
+         id="path30-0"
+         inkscape:flatsided="true"
+         sodipodi:sides="3"
+         sodipodi:cx="319.11429"
+         sodipodi:cy="21.128571"
+         sodipodi:r1="26.2311"
+         sodipodi:r2="13.11555"
+         sodipodi:arg1="1.5569083"
+         sodipodi:arg2="2.6041059"
+         inkscape:rounded="0"
+         inkscape:randomized="2.7755576e-17"
+         d="M 319.47857,47.357141 296.21754,8.3297667 341.64675,7.698804 Z"
+         inkscape:transform-center-x="0.026076669"
+         inkscape:transform-center-y="0.91601461"
+         transform="matrix(0.54100577,0,0,0.54100577,-160.2554,-4.1650974)" />
+    </pattern>
+    <pattern
+       patternUnits="userSpaceOnUse"
+       width="24.577469"
+       height="21.455389"
+       patternTransform="translate(2356.7893,882.85363)"
+       preserveAspectRatio="xMidYMid"
+       id="pattern35-64">
+      <rect
+         style="fill:url(#pattern36-2);stroke:none"
+         width="24.577469"
+         height="21.455389"
+         x="0"
+         y="0"
+         id="rect34-5" />
+    </pattern>
+    <pattern
+       inkscape:collect="always"
+       xlink:href="#pattern33-0"
+       preserveAspectRatio="xMidYMid"
+       id="pattern36-2"
+       patternTransform="translate(-6.6406251e-6)" />
+    <pattern
+       patternUnits="userSpaceOnUse"
+       width="24.577469"
+       height="21.455389"
+       patternTransform="translate(2356.7893,882.85363)"
+       preserveAspectRatio="xMidYMid"
+       id="pattern33-0">
+      <rect
+         style="fill:url(#pattern34-90);stroke:none"
+         width="24.577469"
+         height="21.455389"
+         x="0"
+         y="0"
+         id="rect32-2" />
+    </pattern>
+    <pattern
+       inkscape:collect="always"
+       xlink:href="#pattern31-9"
+       preserveAspectRatio="xMidYMid"
+       id="pattern34-90"
+       patternTransform="translate(-6.6406251e-6)" />
+    <pattern
+       patternUnits="userSpaceOnUse"
+       width="24.577469"
+       height="21.455389"
+       patternTransform="translate(2356.7893,882.85363)"
+       preserveAspectRatio="xMidYMid"
+       id="pattern31-9">
+      <rect
+         style="fill:url(#pattern32-4);stroke:none"
+         width="24.577469"
+         height="21.455389"
+         x="0"
+         y="0"
+         id="rect30-9" />
+    </pattern>
+    <pattern
+       inkscape:collect="always"
+       xlink:href="#pattern30-5"
+       preserveAspectRatio="xMidYMid"
+       id="pattern32-4"
+       patternTransform="translate(-6.6406251e-6)" />
+    <pattern
+       patternUnits="userSpaceOnUse"
+       width="24.577468"
+       height="21.455389"
+       patternTransform="translate(2356.7893,882.85363)"
+       preserveAspectRatio="xMidYMid"
+       id="pattern30-5">
+      <path
+         sodipodi:type="star"
+         style="fill:#f16e00;fill-opacity:1;fill-rule:nonzero;stroke:#000000;stroke-width:0;stroke-linecap:square;stroke-linejoin:miter;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:markers fill stroke"
+         id="path30-1"
+         inkscape:flatsided="true"
+         sodipodi:sides="3"
+         sodipodi:cx="319.11429"
+         sodipodi:cy="21.128571"
+         sodipodi:r1="26.2311"
+         sodipodi:r2="13.11555"
+         sodipodi:arg1="1.5569083"
+         sodipodi:arg2="2.6041059"
+         inkscape:rounded="0"
+         inkscape:randomized="2.7755576e-17"
+         d="M 319.47857,47.357141 296.21754,8.3297667 341.64675,7.698804 Z"
+         inkscape:transform-center-x="0.026076669"
+         inkscape:transform-center-y="0.91601461"
+         transform="matrix(0.54100577,0,0,0.54100577,-160.2554,-4.1650974)" />
+    </pattern>
+  </defs>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:31.75px;line-height:0;font-family:Monospace;-inkscape-font-specification:Monospace;letter-spacing:0.830792px;word-spacing:3.98727px;writing-mode:lr-tb;direction:ltr;fill:#1a1a1a;fill-opacity:0;stroke:#000000;stroke-width:2.64583;stroke-linecap:square;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
+       x="99.814285"
+       y="143.52858"
+       id="text3"><tspan
+         sodipodi:role="line"
+         id="tspan3"
+         style="stroke-width:2.64583"
+         x="99.814285"
+         y="143.52858"></tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:31.75px;line-height:0;font-family:'Lexend Giga';-inkscape-font-specification:'Lexend Giga';letter-spacing:0.830792px;word-spacing:3.98727px;writing-mode:lr-tb;direction:ltr;fill:#1a1a1a;fill-opacity:0;stroke:#000000;stroke-width:2.64583;stroke-linecap:square;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
+       x="35.335712"
+       y="154.82143"
+       id="text4"><tspan
+         sodipodi:role="line"
+         id="tspan4"
+         style="fill:#000000;fill-opacity:0;stroke:#000000;stroke-width:2.64583;stroke-dasharray:none;stroke-opacity:0.273267"
+         x="35.335712"
+         y="154.82143" /></text>
+    <text
+       xml:space="preserve"
+       style="font-size:74.0833px;line-height:0;font-family:Montserrat;-inkscape-font-specification:Montserrat;letter-spacing:-5.29167px;writing-mode:lr-tb;direction:ltr;fill:#e6e6e6;stroke-width:0.264583"
+       x="41.038254"
+       y="158.42186"
+       id="text1-9"><tspan
+         sodipodi:role="line"
+         id="tspan1-1"
+         style="font-style:normal;font-variant:normal;font-weight:600;font-stretch:normal;font-size:74.0833px;font-family:'Lexend Giga';-inkscape-font-specification:'Lexend Giga Semi-Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;letter-spacing:-5.29167px;fill:#ffffff;fill-opacity:1;stroke-width:0.264583"
+         x="41.038254"
+         y="158.42186"><tspan
+   style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:91.7222px;font-family:'Lexend Giga';-inkscape-font-specification:'Lexend Giga Medium';letter-spacing:-5.29167px;fill:#ffffff;fill-opacity:1"
+   id="tspan39">R</tspan>ace<tspan
+   style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:91.7222px;font-family:'Lexend Giga';-inkscape-font-specification:'Lexend Giga Medium';letter-spacing:-5.29167px;fill:#ffffff;fill-opacity:1"
+   id="tspan40">P</tspan>hysi</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:469.44px;line-height:0;font-family:'Lexend Giga';-inkscape-font-specification:'Lexend Giga';letter-spacing:4.43623px;word-spacing:14.0833px;writing-mode:lr-tb;direction:ltr;fill:#f16e00;fill-opacity:0.968633;fill-rule:nonzero;stroke:none;stroke-width:0;stroke-linecap:square;stroke-linejoin:miter;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:markers stroke fill"
+       x="392.36548"
+       y="291.30249"
+       id="text20"
+       transform="scale(1.2279841,0.8143428)"><tspan
+         sodipodi:role="line"
+         id="tspan20"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:469.44px;font-family:'Open Sans';-inkscape-font-specification:'Open Sans, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#f16e00;fill-opacity:0.968633;stroke:#000000;stroke-width:0;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
+         x="392.36548"
+         y="291.30249">x</tspan></text>
+    <path
+       style="fill:#000000;fill-opacity:0;fill-rule:nonzero;stroke:#ffffff;stroke-width:0.79375;stroke-linecap:square;stroke-linejoin:miter;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:markers fill stroke"
+       d="M 632.90662,26.274067 V 238.26973"
+       id="path26" />
+    <path
+       style="fill:#000000;fill-opacity:0;fill-rule:nonzero;stroke:#ffffff;stroke-width:0.79375;stroke-linecap:square;stroke-linejoin:miter;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:markers fill stroke"
+       d="M 535.02285,132.1431 H 732.59352"
+       id="path27" />
+    <circle
+       style="fill:#000000;fill-opacity:0;fill-rule:nonzero;stroke:#ffffff;stroke-width:0.79375;stroke-linecap:square;stroke-linejoin:miter;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:markers fill stroke"
+       id="path28"
+       cx="633.16425"
+       cy="131.88551"
+       r="47.911533" />
+    <circle
+       style="fill:#ffffff;fill-opacity:0;fill-rule:nonzero;stroke:#ffffff;stroke-width:0.79375;stroke-linecap:square;stroke-linejoin:miter;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:markers fill stroke"
+       id="path29"
+       cx="633.16425"
+       cy="131.88551"
+       r="84.74675" />
+    <rect
+       style="fill:url(#pattern41);stroke:none;stroke-width:0.264583"
+       width="6.5027885"
+       height="5.6767383"
+       x="629.76001"
+       y="233.58835"
+       id="rect36" />
+    <rect
+       style="fill:url(#pattern37);stroke:none;stroke-width:0.264583"
+       width="6.5027885"
+       height="5.6767383"
+       x="-636.5285"
+       y="-21.803551"
+       id="rect36-2"
+       transform="rotate(-179.20218)" />
+    <rect
+       style="fill:url(#pattern38);stroke:none;stroke-width:0.264583"
+       width="6.5027885"
+       height="5.6767383"
+       x="-127.12035"
+       y="729.90295"
+       id="rect36-7"
+       transform="rotate(-89.349954)" />
+    <rect
+       style="fill:url(#pattern39);stroke:none;stroke-width:0.264583"
+       width="6.5027885"
+       height="5.6767383"
+       x="121.95547"
+       y="-541.20282"
+       id="rect36-78"
+       transform="rotate(90.735003)" />
+  </g>
+</svg>

@@ -68,3 +68,12 @@ body {
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+
+/* ── Logo theme swap ─────────────────────────────────────────────────────── */
+/* Dark theme (default): show dark-BG logo, hide light-BG logo */
+.logo-dark-theme  { display: block; }
+.logo-light-theme { display: none;  }
+
+/* Light theme: swap */
+[data-theme="light"] .logo-dark-theme  { display: none;  }
+[data-theme="light"] .logo-light-theme { display: block; }

@@ -35,6 +35,10 @@ export function VehiclePresetSelector({ onSelect, onReset, powerUnit, onPowerUni
       borderBottom: '1px solid var(--border-color)',
       flexWrap: 'nowrap',
     }}>
+      {/* Logo — CSS swaps dark/light variant based on data-theme */}
+      <img src="/logo-dark.png"  className="logo-dark-theme"  alt="RacePhysiX" style={{ height: 28, width: 'auto', flexShrink: 0, marginRight: 8 }} />
+      <img src="/logo-light.png" className="logo-light-theme" alt="RacePhysiX" style={{ height: 28, width: 'auto', flexShrink: 0, marginRight: 8 }} />
+
       <span style={{
         fontSize: 10, fontWeight: 700, color: 'var(--label-color)',
         textTransform: 'uppercase', letterSpacing: '0.08em',
