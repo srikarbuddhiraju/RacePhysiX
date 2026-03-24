@@ -4,6 +4,36 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
+## Session 26 — 2026-03-24  |  branch: `main` (COMPLETE ✅)
+
+### Completed this session
+
+**Logo integration**
+
+- Srikar created `RacePhysiX_LightBG.png` and `RacePhysiX_DarkBG.png` (+ `RacePhysiX_master.svg`) in `docs/Logo/`
+- Logo concept: charcoal wordmark "RacePhysi" + orange X-with-engineering-crosshair icon
+- Copied to `public/logo-light.png` and `public/logo-dark.png`
+- Added to `ParameterPanel.tsx` header — replaces plain "RacePhysiX / Vehicle Dynamics Simulator" text
+- CSS theme-swap via `[data-theme]` attribute: `logo-dark-theme` / `logo-light-theme` classes in `index.css`
+- Sizing: `width: 100%, height: auto` — fills panel width, AR always maintained
+- Favicon placeholder added to `index.html` using `logo-dark.png` (pending X-only icon)
+- All commits pushed to `main`, Cloudflare Pages auto-deployed
+
+**Bugs fixed this session**
+- Logo AR distorted by flex column stretch → fixed with `alignSelf: flex-start` then replaced with `width: 100% / height: auto`
+- Logo too small → removed `maxHeight` constraint, now fills full panel width
+
+**Favicon TODO (next session)**
+- Srikar to create X-only PNG (just the crosshair icon, no wordmark)
+- Drop in `public/favicon.png`, update `index.html` `<link rel="icon">` + add `apple-touch-icon`
+
+### State
+- All on `main`, pushed, live on Cloudflare Pages (commit `29eca34`)
+- Physics: 21/21 checks pass | 424/424 extended tests pass
+- 0 TypeScript errors, 0 npm vulnerabilities
+
+---
+
 ## Session 25 — 2026-03-22  |  branch: `main` (COMPLETE ✅)
 
 ### Completed this session
