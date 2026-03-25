@@ -4,6 +4,27 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
+## Session 32 — 2026-03-25  |  branch: `feature/stage-42-45-suspension-damper-aero-thermal` (COMPLETE ✅)
+
+### Completed this session
+
+**Stages 42–45** (commit `0db6ef3`)
+
+- **Stage 42 — Motion ratio**: `kWheel = spring × MR²` in `suspension.ts`; `dynamics14dof.ts` passes `frontMotionRatio`/`rearMotionRatio`; 4 presets updated (road 1.0, FS 0.8, GT3 0.9, F1 0.85)
+- **Stage 43 — Roll damper**: `cPhi = 2 × ζ × sqrt(KPhiTotal × Ixx)` in `dynamics14dof.ts`; `ζ = params.rollDamperRatio ?? 0.7`; replaces hardcoded 0.4
+- **Stage 44 — Crosswind in balance model**: `crosswindLateralForceN` from `ambient.ts` added to `FyFrontReq`/`FyRearReq` in `pacejkaModel.ts`; no new params
+- **Stage 45 — Tyre thermal core**: `computeCoreTemp` in `tyreTemp.ts`; `coreTemp = (1−lag)×surface + lag×ambient`; `computeTyreEffectiveMu` now evaluates μ at `coreTemp`; lag=0 backward-compatible
+- UI sliders for MR (Stage 42), roll damper ζ (Stage 43), core heat lag (Stage 45) in ParameterPanel Suspension + Tyres tabs
+- SHORT_KEYS: `fmr/rmr/rdr/tch` added to App.tsx
+
+### State
+- Branch: `feature/stage-42-45-suspension-damper-aero-thermal` (commit `0db6ef3`)
+- Physics: **32/32** checks pass | **424/424** extended tests pass
+- 0 TypeScript errors (`tsc -b` clean)
+- Ready to merge to `main`
+
+---
+
 ## Session 31 — 2026-03-25  |  branch: `main` (COMPLETE ✅)
 
 ### Completed this session
