@@ -64,6 +64,8 @@ function buildHandlingCurve(
   FzBoostRear:  number,
   qFz: number,
   Fz0: number,
+  rcHeightFront = 0,
+  rcHeightRear  = 0,
 ): HandlingPoint[] {
   const { mass, wheelbase: L, frontWeightFraction, cgHeight: hCG, trackWidth: TW,
           corneringStiffnessNPerDeg, rearCorneringStiffnessNPerDeg } = params;
@@ -95,7 +97,8 @@ function buildHandlingCurve(
   for (let i = 0; i <= 100; i++) {
     const ay_ms2 = (i / 100) * ayLimitMs2;
     const lt = computeLoadTransfer(
-      { mass, wheelbase: L, cgHeight: hCG, trackWidth: TW, frontWeightFraction, rollStiffRatio, FzBoostFront, FzBoostRear },
+      { mass, wheelbase: L, cgHeight: hCG, trackWidth: TW, frontWeightFraction, rollStiffRatio, FzBoostFront, FzBoostRear,
+        rcHeightFront, rcHeightRear },
       ay_ms2, ax_ms2,
     );
     const FyFReq = mass * ay_ms2 * (b / L);
@@ -261,7 +264,7 @@ export function computePacejkaModel(params: VehicleParams, coeffs: PacejkaCoeffs
 
   const curveData     = buildCurveDataBoth(lt.FzFR, lt.FzFL, lt.FzRR, lt.FzRL, B, C, peakMu, E, qFz, Fz0);
   const handlingCurve = buildHandlingCurve(params, B, C, peakMu, E, dt.FxFront, dt.FxRear,
-    susp.rollStiffRatio, aero.FzBoostFront, aero.FzBoostRear, qFz, Fz0);
+    susp.rollStiffRatio, aero.FzBoostFront, aero.FzBoostRear, qFz, Fz0, rcF_m, rcR_m);
 
   return {
     a, b,
