@@ -4,6 +4,33 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
+## Session 29 — 2026-03-25  |  branch: `main` (COMPLETE ✅)
+
+### Completed this session
+
+**Stage 39 — Telemetry overlay** (commit `81dcc85`, merged `9dd77cb`)
+
+- "Import Telemetry" button in Lap Time panel — uploads any CSV with `dist_m` + `speed_kph`
+- Accepts Stage 38 Lap Trace format natively (parses circuit/lap metadata from header comments)
+- Three overlaid Recharts: Speed / Lat-G / Long-G vs distance (m)
+- Sim = orange, Uploaded = sky-blue; Δ top speed, Δ min corner, Δ lap time stats row
+- Live update: changing params updates sim line; uploaded trace stays fixed
+- Self-consistency: export Lap Trace → re-import → all Δ values = 0 ✓
+- New files: `parseTelemetryCSV.ts` (parser + interp helper), `TelemetryOverlayChart.tsx`
+
+### State
+- Branch: `main`, pushed, live on Cloudflare Pages (commit `9dd77cb`)
+- Physics: 21/21 checks pass | 424/424 extended tests pass
+- 0 TypeScript errors, 0 npm vulnerabilities
+
+### Next session plan
+1. **Browser verify** — end-to-end check all Stages 23–39 in UI
+2. **URL compression** — custom-param URLs still long
+3. **Surface Pro 6 camera** — needs device testing
+4. **Docs + README**, **Marketing Phase 1**
+
+---
+
 ## Session 28 — 2026-03-25  |  branch: `main` (COMPLETE ✅)
 
 ### Completed this session
