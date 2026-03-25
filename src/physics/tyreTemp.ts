@@ -48,13 +48,43 @@ export function computeTyreTempFactor(
   return Math.max(f, floorMu);   // defensive floor clamp
 }
 
-/** Apply thermal correction to peakMu from VehicleParams tyre temp fields. */
+/**
+ * Stage 45 — Tyre thermal core model.
+ *
+ * Two-layer surface/core model:
+ *   coreTemp = (1 - lag) × surfaceTemp + lag × ambientTempC
+ *
+ * lag = 0 → coreTemp = surfaceTemp (backward-compatible with Stage 11)
+ * lag = 0.3 → typical road tyre — core noticeably cooler than surface
+ * lag = 0.5 → heavy core thermal inertia
+ *
+ * μ is evaluated at coreTemp (core temperature drives grip, not just surface).
+ * Reference: Pacejka "Tyre and Vehicle Dynamics" §10.3 (thermal tyre model).
+ */
+export function computeCoreTemp(
+  surfaceTempC:  number,
+  ambientTempC:  number,
+  tyreCoreHeatLag: number,
+): number {
+  const lag = Math.max(0, Math.min(1, tyreCoreHeatLag));
+  return (1 - lag) * surfaceTempC + lag * ambientTempC;
+}
+
+/** Apply thermal correction to peakMu from VehicleParams tyre temp fields.
+ *  Stage 45: uses core temperature (surface lag corrected) for μ evaluation.
+ */
 export function computeTyreEffectiveMu(
   peakMu: number,
-  params: Pick<VehicleParams, 'tyreTempCurrentC' | 'tyreOptTempC' | 'tyreTempHalfWidthC' | 'tyreTempFloorMu'>,
+  params: Pick<VehicleParams, 'tyreTempCurrentC' | 'tyreOptTempC' | 'tyreTempHalfWidthC' | 'tyreTempFloorMu'> & { ambientTempC?: number; tyreCoreHeatLag?: number },
 ): number {
-  const f = computeTyreTempFactor(
+  // Stage 45: evaluate μ at core temperature, not raw surface temperature
+  const coreTemp = computeCoreTemp(
     params.tyreTempCurrentC,
+    params.ambientTempC ?? 20,
+    params.tyreCoreHeatLag ?? 0,
+  );
+  const f = computeTyreTempFactor(
+    coreTemp,
     params.tyreOptTempC,
     params.tyreTempHalfWidthC,
     params.tyreTempFloorMu,

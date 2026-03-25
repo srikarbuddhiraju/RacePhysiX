@@ -84,6 +84,9 @@ const ROAD_CAR: VehiclePreset = {
     trackWetness: 0.0,
     ersEnabled: false, ersPowerKW: 0, ersBatteryKJ: 1000, ersDeployStrategy: 'full',
     frontRollCentreHeightMm: 30, rearRollCentreHeightMm: 40, camberGainFront: 0.7, camberGainRear: 0.5,
+    frontMotionRatio: 1.0, rearMotionRatio: 1.0,  // direct coilover
+    rollDamperRatio: 0.7,
+    tyreCoreHeatLag: 0.35,
   },
   coeffs: { B: 10.0, C: 1.30, peakMu: 1.00, E: -1.50 },
 };
@@ -153,6 +156,9 @@ const FORMULA_STUDENT: VehiclePreset = {
     trackWetness: 0.0,
     ersEnabled: false, ersPowerKW: 0, ersBatteryKJ: 500, ersDeployStrategy: 'full',
     frontRollCentreHeightMm: 20, rearRollCentreHeightMm: 30, camberGainFront: 1.0, camberGainRear: 0.8,
+    frontMotionRatio: 0.8, rearMotionRatio: 0.8,  // typical FS inboard spring geometry
+    rollDamperRatio: 0.6,
+    tyreCoreHeatLag: 0.25,
   },
   coeffs: { B: 12.0, C: 1.30, peakMu: 1.80, E: -0.80 },
 };
@@ -222,6 +228,9 @@ const GT3: VehiclePreset = {
     trackWetness: 0.0,
     ersEnabled: false, ersPowerKW: 0, ersBatteryKJ: 1000, ersDeployStrategy: 'full',
     frontRollCentreHeightMm: 35, rearRollCentreHeightMm: 50, camberGainFront: 0.8, camberGainRear: 0.6,
+    frontMotionRatio: 0.9, rearMotionRatio: 0.9,
+    rollDamperRatio: 0.65,
+    tyreCoreHeatLag: 0.25,
   },
   coeffs: { B: 10.0, C: 1.35, peakMu: 1.60, E: -0.70 },
 };
@@ -292,6 +301,9 @@ const FORMULA_1: VehiclePreset = {
     trackWetness: 0.0,
     ersEnabled: true, ersPowerKW: 120, ersBatteryKJ: 4000, ersDeployStrategy: 'full',
     frontRollCentreHeightMm: 25, rearRollCentreHeightMm: 35, camberGainFront: 1.2, camberGainRear: 0.9,
+    frontMotionRatio: 0.85, rearMotionRatio: 0.85,
+    rollDamperRatio: 0.55,
+    tyreCoreHeatLag: 0.20,
   },
   coeffs: { B: 15.0, C: 1.40, peakMu: 2.00, E: -1.00 },
 };

@@ -103,6 +103,15 @@ export interface VehicleParams {
   rearRollCentreHeightMm:  number; // mm — rear RC height (typical DWB: 30–60)
   camberGainFront:         number; // deg/deg — camber gained per degree of body roll (outer tyre gains neg. camber)
   camberGainRear:          number; // deg/deg — rear camber gain per degree of roll
+  // ── Stage 42 — Suspension motion ratio ───────────────────────────────────────
+  frontMotionRatio:        number; // 0.5–1.0 — wheel displacement / spring displacement (1.0 = direct pushrod)
+  rearMotionRatio:         number; // wheel rate = spring rate × MR²; ARB not affected (already equivalent wheel rate)
+  // ── Stage 43 — Roll damper ────────────────────────────────────────────────────
+  rollDamperRatio:         number; // ζ — critical damping ratio for body roll (0.1 = very underdamped, 1.0 = critical)
+  // ── Stage 44 — Crosswind lateral force in balance model ──────────────────────
+  // (no new params — uses existing windSpeedKph + windAngleDeg from Stage 24)
+  // ── Stage 45 — Tyre thermal core model ───────────────────────────────────────
+  tyreCoreHeatLag:         number; // 0.0–1.0 — core thermal lag fraction (0 = instant surface=core, 0.5 = typical)
 }
 
 export type Balance = 'understeer' | 'neutral' | 'oversteer';

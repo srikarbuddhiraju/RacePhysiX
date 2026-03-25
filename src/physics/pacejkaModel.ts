@@ -19,6 +19,7 @@ import { computeSuspension, computeRollAngle } from './suspension';
 import { computeAero }                        from './aero';
 import { computeBraking }                     from './braking';
 import { computeTyreEffectiveMu }             from './tyreTemp';
+import { airDensity, crosswindLateralForceN } from './ambient';
 import type { VehicleParams, PacejkaCoeffs, PacejkaResult, TyreCurvePoint, HandlingPoint } from './types';
 
 const G          = 9.81;
@@ -140,6 +141,8 @@ export function computePacejkaModel(params: VehicleParams, coeffs: PacejkaCoeffs
     mass, cgHeight: hCG, trackWidth: TW,
     frontSpringRate: params.frontSpringRate, rearSpringRate: params.rearSpringRate,
     frontARBRate: params.frontARBRate, rearARBRate: params.rearARBRate,
+    frontMotionRatio: params.frontMotionRatio ?? 1.0,
+    rearMotionRatio:  params.rearMotionRatio  ?? 1.0,
   });
 
   // ── Stage 41: Roll angle + dynamic camber ───────────────────────────────────
@@ -215,9 +218,21 @@ export function computePacejkaModel(params: VehicleParams, coeffs: PacejkaCoeffs
   const FxFrontNet = dt.FxFront - brk.FxBrakeFront;
   const FxRearNet  = dt.FxRear  - brk.FxBrakeRear;
 
+  // ── Stage 44: Crosswind lateral force ─────────────────────────────────────
+  // Crosswind creates an additional lateral force on the car body.
+  // The tyres must provide extra lateral force to resist it (on top of centripetal).
+  // F_crosswind is distributed front/rear by weight fraction (approximate — acts at CG).
+  const rhoAir44   = airDensity(params.altitudeM ?? 0, params.ambientTempC ?? 20);
+  const F_crosswind = crosswindLateralForceN(
+    params.windSpeedKph ?? 0,
+    params.windAngleDeg ?? 0,
+    rhoAir44,
+    params.aeroReferenceArea,
+  );
+
   // ── Final slip angles ──────────────────────────────────────────────────────
-  const FyFrontReq = mass * ay_ms2 * (b / L);
-  const FyRearReq  = mass * ay_ms2 * (a / L);
+  const FyFrontReq = mass * ay_ms2 * (b / L) + F_crosswind * (b / L);
+  const FyRearReq  = mass * ay_ms2 * (a / L) + F_crosswind * (a / L);
 
   // Stage 22+28: subtract camber thrust from required Fy before solving slip angle.
   // Cγ = 0.05 × Cα (rad); negative camber (deg < 0) → positive thrust aids cornering.
