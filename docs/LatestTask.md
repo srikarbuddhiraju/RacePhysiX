@@ -4,9 +4,25 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
-## Session 28 — 2026-03-25  |  branch: `main` (IN PROGRESS)
+## Session 28 — 2026-03-25  |  branch: `main` (COMPLETE ✅)
 
 ### Completed this session
+
+**Stage 38 — Data export** (commit `785af88`, merged `0ed7919`)
+
+Three export buttons in Lap Time panel:
+- **Lap Summary** (renamed): params + per-segment breakdown CSV (existing)
+- **Lap Trace**: single-lap high-res telemetry, ~5 m steps, ~1400 pts/lap at Spa
+  Columns: `dist_m, time_s, speed_kph, gear, rpm, long_g, lat_g, zone`
+- **Race Telemetry**: all laps concatenated, per-lap summary header
+  Header: fastest lap, lap_time_s, sector times, tyre_temp, tyre_wear, fuel_kg, brake_temp_c
+
+New files: `src/physics/gearUtils.ts` — shared `computeGearRPM` (gear hysteresis, redline logic)
+New function: `buildRaceLapTraces` — per-lap physics scaling (μ×wear, fuel mass, brake fade)
+
+Verified by Srikar: all 3 CSVs downloaded, physics correct (lap 1 slow cold tyres, fastest lap 6)
+
+---
 
 **Stage 37 — Track banking & elevation** (commit `aa5d0a5`)
 
@@ -29,7 +45,7 @@ Circuit data added:
 Verified by Srikar in UI: Eau Rouge/Raidillon zone overlay **blue (full-throttle)** for GT3 ✓
 
 ### State
-- Branch: `main`, pushed, live on Cloudflare Pages (commit `aa5d0a5`)
+- Branch: `main`, pushed, live on Cloudflare Pages (commit `0ed7919`)
 - Physics: 21/21 checks pass | 424/424 extended tests pass
 - 0 TypeScript errors, 0 npm vulnerabilities
 
@@ -41,10 +57,9 @@ Verified by Srikar in UI: Eau Rouge/Raidillon zone overlay **blue (full-throttle
 5. **Surface Pro 6 camera** — needs device testing
 
 ### Next session plan
-1. **Stage 38** — Data export (CSV/JSON)
-2. **Stage 39** — Telemetry replay
-3. **Browser verify** — end-to-end check all Stages 23–37 in UI
-4. **Docs + README**, **Marketing Phase 1**
+1. **Stage 39** — Telemetry replay (upload CSV from data logger, overlay vs sim)
+2. **Browser verify** — end-to-end check all Stages 23–38 in UI
+3. **Docs + README**, **Marketing Phase 1**
 
 ---
 
