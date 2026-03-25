@@ -25,6 +25,7 @@ import { computeLapTime, TRACK_PRESETS } from './laptime';
 import type { TrackLayout, LapSimInput } from './laptime';
 import { combinedSlipGky } from './pacejka';
 import { computeLoadTransfer } from './loadTransfer';
+import { computeAeroMapFactors } from './aeroMap';
 import type { VehicleParams, PacejkaCoeffs } from './types';
 
 const PASS = '\x1b[32mPASS\x1b[0m';
@@ -768,6 +769,45 @@ console.log('\nCheck 20 — Stage 45: Tyre thermal core temperature model');
   allPassed = check('Check 20d: lag=0, T=Topt → μ = peakMu (no penalty, ±1e-6)', muFactor20, 1.0, 1e-6) && allPassed;
 }
 
+// ─── Check 21: Stage 46 — Pre-computed CFD aero map ─────────────────────────
+// Hand-calc:
+//   road, h=100mm, yaw=0 → reference point → CLfactor=1.0, CDfactor=1.0
+//   motorsport, h=75mm, yaw=0 → reference → CLfactor=1.0
+//   motorsport, h=20mm, yaw=0 → CLfactor=1.60 (strong ground effect)
+//   motorsport, h=75mm, yaw=30° effective → CDfactor=1.10 (yaw drag penalty)
+console.log('\nChecks 21 — Stage 46: CFD aero map (ride height + yaw)');
+{
+  // 21a: road car at reference height, zero yaw → both factors = 1.0
+  const f21a = computeAeroMapFactors('road', 100, 0);
+  console.log(`  road, h=100mm, yaw=0°  → CLfactor=${f21a.CLfactor.toFixed(3)}, CDfactor=${f21a.CDfactor.toFixed(3)} (expected 1.000, 1.000)`);
+  allPassed = check('Check 21a: road reference point → CLfactor=1.0 (±0.001)', f21a.CLfactor, 1.0, 0.001) && allPassed;
+  allPassed = check('Check 21a: road reference point → CDfactor=1.0 (±0.001)', f21a.CDfactor, 1.0, 0.001) && allPassed;
+
+  // 21b: motorsport at reference height → CLfactor = 1.0
+  const f21b = computeAeroMapFactors('motorsport', 75, 0);
+  console.log(`  motorsport, h=75mm, yaw=0° → CLfactor=${f21b.CLfactor.toFixed(3)} (expected 1.000)`);
+  allPassed = check('Check 21b: motorsport reference h=75mm → CLfactor=1.0 (±0.001)', f21b.CLfactor, 1.0, 0.001) && allPassed;
+
+  // 21c: motorsport at minimum ride height → CLfactor = 1.60 (strong ground effect)
+  const f21c = computeAeroMapFactors('motorsport', 20, 0);
+  console.log(`  motorsport, h=20mm, yaw=0° → CLfactor=${f21c.CLfactor.toFixed(3)} (expected 1.600)`);
+  allPassed = check('Check 21c: motorsport h=20mm → CLfactor=1.60 (±0.001)', f21c.CLfactor, 1.60, 0.001) && allPassed;
+
+  // 21d: road at reference height, pure crosswind (90°) → CDfactor = 1.50 (yaw table max)
+  // effectiveYawDeg = |sin(90°)| × 90 = 90 → YAW_MAP last entry CDfactor=1.500
+  const f21d = computeAeroMapFactors('road', 100, 90);
+  console.log(`  road, h=100mm, windAngle=90° → CDfactor=${f21d.CDfactor.toFixed(3)} (expected 1.500)`);
+  allPassed = check('Check 21d: road pure crosswind → CDfactor=1.500 (±0.001)', f21d.CDfactor, 1.500, 0.001) && allPassed;
+
+  // 21e: ground effect ordering — motorsport: h=20 (1.60) > h=75 (1.00) > h=100 (0.84)
+  const fLow  = computeAeroMapFactors('motorsport', 20,  0);
+  const fMid  = computeAeroMapFactors('motorsport', 75,  0);
+  const fHigh = computeAeroMapFactors('motorsport', 100, 0);
+  console.log(`  motorsport CL ordering: h=20(${fLow.CLfactor.toFixed(3)}) > h=75(${fMid.CLfactor.toFixed(3)}) > h=100(${fHigh.CLfactor.toFixed(3)})`);
+  allPassed = check('Check 21e: motorsport CLfactor h=20 > h=75 (ground effect)', fLow.CLfactor - fMid.CLfactor, 0.60, 0.001) && allPassed;
+  allPassed = check('Check 21e: motorsport CLfactor h=75 > h=100 (ground effect)', fMid.CLfactor - fHigh.CLfactor, 0.16, 0.001) && allPassed;
+}
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 console.log('\n' + '─'.repeat(55));
 if (allPassed) {
@@ -785,6 +825,7 @@ if (allPassed) {
   console.log('Checks 18a–b: Stage 43 — Roll damper cPhi (critical damping formula).');
   console.log('Checks 19a–c: Stage 44 — Crosswind lateral force (headwind/crosswind/tailwind).');
   console.log('Checks 20a–d: Stage 45 — Tyre thermal core temperature (lag model).');
+  console.log('Checks 21a–e: Stage 46 — CFD aero map (ride height + yaw CLfactor/CDfactor).');
 } else {
   console.log('\x1b[31mOne or more checks FAILED.\x1b[0m');
   process.exit(1);

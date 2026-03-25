@@ -51,7 +51,7 @@ Srikar can and will catch incorrect physics — accuracy is non-negotiable.
 | 14 | Race simulation | ✅ done | Multi-lap sim: tyre warmup/degradation, fuel burn, sector times, gap-to-fastest |
 | 15 | Track editor | ✅ done | User-editable segment table with live SVG preview, JSON import/export, localStorage persistence |
 | 16 | GPS-accurate circuit maps | ✅ done | TUMFTM (LGPL-3.0) + OSM (ODbL) GPS paths — 18 real circuits |
-| 17 | Racing line overlay | 🔲 future | Min-curvature racing line from TUMFTM centerline + width data |
+| 46 | Pre-computed CFD aero map | ✅ done | 2D lookup table [rideHeight × yaw] per vehicle class — replaces Stage 29 crude CL boost; CL/CD corrected in pacejkaModel, vehicleInput, dynamics14dof |
 | 18 | Vehicle presets | ✅ done | Road / Formula Student / GT3 / F1 one-click parameter sets |
 | 19 | Onboarding | ✅ done | Welcome banner — first-visit dismissible, localStorage flag |
 | 20 | Setup comparison | ✅ done | Save baseline → run variant → show Δ lap time side-by-side |
@@ -87,7 +87,9 @@ Srikar can and will catch incorrect physics — accuracy is non-negotiable.
 - Check 7: Stage 5 braking (bias distribution, ABS activation)
 - Checks 8–10: Stage 8 time-domain (step steer, neutral steer, sine sweep)
 - Checks 11–14: Stages 10–13 (gear model, thermal tyre, optimiser, combined slip/transient)
-- **All 21 checks pass. Extended suite: 424/424 pass.**
+- Checks 15–20: Stages 40–45 (combined slip, RC load transfer, motion ratio, roll damper, crosswind, tyre core)
+- Checks 21a–e: Stage 46 (CFD aero map — ride height + yaw CLfactor/CDfactor)
+- **All 37 checks pass. Extended suite: 424/424 pass.**
 
 ## Physics Reference Docs
 All physics knowledge lives in `docs/physics-reference/`. Read relevant file before

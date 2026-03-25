@@ -20,6 +20,7 @@ import { computeAero }                        from './aero';
 import { computeBraking }                     from './braking';
 import { computeTyreEffectiveMu }             from './tyreTemp';
 import { airDensity, crosswindLateralForceN } from './ambient';
+import { computeAeroMapFactors }              from './aeroMap';
 import type { VehicleParams, PacejkaCoeffs, PacejkaResult, TyreCurvePoint, HandlingPoint } from './types';
 
 const G          = 9.81;
@@ -129,9 +130,16 @@ export function computePacejkaModel(params: VehicleParams, coeffs: PacejkaCoeffs
   const ay_ms2           = (speedMs * speedMs) / R;
   const lateralAccelerationG = ay_ms2 / G;
 
+  // ── Stage 46: CFD aero map — corrects CL/CD for ride height + yaw ──────────
+  const avgRideHeightMm = ((params.frontRideHeightMm ?? 100) + (params.rearRideHeightMm ?? 100)) / 2;
+  const aeroMap = computeAeroMapFactors(
+    params.vehicleClass, avgRideHeightMm, params.windAngleDeg ?? 0,
+  );
+
   // ── Stage 6: Aero ──────────────────────────────────────────────────────────
   const aero = computeAero({
-    aeroCL: params.aeroCL, aeroCD: params.aeroCD,
+    aeroCL: params.aeroCL * aeroMap.CLfactor,
+    aeroCD: params.aeroCD * aeroMap.CDfactor,
     aeroReferenceArea: params.aeroReferenceArea, aeroBalance: params.aeroBalance,
     speedMs,
   });
