@@ -563,11 +563,12 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
 
     if (raceAnim?.isRacing && raceRes && raceRes.laps.length > 0) {
       if (lapStartRef.current === null) lapStartRef.current = timestamp;
-      const lapData     = raceRes.laps[raceAnim.lapIdx];
-      const lapMs       = lapData.lapTimeSec * 1000;
-      const elapsed     = (timestamp - lapStartRef.current) * playSpeedRef.current;
-      const t           = Math.min(elapsed / lapMs, 1);
-      timeSec_cur       = t * traceTotalTime;
+      const lapData = raceRes.laps[raceAnim.lapIdx];
+      const lapMs   = lapData.lapTimeSec * 1000;
+      const elapsed = (timestamp - lapStartRef.current) * playSpeedRef.current;
+      const t       = Math.min(elapsed / lapMs, 1);
+
+      // Advance lap when elapsed
       if (elapsed >= lapMs) {
         const nextIdx = raceAnim.lapIdx + 1;
         if (nextIdx >= raceRes.laps.length) {
@@ -579,6 +580,34 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
           setRaceLabel(`Lap ${nextIdx + 1} / ${raceRes.laps.length}`);
         }
       }
+
+      // GPS circuit — animate on GPS path using proportional lap fraction
+      const gpsA = gpsAnimRef.current;
+      if (gpsA && gpsA.anim.length > 1) {
+        const tGps     = t * gpsA.lapTimeSec;
+        const gpt      = gpsAtTime(tGps, gpsA.anim);
+        const pLen     = pathEl.getTotalLength();
+        const sampleAt = gpt.pathFrac * pLen;
+        const pt       = pathEl.getPointAtLength(sampleAt);
+        const eps      = Math.max(0.5, pLen * 0.003);
+        const ptA      = pathEl.getPointAtLength(Math.max(eps, Math.min(sampleAt - eps, pLen - 2 * eps)));
+        const ptB      = pathEl.getPointAtLength(Math.min(pLen - eps, Math.max(sampleAt + eps, 2 * eps)));
+        const hdg      = Math.atan2(ptB.y - ptA.y, ptB.x - ptA.x) * 180 / Math.PI;
+        const { gear, rpm } = computeGearRPM(gpt.speedKph, paramsRef.current, prevGearRef.current);
+        prevGearRef.current = gear;
+        setDotPos({ x: pt.x, y: pt.y });
+        setDotHeading(hdg);
+        setTelemetry({ speedKph: gpt.speedKph, gear, rpm, longG: gpt.longG, latG: gpt.latG, zone: gpt.zone });
+        if (timestamp - lastLiveUpdate.current >= 100) {
+          lastLiveUpdate.current = timestamp;
+          setLiveTimeSec(tGps);
+        }
+        rafRef.current = requestAnimationFrame(tick);
+        return;
+      }
+
+      // Schematic circuit fall-through
+      timeSec_cur = t * traceTotalTime;
     } else {
       const elapsed = (timestamp - startRef.current) * playSpeedRef.current;
       const gpsA    = gpsAnimRef.current;
