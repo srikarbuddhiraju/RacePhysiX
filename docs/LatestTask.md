@@ -4,7 +4,39 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
-## Session 30 — 2026-03-25  |  branch: `main` (IN PROGRESS)
+## Session 31 — 2026-03-25  |  branch: `main` (COMPLETE ✅)
+
+### Completed this session
+
+**Stage 40 — MF-Swift combined slip** (commit `922eacb`, merged `5de4902`)
+
+- `pacejkaFx(κ, Fz, peakMu, qFz, Fz0)`: longitudinal Pacejka, Bx=12.0, Cx=1.65, Ex=−0.80
+- `combinedSlipGky(κ)`: cos(Cκy × arctan(Bκy × κ)) — proper Pacejka '96 Fy reduction
+- `combinedSlipGxa(α)`: cos(Cxα × arctan(Bxα × α)) — proper Fx reduction
+- `solveSlipAngleTyreAxle`: Kamm circle replaced with Gky (physically accurate at moderate slip)
+- Checks 15a–c: Gky(0/0.1/0.2) verified against Pacejka §4.3.2
+
+**Stage 41 — Roll centre height + dynamic camber** (same commit)
+
+- 4 new `VehicleParams`: `frontRollCentreHeightMm` (30 mm), `rearRollCentreHeightMm` (40 mm), `camberGainFront` (0.7), `camberGainRear` (0.5)
+- `loadTransfer.ts`: geometric + elastic split — ΔFz_geom = m×ay×fwf×rcH/TW; RC=0 → identical to old formula
+- `pacejkaModel.ts`: dynamic camber = staticCamber − rollAngle × camberGain → feeds camber thrust (ΔFy_F22/R22)
+- 4 sliders in ParameterPanel Suspension tab under "Roll Centre Heights (Stage 41)"
+- Checks 16a–b: RC load transfer formula + dynamic camber verified
+
+### State
+- Branch: `main`, pushed, live on Cloudflare Pages (commit `5de4902`)
+- Physics: 28/28 checks pass
+- 0 TypeScript errors, 0 npm vulnerabilities
+
+### Next session plan
+1. **Docs + README update** — add Stages 40–41 to physics table
+2. **Marketing Phase 1** (deferred — Srikar away)
+3. **Multi-device testing** (Surface Pro 6 + real users — deferred)
+
+---
+
+## Session 30 — 2026-03-25  |  branch: `main` (COMPLETE ✅)
 
 ### Completed this session
 
@@ -26,10 +58,6 @@ Layout:
 - Branch: `main`, pushed, live on Cloudflare Pages (commit `57d7e6c`)
 - Physics: 21/21 checks pass | 424/424 extended tests pass
 - 0 TypeScript errors, 0 npm vulnerabilities
-
-### Next session plan
-1. **Docs + README**, **Marketing Phase 1**
-2. **Multi-device testing** (Surface Pro 6 + real users — deferred)
 
 ---
 
