@@ -139,6 +139,16 @@ export function computePacejkaModel(params: VehicleParams, coeffs: PacejkaCoeffs
     frontARBRate: params.frontARBRate, rearARBRate: params.rearARBRate,
   });
 
+  // ── Stage 41: Roll angle + dynamic camber ───────────────────────────────────
+  // Computed early (before slip angle solving) so dynamic camber can feed into
+  // camber thrust reduction of the required lateral force.
+  const rollAngleDeg = computeRollAngle(susp, mass, hCG, ay_ms2);
+  const rcF_m  = (params.frontRollCentreHeightMm ?? 0) / 1000;
+  const rcR_m  = (params.rearRollCentreHeightMm  ?? 0) / 1000;
+  // Outer tyre gains negative camber during roll: dynamicCamber = static − roll × gain
+  const dynamicCamberFrontDeg = (params.frontCamberDeg ?? 0) - rollAngleDeg * (params.camberGainFront ?? 0);
+  const dynamicCamberRearDeg  = (params.rearCamberDeg  ?? 0) - rollAngleDeg * (params.camberGainRear  ?? 0);
+
   // Static loads with aero boost (used for pass-0 traction limits)
   const FzFront_s0 = mass * G * (b / L) + aero.FzBoostFront;
   const FzRear_s0  = mass * G * (a / L) + aero.FzBoostRear;
@@ -163,7 +173,8 @@ export function computePacejkaModel(params: VehicleParams, coeffs: PacejkaCoeffs
   // ── Load transfer (pass 0) ─────────────────────────────────────────────────
   const lt0 = computeLoadTransfer(
     { mass, wheelbase: L, cgHeight: hCG, trackWidth: TW, frontWeightFraction,
-      rollStiffRatio: susp.rollStiffRatio, FzBoostFront: aero.FzBoostFront, FzBoostRear: aero.FzBoostRear },
+      rollStiffRatio: susp.rollStiffRatio, FzBoostFront: aero.FzBoostFront, FzBoostRear: aero.FzBoostRear,
+      rcHeightFront: rcF_m, rcHeightRear: rcR_m },
     ay_ms2, ax_ms2_0,
   );
 
@@ -192,7 +203,8 @@ export function computePacejkaModel(params: VehicleParams, coeffs: PacejkaCoeffs
   // ── Final load transfer ────────────────────────────────────────────────────
   const lt = computeLoadTransfer(
     { mass, wheelbase: L, cgHeight: hCG, trackWidth: TW, frontWeightFraction,
-      rollStiffRatio: susp.rollStiffRatio, FzBoostFront: aero.FzBoostFront, FzBoostRear: aero.FzBoostRear },
+      rollStiffRatio: susp.rollStiffRatio, FzBoostFront: aero.FzBoostFront, FzBoostRear: aero.FzBoostRear,
+      rcHeightFront: rcF_m, rcHeightRear: rcR_m },
     ay_ms2, ax_ms2,
   );
 
@@ -217,8 +229,9 @@ export function computePacejkaModel(params: VehicleParams, coeffs: PacejkaCoeffs
   const pressMuR_pm = Math.pow(P_NOM_pm / pR_pm, 0.10);
   const Cα_F_eff = (params.corneringStiffnessNPerDeg / DEG2RAD) * (1 + 0.12 * Math.abs(params.frontToeDeg ?? 0)) * pressCαF_pm;
   const Cα_R_eff = ((params.rearCorneringStiffnessNPerDeg ?? params.corneringStiffnessNPerDeg) / DEG2RAD) * (1 + 0.12 * Math.abs(params.rearToeDeg ?? 0)) * pressCαR_pm;
-  const ΔFy_F22 = -0.05 * Cα_F_eff * (params.frontCamberDeg ?? 0) * DEG2RAD;
-  const ΔFy_R22 = -0.05 * Cα_R_eff * (params.rearCamberDeg  ?? 0) * DEG2RAD;
+  // Stage 41: use dynamic camber (static − roll × camberGain) for thrust calculation
+  const ΔFy_F22 = -0.05 * Cα_F_eff * dynamicCamberFrontDeg * DEG2RAD;
+  const ΔFy_R22 = -0.05 * Cα_R_eff * dynamicCamberRearDeg  * DEG2RAD;
   // Apply pressure-scaled B per axle and pressure-scaled peakMu for slip angle solving
   const B_front_pm = Cα_F_eff / (C * (peakMu * pressMuF_pm) * Fz0);
   const B_rear_pm  = Cα_R_eff / (C * (peakMu * pressMuR_pm) * Fz0);
@@ -233,9 +246,6 @@ export function computePacejkaModel(params: VehicleParams, coeffs: PacejkaCoeffs
   const balance =
     Math.abs(slipAngleDiffDeg) < NEUTRAL_THRESHOLD_DEG ? 'neutral' :
     slipAngleDiffDeg > 0 ? 'understeer' : 'oversteer';
-
-  // ── Roll angle (Stage 4) ───────────────────────────────────────────────────
-  const rollAngleDeg = computeRollAngle(susp, mass, hCG, ay_ms2);
 
   // ── Utilisation ───────────────────────────────────────────────────────────
   const frontUtilisation = FyFrontReq / Math.max(peakMu * lt.FzFrontAxle, 1);
