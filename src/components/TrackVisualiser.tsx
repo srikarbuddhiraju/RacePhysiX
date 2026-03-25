@@ -10,7 +10,7 @@
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { buildLapTrace } from '../physics/laptime';
-import type { TrackLayout, LapResult, RaceResult, LapSimInput, TracePoint } from '../physics/laptime';
+import type { TrackLayout, LapResult, RaceResult, LapSimInput, TracePoint, BankingProfile } from '../physics/laptime';
 import type { VehicleParams } from '../physics/types';
 
 // ── Zone colours ──────────────────────────────────────────────────────────────
@@ -229,9 +229,10 @@ interface GpsZoneResult {
  * Corner signal preserved: La Source arc≈41m (3 samples), W=2 window=29m real → curvature survives.
  */
 function buildGpsZoneOverlay(
-  pathEl:    SVGPathElement,
-  inp:       LapSimInput,
-  totalDist: number,
+  pathEl:           SVGPathElement,
+  inp:              LapSimInput,
+  totalDist:        number,
+  bankingProfiles?: BankingProfile[],
 ): GpsZoneResult {
   // N=2000: ds≈2.5m for 5km circuit → resolves 18m T1 chicane with 7 samples (Session 18 finding).
   const N       = 2000;
@@ -246,6 +247,16 @@ function buildGpsZoneOverlay(
   const kAero = inp.aeroCL > 0
     ? inp.peakMu * 0.5 * RHO_AIR * inp.aeroReferenceArea * inp.aeroCL / inp.mass
     : 0;
+
+  // Stage 37: banking angle at a given path fraction (0–1).
+  // FBD: centripetal = μ(mg cosθ + L) + mg sinθ → muEff = μ cosθ + sinθ (flat aero term unchanged)
+  const bankingAt = (f: number): number => {
+    if (!bankingProfiles?.length) return 0;
+    for (const bp of bankingProfiles) {
+      if (f >= bp.pathFracStart && f <= bp.pathFracEnd) return bp.bankingDeg;
+    }
+    return 0;
+  };
 
   // Effective braking decel base: use peakMu × g (grip-limited), not the fixed 0.9g floor.
   // The brakingCapG in inp is max(brakingGSlider, 0.9) which under-estimates high-μ tyres.
@@ -295,6 +306,7 @@ function buildGpsZoneOverlay(
   // 5. Cornering speed limit — includes aero downforce (RCVD §6.4: aero augments tyre Fz)
   //    Without aero: V²/R = μ·g  →  V = sqrt(μ·g·R)
   //    With aero:    V²/R = μ·(g + kAero·V²)  →  V² = μ·g·R / (1 − kAero·R)
+  //    Stage 37 banking: replace μ with (μ cosθ + sinθ) — gravity assists centripetal force.
   //    When denominator ≤ 0 (aero-dominated corner), the car is never grip-limited → vTop.
   const vTop = inp.maxVehicleSpeedMs ?? 80;
   const vMax: number[] = new Array(N + 1).fill(vTop);
@@ -303,8 +315,11 @@ function buildGpsZoneOverlay(
     const R      = kReal > 1e-6 ? 1 / kReal : 2000;
     const Rclamp = Math.min(R, 2000);
     const denom  = 1 - kAero * Rclamp;
+    // Stage 37: banking at this path fraction raises effective μ
+    const theta  = bankingAt(i / N) * Math.PI / 180;
+    const muEff  = inp.peakMu * Math.cos(theta) + Math.sin(theta);
     vMax[i] = denom > 0.05
-      ? Math.min(Math.sqrt(inp.peakMu * G * Rclamp / denom), vTop)
+      ? Math.min(Math.sqrt(muEff * G * Rclamp / denom), vTop)
       : vTop;  // aero-dominated: no grip limit on this corner — use power-limited top speed
   }
 
@@ -486,7 +501,7 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
 
     if (layout.svgPath && layout.svgIsGps) {
       // GPS circuit — GPS-native animation
-      const result = buildGpsZoneOverlay(pathEl, lapSimInput, totalDist);
+      const result = buildGpsZoneOverlay(pathEl, lapSimInput, totalDist, layout.bankingProfiles);
       const newGpsAnim = { anim: result.anim, lapTimeSec: result.lapTimeSec };
       setZoneOverlay(result.segs);
       setGpsAnim(newGpsAnim);

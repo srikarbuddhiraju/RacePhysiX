@@ -24,11 +24,21 @@ const RHO_AIR = 1.225;   // kg/m³
 // ── Track definition ─────────────────────────────────────────────────────────
 
 export interface TrackSegment {
-  type:       'corner' | 'straight';
-  length:     number;           // m — arc length for corners, distance for straights
-  radius?:    number;           // m — corners only
-  direction?: 'left' | 'right'; // corner turning direction (default: 'left')
-  label?:     string;           // display name; auto-generated if omitted
+  type:        'corner' | 'straight';
+  length:      number;           // m — arc length for corners, distance for straights
+  radius?:     number;           // m — corners only
+  direction?:  'left' | 'right'; // corner turning direction (default: 'left')
+  label?:      string;           // display name; auto-generated if omitted
+  // Stage 37 — Track banking & elevation
+  bankingDeg?:  number;   // road banking angle (°), positive = banked inward; raises corner V_max
+  gradientPct?: number;   // road gradient (%), positive = uphill; reduces straight accel, assists braking
+}
+
+/** Stage 37 — Banking profile for GPS circuits: maps path-fraction ranges to banking angles. */
+export interface BankingProfile {
+  pathFracStart: number;  // 0–1 fraction of total circuit path length
+  pathFracEnd:   number;
+  bankingDeg:    number;  // positive = banked inward (raises corner V_max)
 }
 
 export interface TrackLayout {
@@ -44,6 +54,8 @@ export interface TrackLayout {
   svgIsGps?: boolean;
   /** Attribution for the GPS data source. Shown in the UI. */
   svgSource?: 'tumftm' | 'osm';
+  /** Stage 37 — Banking profiles for GPS circuits: defines banked road sections. */
+  bankingProfiles?: BankingProfile[];
 }
 
 export const TRACK_PRESETS: Record<string, TrackLayout> = {
@@ -133,7 +145,7 @@ export const TRACK_PRESETS: Record<string, TrackLayout> = {
       { type: 'straight', length: 75                                               },
       { type: 'corner',   length: 18,  radius: 55, direction: 'right', label: 'Ascari T3'      },  // racing line R
       { type: 'straight', length: 200                                               },  // short run to Parabolica
-      { type: 'corner',   length: 208, radius: 80, direction: 'left',  label: 'Parabolica'     },  // R80m, ~149° sweep — real Parabolica geometry
+      { type: 'corner',   length: 208, radius: 80, direction: 'left',  label: 'Parabolica', bankingDeg: 3 },  // R80m, ~149° sweep — ~3° banking (Stage 37)
       { type: 'straight', length: 1538, label: 'Pit straight'                     },  // reduced 200m to maintain 5793m total
     ],
   },
@@ -144,6 +156,12 @@ export const TRACK_PRESETS: Record<string, TrackLayout> = {
     svgPath: "M 174.6 51.7 L 172.6 48.4 L 170.6 45.2 L 168.6 42.0 L 166.6 38.8 L 164.6 35.6 L 162.5 32.4 L 160.5 29.2 L 158.5 26.0 L 156.5 22.8 L 154.5 19.5 L 153.7 16.3 L 155.9 15.0 L 159.4 16.3 L 162.8 17.8 L 166.3 19.4 L 169.7 21.0 L 173.0 22.9 L 176.2 24.9 L 179.3 27.1 L 182.3 29.3 L 185.2 31.8 L 187.8 34.5 L 190.4 37.3 L 193.0 40.1 L 195.5 42.9 L 198.1 45.7 L 200.6 48.5 L 203.2 51.3 L 205.8 54.1 L 208.5 56.7 L 211.6 58.8 L 214.8 60.7 L 217.5 63.3 L 219.5 66.5 L 220.7 70.1 L 221.5 73.8 L 222.7 77.3 L 224.6 80.6 L 226.7 83.7 L 228.9 86.8 L 231.1 89.9 L 233.2 93.0 L 235.4 96.1 L 237.6 99.2 L 239.7 102.4 L 241.5 105.7 L 242.9 109.2 L 244.2 112.7 L 245.4 116.3 L 246.6 119.9 L 247.8 123.5 L 248.9 127.1 L 250.1 130.7 L 251.3 134.3 L 252.5 137.9 L 253.7 141.5 L 254.9 145.1 L 256.1 148.7 L 257.3 152.3 L 258.5 155.9 L 259.6 159.5 L 260.8 163.1 L 262.0 166.7 L 263.2 170.3 L 264.4 173.9 L 265.6 177.5 L 266.8 181.1 L 267.9 184.7 L 268.5 188.3 L 267.2 191.6 L 264.4 194.1 L 262.9 197.3 L 263.2 201.0 L 264.3 204.6 L 265.2 208.2 L 265.2 211.9 L 263.3 215.0 L 260.4 217.3 L 257.4 219.6 L 254.4 221.9 L 251.3 224.2 L 248.3 226.5 L 245.3 228.8 L 242.3 231.1 L 239.3 233.4 L 236.0 234.9 L 232.5 234.4 L 230.0 231.8 L 229.8 228.3 L 231.9 225.4 L 235.0 223.2 L 238.2 221.2 L 241.3 219.1 L 243.9 216.5 L 244.7 213.0 L 243.8 209.4 L 242.5 205.8 L 241.1 202.3 L 239.8 198.7 L 238.6 195.1 L 237.6 191.5 L 236.8 187.8 L 235.9 184.1 L 235.1 180.4 L 234.3 176.7 L 233.5 173.0 L 232.7 169.3 L 231.8 165.6 L 230.3 162.2 L 227.8 159.4 L 224.5 157.7 L 220.8 157.1 L 217.1 157.0 L 213.3 157.3 L 209.7 158.3 L 206.5 160.2 L 203.7 162.8 L 201.7 166.0 L 200.2 169.4 L 198.9 173.0 L 197.7 176.6 L 196.4 180.1 L 195.1 183.7 L 193.8 187.3 L 192.6 190.9 L 191.3 194.4 L 190.0 198.0 L 188.3 201.3 L 185.5 203.7 L 182.0 204.5 L 178.4 203.7 L 175.0 202.1 L 171.4 201.3 L 167.8 202.2 L 165.0 204.6 L 163.0 207.8 L 161.1 211.1 L 159.2 214.3 L 157.3 217.6 L 155.4 220.9 L 153.2 223.9 L 150.0 225.3 L 146.4 224.4 L 143.2 222.5 L 140.1 220.4 L 136.9 218.3 L 134.1 215.9 L 132.2 212.7 L 131.5 209.0 L 132.0 205.3 L 133.1 201.7 L 134.4 198.2 L 136.1 194.7 L 138.0 191.5 L 140.2 188.4 L 142.7 185.5 L 145.2 182.7 L 147.8 180.0 L 150.5 177.3 L 153.4 174.9 L 156.6 172.8 L 159.9 170.9 L 163.1 169.1 L 166.4 167.2 L 169.7 165.3 L 173.0 163.4 L 176.2 161.4 L 179.1 158.9 L 181.6 156.2 L 183.9 153.1 L 185.7 149.8 L 187.2 146.4 L 188.7 142.9 L 190.1 139.3 L 191.5 135.8 L 192.8 132.3 L 193.4 128.6 L 193.0 124.8 L 191.9 121.2 L 190.4 117.7 L 188.9 114.3 L 187.4 110.8 L 185.9 107.3 L 184.5 103.8 L 183.1 100.3 L 182.0 96.7 L 181.1 93.0 L 180.5 89.2 L 180.0 85.5 L 179.6 81.7 L 179.1 78.0 L 178.7 74.2 L 179.4 71.0 L 182.4 70.0 L 184.3 68.1 L 183.0 64.9 L 181.0 61.7 L 179.0 58.5 L 176.9 55.3 L 174.9 52.1 Z",
     svgViewBox: "0 0 400 250",
     svgIsGps: true,
+    // Stage 37: Eau Rouge / Raidillon section is banked ~5–6° inward.
+    // Path fractions estimated from segment distances: S/F → La Source end ≈ 0.121,
+    // Raidillon end ≈ 0.179. Bracket widened to 0.12–0.20 to capture GPS curvature artifacts.
+    bankingProfiles: [
+      { pathFracStart: 0.12, pathFracEnd: 0.20, bankingDeg: 5.5 },  // Eau Rouge / Raidillon
+    ],
     // Spa: distinctive triangular shape.
     // S/F top-right going left. La Source hairpin top-right.
     // Eau Rouge/Raidillon: sharp dip-and-climb going down-left.
@@ -154,11 +172,11 @@ export const TRACK_PRESETS: Record<string, TrackLayout> = {
     // Pouhon is a LEFT double-apex (not right). Angular sums verified: net ≈ -2π (CW circuit).
     segments: [
       { type: 'straight', length: 720,  label: 'Start/Finish straight'                                        },
-      { type: 'corner',   length: 126,  radius: 40, direction: 'right', label: 'La Source'                    },  // RIGHT hairpin (180°, racing line R=40m → 66 kph)
-      { type: 'straight', length: 90,   label: 'Uphill to Eau Rouge'                                          },
-      { type: 'corner',   length: 31,   radius: 130, direction: 'left', label: 'Eau Rouge'                    },  // fast left — R=130m, flat-out after La Source fix
-      { type: 'corner',   length: 288,  radius: 150, direction: 'right', label: 'Raidillon'                   },  // sweeping right up the hill (~110°)
-      { type: 'straight', length: 700,  label: 'Kemmel Straight'                                              },
+      { type: 'corner',   length: 126,  radius: 40,  direction: 'right', label: 'La Source'                   },  // RIGHT hairpin (180°, racing line R=40m → 66 kph)
+      { type: 'straight', length: 90,   label: 'Uphill to Eau Rouge', gradientPct: 18                         },  // Stage 37: 18% uphill to Eau Rouge
+      { type: 'corner',   length: 31,   radius: 130, direction: 'left',  label: 'Eau Rouge',  bankingDeg: 5   },  // fast left — ~5° banking (Stage 37)
+      { type: 'corner',   length: 288,  radius: 150, direction: 'right', label: 'Raidillon',  bankingDeg: 6   },  // sweeping right up the hill (~110°) — ~6° banking (Stage 37)
+      { type: 'straight', length: 700,  label: 'Kemmel Straight', gradientPct: -4                             },  // Stage 37: slight downhill (~-4%), assists top speed
       { type: 'corner',   length: 42,   radius: 55, direction: 'left',  label: 'Les Combes T1'               },  // chicane left — racing line R
       { type: 'straight', length: 55                                                                           },
       { type: 'corner',   length: 38,   radius: 50, direction: 'right', label: 'Les Combes T2'               },  // chicane right — racing line R
@@ -192,7 +210,7 @@ export const TRACK_PRESETS: Record<string, TrackLayout> = {
     // Corner arc angles adjusted so net heading change ≈ −2π (CW circuit). Net = −6.278 rad.
     segments: [
       { type: 'straight', length: 1069, label: 'Wellington / Start straight'                                  },  // filler reduced 3m
-      { type: 'corner',   length: 157,  radius: 100, direction: 'right', label: 'Copse'                      },  // (~90°)
+      { type: 'corner',   length: 157,  radius: 100, direction: 'right', label: 'Copse', bankingDeg: 3       },  // (~90°) — ~3° banking (Stage 37)
       { type: 'corner',   length: 63,   radius: 60,  direction: 'left',  label: 'Maggotts'                   },  // (~60°)
       { type: 'corner',   length: 97,   radius: 65,  direction: 'right', label: 'Becketts'                   },  // (~85°)
       { type: 'corner',   length: 65,   radius: 50,  direction: 'left',  label: 'Chapel'                     },  // (~74°)
@@ -243,7 +261,7 @@ export const TRACK_PRESETS: Record<string, TrackLayout> = {
       { type: 'straight', length: 1148, label: 'Back straight'                                                },  // reduced 66m to compensate Hairpin arc increase
       { type: 'corner',   length: 110, radius: 35,  direction: 'right', label: 'Hairpin'                     },  // 180°, racing line R=35m → 69 kph
       { type: 'straight', length: 300                                                                          },
-      { type: 'corner',   length: 204, radius: 130, direction: 'right', label: '130R'                        },  // fast right (~90°)
+      { type: 'corner',   length: 204, radius: 130, direction: 'right', label: '130R', bankingDeg: 2         },  // fast right (~90°) — ~2° banking (Stage 37)
       { type: 'corner',   length: 21,  radius: 40,  direction: 'left',  label: 'Casio Chicane T1'            },  // racing line R
       { type: 'straight', length: 40                                                                           },
       { type: 'corner',   length: 26,  radius: 45,  direction: 'right', label: 'Casio Chicane T2'            },  // racing line R
@@ -857,16 +875,22 @@ export interface LapResult {
 // ── Physics helpers ───────────────────────────────────────────────────────────
 
 /** Max cornering speed at radius R, accounting for aero downforce (iterative).
- *  Stage 13B: friction circle — lateral capacity reduced by corner-entry braking demand. */
-function maxCornerSpeed(R: number, inp: LapSimInput): number {
+ *  Stage 13B: friction circle — lateral capacity reduced by corner-entry braking demand.
+ *  Stage 37:  banking angle θ raises corner speed — gravity assists centripetal force.
+ *    FBD on banked road: N = mg cosθ + L; F_centripetal = μN + mg sinθ
+ *    → muEff = μ(cosθ + downforce/mg) + sinθ  (Milliken RCVD §2.5) */
+function maxCornerSpeed(R: number, inp: LapSimInput, bankingDeg = 0): number {
   const { mass, peakMu, aeroCL, aeroReferenceArea: A } = inp;
   const rho         = inp.rhoAir ?? RHO_AIR;
   const brakeFrac   = inp.combSlipBrakeFrac ?? 0;           // 0 = no combined-slip correction
   const brakeDemand = inp.brakingCapG * brakeFrac;          // g units
+  const cosB = Math.cos(bankingDeg * Math.PI / 180);
+  const sinB = Math.sin(bankingDeg * Math.PI / 180);
   let V = Math.sqrt(peakMu * G * R);  // initial guess (no aero)
   for (let i = 0; i < 10; i++) {
     const downforce = 0.5 * rho * V * V * A * aeroCL;
-    const muEff = peakMu * (mass * G + downforce) / (mass * G);
+    // Stage 37: banking — gravity component (sinθ) adds to centripetal capacity
+    const muEff = peakMu * (cosB + downforce / (mass * G)) + sinB;
     // Stage 13B: ay_max = sqrt(muEff² − brakeDemand²) — friction circle
     const ayMaxG = brakeDemand > 0
       ? Math.sqrt(Math.max(muEff * muEff - brakeDemand * brakeDemand, 0.01))
@@ -880,54 +904,50 @@ function maxCornerSpeed(R: number, inp: LapSimInput): number {
   return V;
 }
 
-/** Brake deceleration at speed V, accounting for aero (aerodynamic braking boost). */
-function brakeDecel(V: number, inp: LapSimInput): number {
+/** Brake deceleration at speed V, accounting for aero and road gradient.
+ *  Stage 37: positive gradientPct (uphill) assists braking; negative (downhill) reduces it. */
+function brakeDecel(V: number, inp: LapSimInput, gradientPct = 0): number {
   const { mass, aeroCL, aeroReferenceArea: A } = inp;
   const rho = inp.rhoAir ?? RHO_AIR;
   const downforce = 0.5 * rho * V * V * A * aeroCL;
-  // More downforce → more brake force available (friction limit rises)
   const aeroBoost = downforce * inp.peakMu;
-  return inp.brakingCapG * G + aeroBoost / mass;
+  // Stage 37: uphill gradient assists deceleration (gravity opposes forward motion)
+  const sinGrad = Math.sin(Math.atan(gradientPct / 100));
+  return inp.brakingCapG * G + aeroBoost / mass + G * sinGrad;
 }
 
 /** Straight integration: returns time and speed profile from V0 to the segment end,
- *  limiting to V_target_exit at the end (braking zone) and V_max_straight. */
+ *  limiting to V_target_exit at the end (braking zone) and V_max_straight.
+ *  Stage 37: gradientPct (%) — positive = uphill (reduces accel, assists braking). */
 function simulateStraight(
   length: number,
   V_entry: number,
   V_exit_target: number,
   inp: LapSimInput,
+  gradientPct = 0,
 ): { timeSec: number; vMax: number; vExit: number } {
   const DT = 0.005;   // s, Euler step
-
-  // Backward pass: compute braking requirement from exit end
-  // Braking distance from V_entry to V_exit_target:
-  // Use simplified: d_brake ≈ V²/(2a) differential, numerical
-  // Forward Euler is fine for 5ms steps.
 
   let V = V_entry;
   let x = 0;
   let t = 0;
   let vMax = V;
+  // Stage 37: gradient force opposing forward motion (positive = uphill)
+  const F_grade = inp.mass * G * Math.sin(Math.atan(gradientPct / 100));
 
   while (x < length) {
     const Fdrive   = inp.driveForce(V);
     const Fdrag    = inp.dragForce(V);
-    const a_drive  = (Fdrive - Fdrag) / inp.mass;
+    const a_drive  = (Fdrive - Fdrag - F_grade) / inp.mass;
 
     // Check if we need to start braking to hit V_exit_target
     const dist_remaining = length - x;
-    const a_brake        = brakeDecel(V, inp);
+    const a_brake        = brakeDecel(V, inp, gradientPct);
     // Braking distance from current V to V_exit_target
     const d_brake_needed = (V * V - V_exit_target * V_exit_target) / (2 * a_brake);
     const shouldBrake    = d_brake_needed >= dist_remaining && V > V_exit_target;
 
-    let a: number;
-    if (shouldBrake) {
-      a = -a_brake;
-    } else {
-      a = a_drive;
-    }
+    const a = shouldBrake ? -a_brake : a_drive;
 
     V += a * DT;
     V  = Math.max(V, 0.5);  // never stop
@@ -945,9 +965,11 @@ export function computeLapTime(layout: TrackLayout, inp: LapSimInput): LapResult
   const { segments } = layout;
   const n = segments.length;
 
-  // Pre-compute max corner speed for each corner segment
+  // Pre-compute max corner speed for each corner segment (Stage 37: include banking)
   const vCorner: number[] = segments.map(seg =>
-    seg.type === 'corner' && seg.radius ? maxCornerSpeed(seg.radius, inp) : Infinity
+    seg.type === 'corner' && seg.radius
+      ? maxCornerSpeed(seg.radius, inp, seg.bankingDeg ?? 0)
+      : Infinity
   );
 
   // Build speed profile: corner entry = corner exit = vCorner
@@ -994,7 +1016,7 @@ export function computeLapTime(layout: TrackLayout, inp: LapSimInput): LapResult
       }
       const vExitTarget = isFinite(nextCornerSpeed) ? nextCornerSpeed : vPrev;
 
-      const { timeSec, vMax, vExit } = simulateStraight(seg.length, vPrev, vExitTarget, inp);
+      const { timeSec, vMax, vExit } = simulateStraight(seg.length, vPrev, vExitTarget, inp, seg.gradientPct ?? 0);
       totalTime += timeSec;
       segResults.push({
         type: 'straight', length: seg.length, timeSec,
@@ -1036,7 +1058,9 @@ export function buildLapTrace(layout: TrackLayout, inp: LapSimInput): TracePoint
   const DT = 0.005;
 
   const vCorner: number[] = segments.map(seg =>
-    seg.type === 'corner' && seg.radius ? maxCornerSpeed(seg.radius, inp) : Infinity
+    seg.type === 'corner' && seg.radius
+      ? maxCornerSpeed(seg.radius, inp, seg.bankingDeg ?? 0)
+      : Infinity
   );
 
   const trace: TracePoint[] = [];
@@ -1077,11 +1101,12 @@ export function buildLapTrace(layout: TrackLayout, inp: LapSimInput): TracePoint
       let lastLongG = 0;
       let lastZone: TracePoint['zone'] = 'full-throttle';
 
+      const F_grade = inp.mass * G * Math.sin(Math.atan((seg.gradientPct ?? 0) / 100));
       while (x < seg.length) {
         const Fdrive = inp.driveForce(V);
         const Fdrag  = inp.dragForce(V);
-        const a_drive = (Fdrive - Fdrag) / inp.mass;
-        const a_brake = brakeDecel(V, inp);
+        const a_drive = (Fdrive - Fdrag - F_grade) / inp.mass;
+        const a_brake = brakeDecel(V, inp, seg.gradientPct ?? 0);
         const dist_remaining = seg.length - x;
         const d_brake_needed = (V * V - vExitTarget * vExitTarget) / (2 * a_brake);
         const shouldBrake    = d_brake_needed >= dist_remaining && V > vExitTarget;
