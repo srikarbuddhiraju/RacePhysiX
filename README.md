@@ -1,7 +1,7 @@
-# RacePhysiX — Free Browser-Based Vehicle Dynamics & Lap Time Simulator
+# RacePhysiX — Browser-Based Vehicle Dynamics & Lap Time Simulator
 
 A physics-accurate car setup and lap time simulation tool that runs entirely in the browser.
-No install, no login. Designed for motorsport engineers, racing enthusiasts, and students learning vehicle dynamics.
+No install, no login, no account.
 
 **Live:** [racephysix.srikarbuddhiraju.com](https://racephysix.srikarbuddhiraju.com)
 
@@ -9,91 +9,100 @@ No install, no login. Designed for motorsport engineers, racing enthusiasts, and
 
 ## What is RacePhysiX?
 
-RacePhysiX is an open-source vehicle dynamics simulator covering the full physics stack from tyre model
-to lap time estimation. Adjust any parameter — suspension stiffness, brake bias, downforce, tyre compound —
-and immediately see the effect on handling balance, cornering speed, braking distances, and predicted lap time
-across 19 real-world circuits.
+RacePhysiX is an open-source vehicle dynamics simulator covering the full physics stack — from tyre contact patch forces to race strategy optimisation. Adjust any parameter and immediately see the effect on handling balance, cornering speed, braking performance, and predicted lap time across 22 real-world circuits.
 
-It is aimed at anyone who wants to understand how a car's setup affects its on-track behaviour:
-motorsport engineering students, sim racers building an intuition for setup, hobbyists exploring
-the physics behind understeer, oversteer, and the Pacejka tyre model, and Formula Student / FSAE
-teams using it as a quick setup reference tool.
+**Who it's for:**
+- Motorsport engineering students learning vehicle dynamics from first principles
+- Formula Student / FSAE teams using it as a quick setup reference
+- Sim racers building intuition for how setup changes affect lap time
+- Anyone curious about the physics behind understeer, oversteer, and the Magic Formula tyre model
 
 ---
 
-## Features
+## Physics Model (39 stages)
 
-- **Tyre model** — Pacejka Magic Formula with load sensitivity, thermal warm-up/degradation, and combined slip
-- **Vehicle dynamics** — bicycle model, understeer/oversteer gradient, yaw response, slip angles
-- **Load transfer** — per-corner Fz under braking and cornering; front/rear roll stiffness split via ARB
-- **Suspension** — spring rates, anti-roll bars, roll angle computation (RCVD Ch.16 methodology)
-- **Braking** — brake bias, ABS activation threshold, combined braking + cornering friction circle
-- **Aerodynamics** — speed-dependent downforce and drag, front/rear aero balance
-- **Powertrain** — 6-speed gearbox with custom ratios, shift points, rev limiter, P/V curve
-- **Lap time estimator** — point-mass simulation over corner + straight segments; real GPS-accurate circuits
-- **Race simulation** — multi-lap tyre degradation, fuel burn, sector times, gap to fastest
-- **Live circuit map** — animated car with zone overlay: braking / trail-braking / cornering / full-throttle
-- **Setup optimiser** — Nelder-Mead simplex search over 7 parameters to minimise lap time
+| Stage | Model | What it captures |
+|---|---|---|
+| 1 | Bicycle model | Steady-state yaw, understeer gradient, slip angles (Gillespie Ch.6) |
+| 2 | Pacejka Magic Formula | Nonlinear tyre lateral + longitudinal forces (RCVD Ch.2) |
+| 3 | Load transfer + drivetrain | Per-corner Fz, combined slip, FWD/RWD/AWD/AWD+TV |
+| 4 | Suspension (roll stiffness) | Roll angle, ARB contribution, accurate Fz split front/rear |
+| 5 | Braking model | Brake bias, ABS clip, combined braking + cornering friction circle |
+| 6 | Aerodynamics | Speed-dependent downforce + drag, front/rear aero balance |
+| 7 | Lap time estimator | Point-mass simulation over corner + straight segments |
+| 8 | 14-DOF time domain | Step steer / sine sweep / brake-in-turn, RK4 ODE solver |
+| 9 | Tyre load sensitivity | Pacejka degressive μ with Fz (qFz parameter) |
+| 10 | Gear model + powertrain | Gear ratios, shift points, rev-limited P/V curve |
+| 11 | Tyre thermal model | μ bell curve vs temperature, warmup + degradation |
+| 12 | Setup optimisation | Nelder-Mead simplex over 7 params → minimum lap time |
+| 13 | Full nonlinear model | Separate F/R Cα, friction circle, yaw transient penalty |
+| 14 | Race simulation | Multi-lap: tyre warmup/degradation, fuel burn, sector times |
+| 15 | Track editor | Editable segment table, SVG preview, JSON import/export |
+| 16 | GPS circuit maps | 22 circuits — TUMFTM (LGPL-3.0) + OSM (ODbL) GPS paths |
+| 18 | Vehicle presets | Road / Formula Student / GT3 / F1 one-click parameter sets |
+| 19 | Onboarding | First-visit dismissible banner, localStorage flag |
+| 20 | Setup comparison | Save baseline → run variant → Δ lap time side-by-side |
+| 22 | Camber + toe | Camber thrust + toe effective Cα in bicycle + Pacejka models |
+| 23 | Tyre wear model | Soft/medium/hard/inter/wet — warmup, linear wear, cliff, graining |
+| 24 | Wind + ambient | ISA air density (altitude + temp), headwind drag, crosswind μ |
+| 25 | Driver model | Aggression 0–100%: tyre heat rate, wear rate, μ utilisation scaling |
+| 26 | Differential model | Open / LSD / Locked — traction efficiency + yaw moment (RCVD Ch.22) |
+| 27 | Brake temperature | Disc temp per lap, Gaussian fade model, braking capacity scaling |
+| 28 | Tyre pressure | Cα × (p/2.0)^0.35, μ × (2.0/p)^0.10 (Pacejka §4.3.1) |
+| 29 | Ride height + rake | Rake → aero balance shift; CL boost at low ride height |
+| 30 | Race strategy optimizer | Brute-force 1/2-stop over soft/medium/hard, per-stint grip model |
+| 31 | Engine torque curve | NA bell curve, turbo flat plateau after boost RPM, electric flat |
+| 32 | Traction control | Driven axle slip ratio threshold — clamps drive force |
+| 33 | Track rubber evolution | peakMu × (1 + 0.15 × rubberLevel) — green to fully rubbed |
+| 34 | Wet track + drying line | Per-compound wetGripFactor — slick → 0.30 at standing water |
+| 35 | ERS / Hybrid | MGU-K additive force, deploy strategies, energy budget |
+| 36 | Multi-car comparison | Mass/power/peakMu vs baseline — Δ lap time comparison cards |
+| 37 | Track banking + elevation | Banked corner FBD (Milliken RCVD §2.5), gradient drive/brake forces |
+| 38 | Data export | Lap trace + race telemetry CSV (speed, gear, RPM, G-forces, zone) |
+| 39 | Telemetry overlay | Upload any lap trace CSV — compare against sim in overlaid charts |
 
----
-
-## Interface Guide
-
-### Vehicle Parameters (left panel)
-All vehicle parameters are controlled via sliders grouped by system: **Mass & Geometry**, **Tyres**,
-**Suspension**, **Brakes**, **Aerodynamics**, and **Powertrain**. Every slider change recalculates
-the full physics model in real time. The results update across all panels simultaneously.
-
-### Dynamics Visualiser (top-right)
-Shows lateral and longitudinal force arrows, slip angle indicators, and the understeer gradient chart.
-The chart plots steering input vs lateral acceleration — the gradient (positive = understeer,
-negative = oversteer) tells you the handling balance at any speed. The neutral steer point and
-characteristic speed are marked automatically.
-
-### Lap Time Estimator
-Select a circuit from the dropdown (19 circuits available), then read off the predicted lap time
-and a per-segment speed table. Each row shows entry speed, apex speed, exit speed, and time for
-every corner and straight. Useful for identifying which corners are lap-time-critical.
-
-### Race Simulation
-Run a multi-lap race to see how tyre degradation and fuel burn evolve over a stint. The table shows
-lap time, sector splits, tyre temperature, and gap to the theoretical fastest lap on each lap.
-Adjust fuel load and tyre parameters to simulate different stint strategies.
-
-### Circuit Map & Zone Overlay
-An animated top-down circuit map showing:
-- **Zone colours** — red (braking), orange (trail-braking), yellow (cornering), green (full-throttle)
-- **Directional arrow** — car position and heading, coloured by current zone
-- **Telemetry strip** — speed (km/h), gear, RPM bar, longitudinal G-bar, lateral G-bar, zone label
-
-GPS circuits animate at 8× real-time. The zone overlay is computed from the physics model — zones
-shift position when you change mass, aero, or tyre compound.
+All 21 physics validation checks pass. Extended suite: 424/424 pass.
 
 ---
 
-## Circuits (19 total)
+## Circuits (22 total)
 
-**Schematic:** Club (~1.9 km), Karting (~1.0 km), GT Circuit (~3.2 km), Formula Test (~2.1 km), Monaco
+**Generic (4):** Club (~1.9 km), Karting (~1.0 km), GT Circuit (~3.2 km), Formula Test (~2.1 km)
 
-**GPS-accurate (TUMFTM · LGPL-3.0):**
-Monza, Spa-Francorchamps, Silverstone, Suzuka, Nürburgring GP, Bahrain/Sakhir, Barcelona/Catalunya,
-Hungaroring, Montreal, Brands Hatch, Hockenheim, Red Bull Ring/Spielberg, Zandvoort, São Paulo/Interlagos
+**Schematic real circuits (4):** Monza, Spa-Francorchamps, Silverstone, Suzuka
 
-**GPS-accurate (OSM · ODbL):**
-Laguna Seca, Imola, Le Mans, Mugello, Sebring
+**GPS-accurate — TUMFTM (LGPL-3.0, 10):**
+Nürburgring GP, Bahrain/Sakhir, Barcelona/Catalunya, Hungaroring, Montreal,
+Brands Hatch, Hockenheim, Red Bull Ring/Spielberg, Zandvoort, São Paulo/Interlagos
+
+**GPS-accurate — OSM (ODbL, 4):**
+Laguna Seca, Imola, Le Mans, Mugello
 
 ---
 
-## Disclaimers
+## Interface
 
-- **Educational tool only.** RacePhysiX is not a certified engineering tool. Lap time predictions are
-  indicative, not race-engineer-grade. Do not use outputs for real vehicle setup decisions.
-- **Point-mass model.** The lap time simulator uses a simplified point-mass vehicle model. It does not
-  simulate transient dynamics (weight transfer timing, tyre warm-up laps, traction control intervention).
-- **Tyre model simplified.** The Pacejka coefficients are generic defaults. Real tyre data (homologated
-  compound data) is not available. Corner speed predictions will differ from real data by ±10–20%.
-- **Physics reference.** Models are validated against Milliken & Milliken *Race Car Vehicle Dynamics* (RCVD)
-  and Gillespie *Fundamentals of Vehicle Dynamics*. All 21 validation checks pass.
+**Left panel — Vehicle Parameters**
+All 56 vehicle parameters grouped by system: Mass & Geometry, Tyres, Suspension, Brakes, Aerodynamics,
+Powertrain, Race, Driver, Ambient. Every change recalculates the full physics model in real time.
+One-click presets: Road car, Formula Student, GT3, F1.
+
+**Centre — Circuit Visualiser**
+Animated top-down circuit map with live telemetry strip (speed, gear, RPM, G-forces) and zone overlay
+(braking / trail-braking / cornering / full-throttle). Zones are computed from the physics model —
+they shift when you change mass, aero, or tyre compound. Supports single-lap and multi-lap race animation.
+
+**Right panel — Results + Lap Time**
+- Physics results: understeer gradient, lateral acceleration, per-corner tyre loads, combined utilisation
+- Lap time: per-segment speed breakdown (entry, apex, exit, time, time%)
+- Race simulation: lap-by-lap tyre temp/wear, fuel burn, sector times, gap to fastest
+- Setup comparison: baseline vs variant Δ lap time
+- Data export: lap summary CSV, high-res lap trace CSV (dist, time, speed, gear, RPM, G-forces), race telemetry CSV
+- Telemetry import: upload any CSV and overlay it against the current sim lap
+
+**Bottom panel — Charts**
+Tyre curve (Fy vs slip angle), handling diagram (steering vs lateral G), Pacejka coefficients tuner,
+14-DOF time-domain scenarios (step steer, sine sweep, brake-in-turn).
 
 ---
 
@@ -112,20 +121,46 @@ npm run build
 
 ---
 
+## Validation
+
+```bash
+npx tsx src/physics/validate.ts
+```
+
+Runs 21 physics checks against Gillespie Ch.6 (bicycle model), RCVD Ch.16 (suspension),
+Pacejka §4.3 (tyre), and the 14-DOF time-domain model. Extended suite: 424/424 pass.
+
+---
+
 ## Tech Stack
 
-TypeScript · React · Vite · Recharts · Cloudflare Pages
+TypeScript · React · Vite · Three.js · Recharts · Cloudflare Pages
+
+---
+
+## Disclaimers
+
+**Lap time estimator** uses a point-mass quasi-static model. It does not simulate tyre
+warm-up laps, traction control intervention, or driver variation. Predictions are indicative —
+expect ±5–15% vs real-world lap times depending on car category.
+
+**Tyre model** uses generic Pacejka coefficients. Real homologated compound data is not
+available. Corner speed predictions will differ from real measured data.
+
+**Not for real vehicle setup decisions.** RacePhysiX is an educational and enthusiast tool.
+Do not use outputs for professional motorsport engineering decisions.
 
 ---
 
 ## Attribution
 
-**TUMFTM circuits (14):** GPS data from the
+**TUMFTM circuits (10):** GPS data from the
 [TUMFTM Racetrack Database](https://github.com/TUMFTM/racetrack-database)
-(Technical University of Munich), licensed under [LGPL-3.0](https://www.gnu.org/licenses/lgpl-3.0.txt).
-See [`LICENSES/TUMFTM-LGPL-3.0.txt`](LICENSES/TUMFTM-LGPL-3.0.txt) for full license text.
+(Technical University of Munich, Institute of Automotive Technology),
+licensed under [LGPL-3.0](https://www.gnu.org/licenses/lgpl-3.0.txt).
+See [`LICENSES/TUMFTM-LGPL-3.0.txt`](LICENSES/TUMFTM-LGPL-3.0.txt).
 
-**OSM circuits (5):** GPS data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright),
+**OSM circuits (4):** GPS data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright),
 licensed under the [Open Database Licence (ODbL)](https://opendatacommons.org/licenses/odbl/).
 
 ---
@@ -134,6 +169,4 @@ licensed under the [Open Database Licence (ODbL)](https://opendatacommons.org/li
 
 RacePhysiX application code: [MIT](LICENSE)
 
-Circuit GPS data:
-- TUMFTM circuits: [LGPL-3.0](https://www.gnu.org/licenses/lgpl-3.0.txt)
-- OSM circuits: [ODbL](https://opendatacommons.org/licenses/odbl/)
+Circuit GPS data licences: LGPL-3.0 (TUMFTM) · ODbL (OSM)
