@@ -50,6 +50,9 @@ const SHORT_KEYS: Record<keyof VehicleParams, string> = {
   ersPowerKW: 'erp', ersBatteryKJ: 'erb', ersDeployStrategy: 'eds',
   frontRollCentreHeightMm: 'frc', rearRollCentreHeightMm: 'rrc',
   camberGainFront: 'cgf', camberGainRear: 'cgr',
+  frontMotionRatio: 'fmr', rearMotionRatio: 'rmr',
+  rollDamperRatio: 'rdr',
+  tyreCoreHeatLag: 'tch',
 };
 
 // Reverse map: short key → full VehicleParams key
@@ -238,6 +241,13 @@ const DEFAULT_PARAMS: VehicleParams = {
   rearRollCentreHeightMm:  40,   // mm — typical DWB rear RC height
   camberGainFront:         0.7,  // deg/deg — outer tyre camber gain per deg body roll
   camberGainRear:          0.5,
+  // Stage 42 — Motion ratio
+  frontMotionRatio: 1.0,  // 1.0 = direct (pushrod/pullrod with 1:1 ratio)
+  rearMotionRatio:  1.0,
+  // Stage 43 — Roll damper
+  rollDamperRatio: 0.7,   // ζ — critical damping ratio for body roll (0.7 = slightly underdamped)
+  // Stage 45 — Tyre thermal core lag
+  tyreCoreHeatLag: 0.3,   // 0.0 = instant surface=core, 0.3 = typical
 };
 
 function loadInitialParams(): VehicleParams {

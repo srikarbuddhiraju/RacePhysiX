@@ -1,25 +1,19 @@
 /**
- * Suspension roll stiffness model — Stage 4.
+ * Suspension roll stiffness model — Stage 4 + Stage 42.
  *
- * Replaces the simple b/L weight-fraction lateral load transfer split
- * with a proper roll stiffness ratio based on spring rates and ARBs.
+ * Stage 4: roll stiffness from spring rates + ARBs.
+ * Stage 42: motion ratio — wheel rate = spring rate × MR²
+ *   (ARB rates already expressed as equivalent wheel rates — MR not applied to ARB)
  *
  * Roll stiffness per axle:
- *   KΦ_springs = k_spring × TW² / 2          [Nm/rad, per-wheel spring rate contribution]
+ *   KΦ_springs = k_spring × MR² × TW² / 2    [Nm/rad, motion-ratio-corrected]
  *   KΦ_ARB     = k_ARB × TW² / 2             [Nm/rad, ARB as equivalent wheel-rate]
  *   KΦ_axle    = KΦ_springs + KΦ_ARB
  *
  * Roll stiffness ratio (front fraction):
  *   φ_front = KΦ_front / (KΦ_front + KΦ_rear)
  *
- * Lateral load transfer then uses φ_front / φ_rear instead of b/L:
- *   ΔFz_front = m × ay × hCG × φ_front / TW
- *   ΔFz_rear  = m × ay × hCG × φ_rear  / TW
- *
- * Roll angle (steady state):
- *   Φ_roll = m × ay × hCG / KΦ_total   [rad]
- *
- * Reference: Milliken & Milliken RCVD Ch.16 (Roll Couple Distribution)
+ * Reference: Milliken & Milliken RCVD Ch.16; Dixon "Suspension Geometry and Computation" §3.4
  */
 
 const RAD_TO_DEG = 180 / Math.PI;
@@ -28,10 +22,13 @@ export interface SuspensionInput {
   mass:              number;  // kg
   cgHeight:          number;  // m
   trackWidth:        number;  // m
-  frontSpringRate:   number;  // N/m, per-wheel spring rate
+  frontSpringRate:   number;  // N/m, per-wheel spring rate (at the spring, not the wheel)
   rearSpringRate:    number;  // N/m, per-wheel spring rate
-  frontARBRate:      number;  // N/m, ARB as equivalent wheel rate contribution
+  frontARBRate:      number;  // N/m, ARB as equivalent wheel rate contribution (already at wheel)
   rearARBRate:       number;  // N/m
+  // Stage 42 — motion ratio (default 1.0 = direct, no leverage)
+  frontMotionRatio?: number;  // wheel rate = spring rate × MR²; 1.0 = pushrod/direct
+  rearMotionRatio?:  number;
 }
 
 export interface SuspensionResult {
@@ -45,14 +42,19 @@ export interface SuspensionResult {
 }
 
 export function computeSuspension(inp: SuspensionInput): SuspensionResult {
-  const { trackWidth: TW, frontSpringRate, rearSpringRate, frontARBRate, rearARBRate } = inp;
+  const { trackWidth: TW, frontSpringRate, rearSpringRate, frontARBRate, rearARBRate,
+          frontMotionRatio = 1.0, rearMotionRatio = 1.0 } = inp;
 
-  // Roll stiffness = (spring + ARB) × (TW/2)²  × 2  =  k_total × TW²/2
-  // Factor of 2: two wheels; (TW/2)²: moment arm squared; divide by 2 cancels.
+  // Stage 42: wheel rate = spring rate × MR² (motion ratio squared, Dixon §3.4)
+  // ARB already expressed as equivalent wheel rate — MR not applied.
+  const kWheelFront = frontSpringRate * frontMotionRatio * frontMotionRatio;
+  const kWheelRear  = rearSpringRate  * rearMotionRatio  * rearMotionRatio;
+
+  // Roll stiffness = (wheel rate + ARB) × TW²/2
   const tw2over2 = (TW * TW) / 2;
 
-  const KPhiFront = (frontSpringRate + frontARBRate) * tw2over2;
-  const KPhiRear  = (rearSpringRate  + rearARBRate)  * tw2over2;
+  const KPhiFront = (kWheelFront + frontARBRate) * tw2over2;
+  const KPhiRear  = (kWheelRear  + rearARBRate)  * tw2over2;
   const KPhiTotal = KPhiFront + KPhiRear;
 
   const rollStiffRatio = KPhiTotal > 0 ? KPhiFront / KPhiTotal : 0.5;

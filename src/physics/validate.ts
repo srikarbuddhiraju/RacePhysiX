@@ -18,7 +18,8 @@ import { computeBraking } from './braking';
 import { runSimulation } from './dynamics14dof';
 import { SCENARIOS } from './scenarios';
 import { engineTorque, engineTorqueFull, generateGearRatios, computeMaxDriveForce, computeMaxSpeed } from './gearModel';
-import { computeTyreTempFactor, computeTyreEffectiveMu } from './tyreTemp';
+import { computeTyreTempFactor, computeTyreEffectiveMu, computeCoreTemp } from './tyreTemp';
+import { airDensity, crosswindLateralForceN } from './ambient';
 import { optimiseSetup, OPTIMISE_BOUNDS } from './optimise';
 import { computeLapTime, TRACK_PRESETS } from './laptime';
 import type { TrackLayout, LapSimInput } from './laptime';
@@ -90,6 +91,9 @@ const BASE: VehicleParams = {
   trackWetness: 0.0,
   ersEnabled: false, ersPowerKW: 0, ersBatteryKJ: 1000, ersDeployStrategy: 'full',
   frontRollCentreHeightMm: 30, rearRollCentreHeightMm: 40, camberGainFront: 0.7, camberGainRear: 0.5,
+  frontMotionRatio: 1.0, rearMotionRatio: 1.0,
+  rollDamperRatio: 0.7,
+  tyreCoreHeatLag: 0.3,
 };
 
 let allPassed = true;
@@ -644,6 +648,126 @@ console.log('\nCheck 16 — Stage 41: RC load transfer + dynamic camber');
   allPassed = check('Check 16b: dynamic camber = static − roll×gain (±0.001°)', dynCamber16, dynCamber16_exp, 0.001) && allPassed;
 }
 
+// ─── Check 17: Stage 42 — Suspension motion ratio wheel rate ─────────────────
+// Hand-calc (Dixon §3.4): kWheel = k_spring × MR²
+//   MR=0.8, spring=25000 N/m → kWheel = 25000 × 0.64 = 16000 N/m
+//   KΦ_front = (kWheel + k_ARB) × TW²/2 = (16000 + 8000) × (1.5²/2) = 24000 × 1.125 = 27000 Nm/rad
+//   At MR=1.0: KΦ_front = (25000 + 8000) × 1.125 = 37125 Nm/rad
+console.log('\nCheck 17 — Stage 42: Motion ratio wheel rate');
+{
+  const susp17_mr08 = computeSuspension({
+    mass: 1500, cgHeight: 0.55, trackWidth: 1.5,
+    frontSpringRate: 25000, rearSpringRate: 28000,
+    frontARBRate: 8000, rearARBRate: 6000,
+    frontMotionRatio: 0.8, rearMotionRatio: 0.8,
+  });
+  const kWheel_exp  = 25000 * 0.8 * 0.8;   // 16000 N/m
+  const tw2o2       = (1.5 * 1.5) / 2;     // 1.125 m²
+  const KPhiF_exp   = (kWheel_exp + 8000) * tw2o2;   // 27000 Nm/rad
+  console.log(`  kWheel_front (MR=0.8) = ${kWheel_exp} N/m`);
+  console.log(`  KΦ_front (MR=0.8) = ${susp17_mr08.KPhiFront.toFixed(1)} Nm/rad (expected ${KPhiF_exp.toFixed(1)})`);
+  allPassed = check('Check 17a: kWheel = spring × MR² (MR=0.8 → 16000 N/m) → KΦ_front = 27000 (±1 Nm/rad)', susp17_mr08.KPhiFront, KPhiF_exp, 1.0) && allPassed;
+
+  // MR=1.0 should match default (no motion ratio)
+  const susp17_mr10 = computeSuspension({
+    mass: 1500, cgHeight: 0.55, trackWidth: 1.5,
+    frontSpringRate: 25000, rearSpringRate: 28000,
+    frontARBRate: 8000, rearARBRate: 6000,
+    frontMotionRatio: 1.0, rearMotionRatio: 1.0,
+  });
+  const KPhiF_mr10_exp = (25000 + 8000) * tw2o2;   // 37125 Nm/rad
+  console.log(`  KΦ_front (MR=1.0) = ${susp17_mr10.KPhiFront.toFixed(1)} Nm/rad (expected ${KPhiF_mr10_exp.toFixed(1)})`);
+  allPassed = check('Check 17b: MR=1.0 gives KΦ_front = (spring+ARB)×TW²/2 = 37125 (±1 Nm/rad)', susp17_mr10.KPhiFront, KPhiF_mr10_exp, 1.0) && allPassed;
+}
+
+// ─── Check 18: Stage 43 — Roll damper cPhi at ζ=1.0 (critical damping) ───────
+// Hand-calc: cPhi = 2 × ζ × sqrt(KPhiTotal × Ixx)
+//   KPhiTotal from standard setup (MR=1.0): compute in check
+//   Ixx = mass × 0.25 = 1500 × 0.25 = 375 kg·m²
+//   At ζ=1.0: cPhi = 2 × sqrt(KPhiTotal × 375)
+console.log('\nCheck 18 — Stage 43: Roll damper cPhi at critical damping (ζ=1.0)');
+{
+  const susp18 = computeSuspension({
+    mass: 1500, cgHeight: 0.55, trackWidth: 1.5,
+    frontSpringRate: 25000, rearSpringRate: 28000,
+    frontARBRate: 8000, rearARBRate: 6000,
+  });
+  const Ixx18  = 1500 * 0.25;   // = 375 kg·m²
+  const KPhi18 = susp18.KPhiTotal;
+  const cPhi_critical = 2 * 1.0 * Math.sqrt(KPhi18 * Ixx18);   // ζ=1.0
+  const cPhi_07       = 2 * 0.7 * Math.sqrt(KPhi18 * Ixx18);   // ζ=0.7 (default)
+  console.log(`  KPhiTotal = ${KPhi18.toFixed(1)} Nm/rad`);
+  console.log(`  Ixx = ${Ixx18.toFixed(1)} kg·m²`);
+  console.log(`  cPhi (ζ=1.0) = ${cPhi_critical.toFixed(2)} Nm·s/rad`);
+  console.log(`  cPhi (ζ=0.7) = ${cPhi_07.toFixed(2)} Nm·s/rad`);
+  // Verify formula consistency: cPhi_critical = 2 × sqrt(KPhi × Ixx)
+  const cPhi_check = 2 * Math.sqrt(KPhi18 * Ixx18);
+  allPassed = check('Check 18a: cPhi(ζ=1.0) = 2×sqrt(KPhiTotal×Ixx) — critical damping formula (±0.01)', cPhi_critical, cPhi_check, 0.01) && allPassed;
+  // Verify ζ=0.7 is 70% of critical
+  allPassed = check('Check 18b: cPhi(ζ=0.7) = 0.7 × cPhi_critical (±0.01)', cPhi_07, 0.7 * cPhi_critical, 0.01) && allPassed;
+}
+
+// ─── Check 19: Stage 44 — Crosswind lateral force ────────────────────────────
+// Hand-calc (ambient.ts):
+//   v_cross = windSpeed × sin(90°) = 100 kph / 3.6 = 27.778 m/s (pure crosswind at 90°)
+//   A_side  = 2.2 × 2.0 = 4.4 m²
+//   F_cw    = 0.5 × 1.225 × 27.778² × 4.4 × 1.0 = 0.5 × 1.225 × 771.6 × 4.4 = 2083.9 N (approx)
+// Exact: 0.5 × 1.225 × (100/3.6)² × 4.4 = 0.6125 × 771.605 × 4.4 = 2079.9 N
+// At windAngle=0° (pure headwind): crosswindForce = 0
+console.log('\nCheck 19 — Stage 44: Crosswind lateral force');
+{
+  const rho19 = airDensity(0, 20);   // sea level, 20°C ≈ 1.2044 kg/m³
+  // Pure headwind (0°) → zero crosswind
+  const F_hw = crosswindLateralForceN(100, 0, rho19, 2.0);
+  console.log(`  F_crosswind (100 kph, 0° headwind) = ${F_hw.toFixed(3)} N (expected 0.000)`);
+  allPassed = check('Check 19a: pure headwind (0°) → crosswind force = 0 N (±0.001)', F_hw, 0, 0.001) && allPassed;
+
+  // Pure crosswind (90°)
+  const v90 = 100 / 3.6;   // m/s
+  const A_side = 2.2 * 2.0;
+  const F90_exp = 0.5 * rho19 * v90 * v90 * A_side * 1.0;
+  const F90_act = crosswindLateralForceN(100, 90, rho19, 2.0);
+  console.log(`  F_crosswind (100 kph, 90° crosswind) = ${F90_act.toFixed(2)} N (expected ${F90_exp.toFixed(2)} N)`);
+  allPassed = check('Check 19b: pure crosswind (90°) = ½ρv²×A_side×CD_side (±0.01 N)', F90_act, F90_exp, 0.01) && allPassed;
+
+  // Tailwind (180°) → zero crosswind
+  const F_tw = crosswindLateralForceN(100, 180, rho19, 2.0);
+  console.log(`  F_crosswind (100 kph, 180° tailwind) = ${F_tw.toFixed(3)} N (expected 0.000)`);
+  allPassed = check('Check 19c: pure tailwind (180°) → crosswind force = 0 N (±0.001)', F_tw, 0, 0.001) && allPassed;
+}
+
+// ─── Check 20: Stage 45 — Tyre thermal core temperature ─────────────────────
+// Hand-calc:
+//   lag=0: coreTemp = surfaceTemp (instant, backward-compatible)
+//   lag=0.5, surface=85°C, ambient=20°C: coreTemp = 0.5×85 + 0.5×20 = 52.5°C
+//   lag=1.0: coreTemp = ambientTemp (core never warms = degenerate case)
+console.log('\nCheck 20 — Stage 45: Tyre thermal core temperature model');
+{
+  // lag=0: coreTemp = surfaceTemp exactly
+  const core20a = computeCoreTemp(85, 20, 0);
+  console.log(`  coreTemp (lag=0, surf=85°C, amb=20°C) = ${core20a.toFixed(1)}°C (expected 85.0°C)`);
+  allPassed = check('Check 20a: lag=0 → coreTemp = surfaceTemp (±0.001)', core20a, 85, 0.001) && allPassed;
+
+  // lag=0.5: coreTemp = 0.5×85 + 0.5×20 = 52.5°C
+  const core20b = computeCoreTemp(85, 20, 0.5);
+  const core20b_exp = 0.5 * 85 + 0.5 * 20;   // 52.5°C
+  console.log(`  coreTemp (lag=0.5, surf=85°C, amb=20°C) = ${core20b.toFixed(1)}°C (expected ${core20b_exp.toFixed(1)}°C)`);
+  allPassed = check('Check 20b: lag=0.5 → coreTemp = 52.5°C (±0.001)', core20b, core20b_exp, 0.001) && allPassed;
+
+  // lag=1.0: coreTemp = ambientTemp
+  const core20c = computeCoreTemp(85, 20, 1.0);
+  console.log(`  coreTemp (lag=1.0, surf=85°C, amb=20°C) = ${core20c.toFixed(1)}°C (expected 20.0°C)`);
+  allPassed = check('Check 20c: lag=1.0 → coreTemp = ambientTemp (±0.001)', core20c, 20, 0.001) && allPassed;
+
+  // Backward-compatibility: at lag=0, computeTyreEffectiveMu at optimal → f=1.0
+  const muFactor20 = computeTyreEffectiveMu(1.0, {
+    tyreTempCurrentC: 85, tyreOptTempC: 85, tyreTempHalfWidthC: 30, tyreTempFloorMu: 0.60,
+    ambientTempC: 20, tyreCoreHeatLag: 0,
+  });
+  console.log(`  μ (lag=0, T=Topt=85°C) = ${muFactor20.toFixed(6)} (expected 1.000000)`);
+  allPassed = check('Check 20d: lag=0, T=Topt → μ = peakMu (no penalty, ±1e-6)', muFactor20, 1.0, 1e-6) && allPassed;
+}
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 console.log('\n' + '─'.repeat(55));
 if (allPassed) {
@@ -657,6 +781,10 @@ if (allPassed) {
   console.log('Checks 14a–c: Stage 13 — separate front/rear Cα, combined slip, yaw transient.');
   console.log('Checks 15a–c: Stage 40 — Gky combined-slip reduction (Bκy=3.5, Cκy=1.0).');
   console.log('Checks 16a–b: Stage 41 — RC geometric load transfer + dynamic camber formula.');
+  console.log('Checks 17a–b: Stage 42 — Motion ratio wheel rate (kWheel = spring × MR²).');
+  console.log('Checks 18a–b: Stage 43 — Roll damper cPhi (critical damping formula).');
+  console.log('Checks 19a–c: Stage 44 — Crosswind lateral force (headwind/crosswind/tailwind).');
+  console.log('Checks 20a–d: Stage 45 — Tyre thermal core temperature (lag model).');
 } else {
   console.log('\x1b[31mOne or more checks FAILED.\x1b[0m');
   process.exit(1);

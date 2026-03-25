@@ -41,7 +41,7 @@ interface VehicleConst {
   Izz:         number;   // kg·m² — yaw inertia
   Ixx:         number;   // kg·m² — roll inertia
   KPhiTotal:   number;   // Nm/rad — total roll stiffness
-  cPhi:        number;   // Nm·s/rad — roll damping (ζ = 0.4)
+  cPhi:        number;   // Nm·s/rad — roll damping (ζ from params, Stage 43)
   rollRatio:   number;   // KΦ_front / KΦ_total
   numDriven:   number;   // count of driven wheels
   isDriven:    [boolean, boolean, boolean, boolean];  // FL FR RL RR
@@ -114,17 +114,20 @@ function buildConst(params: VehicleParams): VehicleConst {
   // Roll inertia: rough estimate (validated against typical RCVD values)
   const Ixx = m * 0.25; // ≈ 375 kg·m² for a 1500 kg car
 
-  // Roll stiffness from suspension model
+  // Roll stiffness from suspension model (Stage 42: motion ratio applied)
   const susp = computeSuspension({
     mass: m, cgHeight: hCG, trackWidth: TW,
     frontSpringRate: params.frontSpringRate, rearSpringRate: params.rearSpringRate,
     frontARBRate:    params.frontARBRate,   rearARBRate:   params.rearARBRate,
+    frontMotionRatio: params.frontMotionRatio ?? 1.0,
+    rearMotionRatio:  params.rearMotionRatio  ?? 1.0,
   });
   const KPhiTotal = susp.KPhiTotal;
   const rollRatio = susp.rollStiffRatio;
 
-  // Critical damping coefficient at ζ = 0.4
-  const cPhi = 2 * 0.4 * Math.sqrt(KPhiTotal * Ixx);
+  // Stage 43: roll damping coefficient — ζ from params (default 0.7)
+  const zeta = params.rollDamperRatio ?? 0.7;
+  const cPhi = 2 * zeta * Math.sqrt(KPhiTotal * Ixx);
 
   // Driven wheels and torque budget
   const driven = params.drivetrainType;

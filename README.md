@@ -19,7 +19,7 @@ RacePhysiX is an open-source vehicle dynamics simulator covering the full physic
 
 ---
 
-## Physics Model (41 stages)
+## Physics Model (45 stages)
 
 | Stage | Model | What it captures |
 |---|---|---|
@@ -62,8 +62,12 @@ RacePhysiX is an open-source vehicle dynamics simulator covering the full physic
 | 39 | Telemetry overlay | Upload any lap trace CSV — compare against sim in overlaid charts |
 | 40 | MF-Swift combined slip | Pacejka Fx + Gky/Gxa cosine reduction (replaces Kamm circle) |
 | 41 | Roll centre + dynamic camber | Geometric/elastic load transfer split; outer tyre camber gain from roll |
+| 42 | Suspension motion ratio | Wheel rate = spring rate × MR²; ARB already at wheel rate; accurate roll stiffness |
+| 43 | Roll damper model | Critical damping ratio ζ for body roll in 14-DOF transient sim |
+| 44 | Crosswind in balance model | Lateral crosswind force added to tyre load balance in Pacejka model |
+| 45 | Tyre thermal core | Two-layer surface/core model; μ evaluated at core temp; coreTemp lags surface via tyreCoreHeatLag |
 
-All 28 physics validation checks pass. Extended suite: 424/424 pass.
+All 32 physics validation checks pass. Extended suite: 424/424 pass.
 
 ---
 

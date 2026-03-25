@@ -111,6 +111,9 @@ const BASE: VehicleParams = {
   trackWetness: 0.0,
   ersEnabled: false, ersPowerKW: 0, ersBatteryKJ: 1000, ersDeployStrategy: 'full',
   frontRollCentreHeightMm: 30, rearRollCentreHeightMm: 40, camberGainFront: 0.7, camberGainRear: 0.5,
+  frontMotionRatio: 1.0, rearMotionRatio: 1.0,
+  rollDamperRatio: 0.7,
+  tyreCoreHeatLag: 0.3,
 };
 
 const COEFFS: PacejkaCoeffs = { B: 11.5, C: 1.28, peakMu: 1.20, E: -1.5 };

@@ -385,6 +385,13 @@ export function ParameterPanel({ params, onChange, powerUnit, onPowerUnitChange 
         <SliderRow cfg={{ label: 'Camber gain F', key: 'camberGainFront', min: 0, max: 1.5, step: 0.1, unit: '°/°', format: v => v.toFixed(1), tip: 'Front camber gain: degrees of additional negative camber gained by the outer tyre per degree of body roll. Typical DWB: 0.5–1.0 °/°. More gain = outer tyre stays flatter during cornering = higher lateral grip.' }} params={params} set={set} />
         <SliderRow cfg={{ label: 'Camber gain R', key: 'camberGainRear',  min: 0, max: 1.5, step: 0.1, unit: '°/°', format: v => v.toFixed(1), tip: 'Rear camber gain per degree of body roll. Typical: 0.3–0.7 °/°. Higher rear camber gain increases rear grip during roll → reduces oversteer.' }} params={params} set={set} />
 
+        <div className="param-section-label">Motion Ratio (Stage 42)</div>
+        <SliderRow cfg={{ label: 'Front MR', key: 'frontMotionRatio', min: 0.5, max: 1.0, step: 0.05, unit: '', format: v => v.toFixed(2), tip: 'Suspension motion ratio — wheel displacement / spring displacement. 1.0 = direct (coilover or pushrod at 1:1). Wheel rate = spring rate × MR². Lower MR = softer effective wheel rate for same spring rate. Dixon §3.4.' }} params={params} set={set} />
+        <SliderRow cfg={{ label: 'Rear MR',  key: 'rearMotionRatio',  min: 0.5, max: 1.0, step: 0.05, unit: '', format: v => v.toFixed(2), tip: 'Rear suspension motion ratio. Wheel rate = spring rate × MR². ARB rates are already at wheel rate — MR not applied. Formula Student cars often use 0.7–0.85 due to inboard spring geometry.' }} params={params} set={set} />
+
+        <div className="param-section-label">Roll Damper (Stage 43)</div>
+        <SliderRow cfg={{ label: 'Roll damper ζ', key: 'rollDamperRatio', min: 0.1, max: 1.5, step: 0.05, unit: '', format: v => v.toFixed(2), tip: 'Critical damping ratio for body roll in transient scenarios. ζ=1.0 = critically damped (fastest return, no overshoot). ζ<1 = underdamped (oscillates). ζ=0.7 typical road car. Used in 14-DOF time-domain sim (Stage 8).' }} params={params} set={set} />
+
         <div className="param-section-label">Camber &amp; Toe (Stage 22)</div>
         <SliderRow cfg={{ label: 'Front camber', key: 'frontCamberDeg', min: -5, max: 2, step: 0.1, unit: '°', format: v => v.toFixed(1), tip: 'Static setup camber — front axle. Negative camber (top tilted inward) generates camber thrust that aids lateral force and flattens the contact patch during roll. Typical: −1.5° road, −3° race. RCVD §2.3.5: Cγ ≈ 0.05 × Cα.' }} params={params} set={set} />
         <SliderRow cfg={{ label: 'Rear camber',  key: 'rearCamberDeg',  min: -5, max: 2, step: 0.1, unit: '°', format: v => v.toFixed(1), tip: 'Static setup camber — rear axle. More negative rear camber → rear camber thrust increases → less oversteer tendency. F1 limit ≈ −2.5°R.' }} params={params} set={set} />
@@ -627,16 +634,24 @@ export function ParameterPanel({ params, onChange, powerUnit, onPowerUnitChange 
         <SliderRow cfg={{ label: 'Half-width', key: 'tyreTempHalfWidthC', min: 10, max: 60, step: 5, unit: '°C', format: v => v.toFixed(0), tip: 'Grip drops 50% of the way to the floor at ±this many °C from optimal. Narrow = sensitive tyre (motorsport compound). Wide = forgiving (all-season).' }} params={params} set={set} />
         <SliderRow cfg={{ label: 'Current temp', key: 'tyreTempCurrentC', min: 0, max: 180, step: 5, unit: '°C', format: v => v.toFixed(0), tip: 'Current tyre operating temperature. Explore cold-tyre lap-start conditions (20–40°C), optimal window (70–120°C), or overheating scenarios (150°C+).' }} params={params} set={set} />
         <SliderRow cfg={{ label: 'Grip floor', key: 'tyreTempFloorMu', min: 0.40, max: 0.90, step: 0.05, unit: '(−)', format: v => v.toFixed(2), tip: 'Minimum μ fraction at extreme temperatures (very cold or overheated). 0.60 = 60% of peak grip. Lower = more dangerous cold/hot tyre behaviour.' }} params={params} set={set} />
+
+        <div className="param-section-label">Tyre Thermal Core (Stage 45)</div>
+        <SliderRow cfg={{ label: 'Core heat lag', key: 'tyreCoreHeatLag', min: 0.0, max: 1.0, step: 0.05, unit: '', format: v => v.toFixed(2), tip: 'Tyre core thermal lag fraction. 0.0 = core temperature equals surface temperature instantly. 0.5 = core lags significantly behind surface. Typical road tyre: 0.3. Affects steady-state μ via weighted average of surface and core temp.' }} params={params} set={set} />
+
         <div className="param-derived">
           {(() => {
-            const { tyreTempCurrentC: T, tyreOptTempC: Topt, tyreTempHalfWidthC: hw, tyreTempFloorMu: floor } = params;
+            const { tyreTempCurrentC: T, tyreOptTempC: Topt, tyreTempHalfWidthC: hw, tyreTempFloorMu: floor,
+                    ambientTempC, tyreCoreHeatLag } = params;
+            const lag      = Math.max(0, Math.min(1, tyreCoreHeatLag ?? 0));
+            const coreTemp = (1 - lag) * T + lag * (ambientTempC ?? 20);
             const k  = hw > 0 ? Math.LN2 / (hw * hw) : 0;
-            const dT = T - Topt;
+            const dT = coreTemp - Topt;
             const f  = Math.max(floor + (1 - floor) * Math.exp(-k * dT * dT), floor);
             const status = f >= 0.97 ? 'Optimal' : f >= 0.85 ? 'Near optimal' : f >= 0.70 ? 'Cold / warming' : 'Very cold / overheated';
             return <>
-              <DerivedRow label="μ fraction" value={`${(f * 100).toFixed(1)}%`} tip="f(T) — thermal grip multiplier on peakMu. 100% = at optimal temperature. Applied to all Pacejka force calculations." />
-              <DerivedRow label="Grip deficit" value={`−${((1 - f) * 100).toFixed(1)}%`} tip="Percentage of peak grip lost due to temperature offset. 0% = at optimal. Reduces tyre forces, slip angles, and handling limit." />
+              <DerivedRow label="Core temp" value={`${coreTemp.toFixed(1)} °C`} tip="Stage 45: core temperature = (1−lag)×surface + lag×ambient. μ is evaluated at core temp, not surface temp." />
+              <DerivedRow label="μ fraction" value={`${(f * 100).toFixed(1)}%`} tip="f(coreTemp) — thermal grip multiplier on peakMu evaluated at core temperature (Stage 45). 100% = at optimal temperature." />
+              <DerivedRow label="Grip deficit" value={`−${((1 - f) * 100).toFixed(1)}%`} tip="Percentage of peak grip lost due to temperature offset from optimal. 0% = at optimal." />
               <DerivedRow label="Tyre status" value={status} tip="Simple classification based on current μ fraction." />
             </>;
           })()}
