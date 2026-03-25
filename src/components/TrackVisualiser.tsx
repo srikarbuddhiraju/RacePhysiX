@@ -659,14 +659,18 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
         const hdg      = Math.atan2(ptB.y - ptA.y, ptB.x - ptA.x) * 180 / Math.PI;
         const { gear, rpm } = computeGearRPM(gpt.speedKph, paramsRef.current, prevGearRef.current);
         prevGearRef.current = gear;
-        // Stage 47: thermal data from trace (GPS animation doesn't have thermal)
-        const thermalPt = tr.length > 1 ? traceAtDist(gpt.pathFrac * traceTotalDist, tr) : tr[0];
+        // Stage 47: throttle/brake from GPS zone+longG (must match displayed zone)
+        // Thermal (tyre/brake temp) from schematic trace lookup by distance fraction
+        const thermalPt   = tr.length > 1 ? traceAtDist(gpt.pathFrac * traceTotalDist, tr) : tr[0];
+        const gpsThrottle = gpt.zone === 'full-throttle' ? 100 : gpt.zone === 'cornering' ? 60 : gpt.zone === 'trail-braking' ? 20 : 0;
+        const gpsBrake    = gpt.zone === 'braking'       ? Math.min(100, Math.round(Math.abs(gpt.longG) * 80))
+                          : gpt.zone === 'trail-braking'  ? Math.min(80,  Math.round(Math.abs(gpt.longG) * 40)) : 0;
         setDotPos({ x: pt.x, y: pt.y });
         setDotHeading(hdg);
         setTelemetry({
           speedKph: gpt.speedKph, gear, rpm, longG: gpt.longG, latG: gpt.latG, zone: gpt.zone,
-          throttlePct:    thermalPt.throttlePct,
-          brakePct:       thermalPt.brakePct,
+          throttlePct:    gpsThrottle,
+          brakePct:       gpsBrake,
           tyreTempC:      thermalPt.tyreTempC,
           brakeDiscTempC: thermalPt.brakeDiscTempC,
           sectorIndex:    thermalPt.sectorIndex,
@@ -697,14 +701,17 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
         const hdg      = Math.atan2(ptB.y - ptA.y, ptB.x - ptA.x) * 180 / Math.PI;
         const { gear, rpm } = computeGearRPM(gpt.speedKph, paramsRef.current, prevGearRef.current);
         prevGearRef.current = gear;
-        // Stage 47: thermal data from trace
-        const thermalPt = tr.length > 1 ? traceAtDist(gpt.pathFrac * traceTotalDist, tr) : tr[0];
+        // Stage 47: throttle/brake from GPS zone+longG (matches displayed zone)
+        const thermalPt   = tr.length > 1 ? traceAtDist(gpt.pathFrac * traceTotalDist, tr) : tr[0];
+        const gpsThrottle = gpt.zone === 'full-throttle' ? 100 : gpt.zone === 'cornering' ? 60 : gpt.zone === 'trail-braking' ? 20 : 0;
+        const gpsBrake    = gpt.zone === 'braking'       ? Math.min(100, Math.round(Math.abs(gpt.longG) * 80))
+                          : gpt.zone === 'trail-braking'  ? Math.min(80,  Math.round(Math.abs(gpt.longG) * 40)) : 0;
         setDotPos({ x: pt.x, y: pt.y });
         setDotHeading(hdg);
         setTelemetry({
           speedKph: gpt.speedKph, gear, rpm, longG: gpt.longG, latG: gpt.latG, zone: gpt.zone,
-          throttlePct:    thermalPt.throttlePct,
-          brakePct:       thermalPt.brakePct,
+          throttlePct:    gpsThrottle,
+          brakePct:       gpsBrake,
           tyreTempC:      thermalPt.tyreTempC,
           brakeDiscTempC: thermalPt.brakeDiscTempC,
           sectorIndex:    thermalPt.sectorIndex,
@@ -869,61 +876,16 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
         </button>
       </div>
 
-      {/* ── Body: left panel | circuit | right panel ── */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      {/* ── Body: circuit fills full width, panels float as overlays ── */}
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden', background: C.bg }}>
 
-        {/* ── Left panel ── */}
-        {leftOpen && (
-          <div style={{
-            width: 172, flexShrink: 0,
-            background: C.panel, borderRight: `1px solid ${C.border}`,
-            display: 'flex', flexDirection: 'column', overflow: 'hidden',
-          }}>
-
-            {/* Corner temps */}
-            <div style={{ padding: '8px 8px 4px', borderBottom: `1px solid ${C.border}` }}>
-              <div style={{ fontSize: 7, color: C.dim, letterSpacing: '0.18em', marginBottom: 4 }}>CORNER TEMPS</div>
-              <CornerTempWidget telemetry={telemetry} params={params} />
-            </div>
-
-            {/* Sector timing */}
-            <div style={{ padding: '8px', borderBottom: `1px solid ${C.border}` }}>
-              <div style={{ fontSize: 7, color: C.dim, letterSpacing: '0.18em', marginBottom: 6 }}>SECTORS</div>
-              <SectorDisplay
-                liveTimeSec={liveTimeSec}
-                s1EndSec={s1EndSec}
-                s2EndSec={s2EndSec}
-                lapTimeSec={lapTimeSec}
-                s1Dur={sectorTimes.s1}
-                s2Dur={sectorTimes.s2}
-                s3Dur={sectorTimes.s3}
-                activeSector={activeSector}
-              />
-            </div>
-
-            {/* System icons */}
-            <div style={{ padding: '6px 8px', borderBottom: `1px solid ${C.border}` }}>
-              <SystemIconsRow telemetry={telemetry} params={params} />
-            </div>
-
-            {/* Tyre wear */}
-            <div style={{ padding: '6px 8px', flex: 1 }}>
-              <div style={{ fontSize: 7, color: C.dim, letterSpacing: '0.18em', marginBottom: 6 }}>TYRE WEAR (EST)</div>
-              <TyreWearDisplay lapFrac={liveTimeSec / Math.max(lapTimeSec, 1)} params={params} />
-            </div>
-          </div>
-        )}
-
-        {/* Left panel collapse tab */}
-        <PanelCollapseTab open={leftOpen} direction="left" onClick={() => setLeftOpen(v => !v)} />
-
-        {/* ── Circuit area ── */}
-        <div style={{ flex: 1, position: 'relative', overflow: 'hidden', background: C.bg }}>
-          <svg
-            viewBox={activeViewBox}
-            style={{ width: '100%', height: '100%' }}
-            preserveAspectRatio="xMidYMid meet"
-          >
+        {/* ── Circuit SVG — full width ── */}
+        <svg
+          viewBox={activeViewBox}
+          style={{ width: '100%', height: '100%' }}
+          preserveAspectRatio="xMidYMid meet"
+          shapeRendering="geometricPrecision"
+        >
             {/* Hidden measurement path */}
             <path ref={pathRef} d={trackD.replace(/\s*Z\s*$/i, '')} fill="none" stroke="none" />
 
@@ -966,11 +928,12 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
             )}
           </svg>
 
-          {/* Zone legend — bottom-left */}
+          {/* Zone legend — bottom-left, shifts right when left panel open */}
           <div style={{
-            position: 'absolute', bottom: 8, left: 10,
+            position: 'absolute', bottom: 8, left: leftOpen ? 178 : 10,
             display: 'flex', gap: 10, flexWrap: 'wrap',
             background: 'rgba(7,7,15,0.80)', borderRadius: 4, padding: '4px 6px',
+            zIndex: 4, transition: 'left 0.15s',
           }}>
             {ZONE_ENTRIES.map(([zone, color]) => (
               <div key={zone} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -982,71 +945,151 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
             ))}
           </div>
 
-          {/* Minimap overlay — shown in centred + chase modes */}
+          {/* Minimap overlay — shown in centred + chase modes, avoids right panel */}
           {viewMode !== 'full' && dotPos && (
-            <MinimapOverlay trackD={trackD} viewBox={viewBox} dotPos={dotPos} />
+            <MinimapOverlay trackD={trackD} viewBox={viewBox} dotPos={dotPos} rightOffset={rightOpen ? 198 : 10} />
           )}
 
-          {/* View mode label in circuit area */}
+          {/* View mode label — top-right of circuit */}
           {viewMode !== 'full' && (
             <div style={{
-              position: 'absolute', top: 8, right: 8,
+              position: 'absolute', top: 8, right: rightOpen ? 198 : 8,
               fontSize: 8, color: C.dim, letterSpacing: '0.14em',
               background: 'rgba(7,7,15,0.7)', borderRadius: 3, padding: '2px 5px',
+              zIndex: 4,
             }}>
               {viewMode === 'chase' ? '◉ CHASE' : '⊕ CAR-CENTRED'}
             </div>
           )}
-        </div>
 
-        {/* Right panel collapse tab */}
-        <PanelCollapseTab open={rightOpen} direction="right" onClick={() => setRightOpen(v => !v)} />
-
-        {/* ── Right panel ── */}
-        {rightOpen && (
-          <div style={{
-            width: 196, flexShrink: 0,
-            background: C.panel, borderLeft: `1px solid ${C.border}`,
-            display: 'flex', flexDirection: 'column', overflow: 'hidden',
-          }}>
-            {/* G-G header */}
+          {/* ── Left overlay panel ── */}
+          {leftOpen && (
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '8px 8px 4px',
-              borderBottom: `1px solid ${C.border}`,
+              position: 'absolute', left: 0, top: 0, bottom: 0, width: 170,
+              background: 'rgba(7,7,15,0.92)',
+              borderRight: '1px solid rgba(255,255,255,0.07)',
+              display: 'flex', flexDirection: 'column', overflow: 'hidden',
+              zIndex: 5,
             }}>
-              <span style={{ fontSize: 7, color: C.dim, letterSpacing: '0.18em', flex: 1 }}>G-G DIAGRAM</span>
-              {(['full', 'live'] as const).map(m => (
-                <button key={m} onClick={() => setGgMode(m)} style={{
-                  background: ggMode === m ? 'rgba(68,102,255,0.2)' : 'none',
-                  border: `1px solid ${ggMode === m ? C.accent : C.border}`,
-                  color: ggMode === m ? '#8899ff' : C.dim,
-                  fontSize: 8, cursor: 'pointer', padding: '1px 5px', borderRadius: 2,
-                  letterSpacing: '0.1em',
-                }}>{m.toUpperCase()}</button>
-              ))}
-            </div>
+              {/* Corner temps */}
+              <div style={{ padding: '8px 8px 4px', borderBottom: `1px solid ${C.border}` }}>
+                <div style={{ fontSize: 7, color: C.dim, letterSpacing: '0.18em', marginBottom: 4 }}>CORNER TEMPS</div>
+                <CornerTempWidget telemetry={telemetry} params={params} />
+              </div>
 
-            {/* G-G diagram */}
-            <div style={{ flex: 1, padding: '6px', position: 'relative', minHeight: 0 }}>
-              <GGDiagram
-                points={ggSnapshot}
-                livePoint={telemetry ? { x: telemetry.latG, y: telemetry.longG } : null}
-                peakMu={lapSimInput.peakMu}
-              />
-            </div>
+              {/* Sector timing */}
+              <div style={{ padding: '8px', borderBottom: `1px solid ${C.border}` }}>
+                <div style={{ fontSize: 7, color: C.dim, letterSpacing: '0.18em', marginBottom: 6 }}>SECTORS</div>
+                <SectorDisplay
+                  liveTimeSec={liveTimeSec}
+                  s1EndSec={s1EndSec}
+                  s2EndSec={s2EndSec}
+                  lapTimeSec={lapTimeSec}
+                  s1Dur={sectorTimes.s1}
+                  s2Dur={sectorTimes.s2}
+                  s3Dur={sectorTimes.s3}
+                  activeSector={activeSector}
+                />
+              </div>
 
-            {/* G-G footer */}
-            <div style={{
-              padding: '4px 8px 6px',
-              fontSize: 8, color: C.dim, letterSpacing: '0.1em', textAlign: 'center',
-              borderTop: `1px solid ${C.border}`,
-            }}>
-              μ={lapSimInput.peakMu.toFixed(2)} · LAT-G (x) vs LONG-G (y)
+              {/* System icons */}
+              <div style={{ padding: '6px 8px', borderBottom: `1px solid ${C.border}` }}>
+                <SystemIconsRow telemetry={telemetry} params={params} />
+              </div>
+
+              {/* Tyre wear */}
+              <div style={{ padding: '6px 8px', flex: 1 }}>
+                <div style={{ fontSize: 7, color: C.dim, letterSpacing: '0.18em', marginBottom: 6 }}>TYRE WEAR (EST)</div>
+                <TyreWearDisplay lapFrac={liveTimeSec / Math.max(lapTimeSec, 1)} params={params} />
+              </div>
             </div>
+          )}
+
+          {/* Left collapse tab — floats at panel edge */}
+          <div
+            onClick={() => setLeftOpen(v => !v)}
+            style={{
+              position: 'absolute', left: leftOpen ? 170 : 0, top: '50%',
+              transform: 'translateY(-50%)',
+              width: 14, height: 44,
+              background: 'rgba(20,20,36,0.92)',
+              border: '1px solid rgba(255,255,255,0.09)',
+              borderRadius: leftOpen ? '0 4px 4px 0' : '4px',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: C.dim, fontSize: 13, userSelect: 'none', zIndex: 6,
+              transition: 'left 0.15s',
+            }}
+            title={leftOpen ? 'Collapse panel' : 'Expand panel'}
+          >
+            {leftOpen ? '‹' : '›'}
           </div>
-        )}
-      </div>
+
+          {/* ── Right overlay panel ── */}
+          {rightOpen && (
+            <div style={{
+              position: 'absolute', right: 0, top: 0, bottom: 0, width: 190,
+              background: 'rgba(7,7,15,0.92)',
+              borderLeft: '1px solid rgba(255,255,255,0.07)',
+              display: 'flex', flexDirection: 'column', overflow: 'hidden',
+              zIndex: 5,
+            }}>
+              {/* G-G header */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '8px 8px 4px',
+                borderBottom: `1px solid ${C.border}`,
+              }}>
+                <span style={{ fontSize: 7, color: C.dim, letterSpacing: '0.18em', flex: 1 }}>G-G DIAGRAM</span>
+                {(['full', 'live'] as const).map(m => (
+                  <button key={m} onClick={() => setGgMode(m)} style={{
+                    background: ggMode === m ? 'rgba(68,102,255,0.2)' : 'none',
+                    border: `1px solid ${ggMode === m ? C.accent : C.border}`,
+                    color: ggMode === m ? '#8899ff' : C.dim,
+                    fontSize: 8, cursor: 'pointer', padding: '1px 5px', borderRadius: 2,
+                    letterSpacing: '0.1em',
+                  }}>{m.toUpperCase()}</button>
+                ))}
+              </div>
+
+              {/* G-G diagram */}
+              <div style={{ flex: 1, padding: '6px', position: 'relative', minHeight: 0 }}>
+                <GGDiagram
+                  points={ggSnapshot}
+                  livePoint={telemetry ? { x: telemetry.latG, y: telemetry.longG } : null}
+                  peakMu={lapSimInput.peakMu}
+                />
+              </div>
+
+              {/* G-G footer */}
+              <div style={{
+                padding: '4px 8px 6px',
+                fontSize: 8, color: C.dim, letterSpacing: '0.1em', textAlign: 'center',
+                borderTop: `1px solid ${C.border}`,
+              }}>
+                μ={lapSimInput.peakMu.toFixed(2)} · LAT-G (x) vs LONG-G (y)
+              </div>
+            </div>
+          )}
+
+          {/* Right collapse tab — floats at panel edge */}
+          <div
+            onClick={() => setRightOpen(v => !v)}
+            style={{
+              position: 'absolute', right: rightOpen ? 190 : 0, top: '50%',
+              transform: 'translateY(-50%)',
+              width: 14, height: 44,
+              background: 'rgba(20,20,36,0.92)',
+              border: '1px solid rgba(255,255,255,0.09)',
+              borderRadius: rightOpen ? '4px 0 0 4px' : '4px',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: C.dim, fontSize: 13, userSelect: 'none', zIndex: 6,
+              transition: 'right 0.15s',
+            }}
+            title={rightOpen ? 'Collapse panel' : 'Expand panel'}
+          >
+            {rightOpen ? '›' : '‹'}
+          </div>
+        </div>
 
       {/* ── Bottom strip (collapsible) ── */}
       <div style={{ flexShrink: 0 }}>
@@ -1446,8 +1489,8 @@ function GGDiagram({ points, livePoint, peakMu }: {
 
 // ── Minimap overlay ───────────────────────────────────────────────────────────
 
-function MinimapOverlay({ trackD, viewBox, dotPos }: {
-  trackD: string; viewBox: string; dotPos: { x: number; y: number };
+function MinimapOverlay({ trackD, viewBox, dotPos, rightOffset = 10 }: {
+  trackD: string; viewBox: string; dotPos: { x: number; y: number }; rightOffset?: number;
 }) {
   const parts = viewBox.split(' ').map(Number);
   const vbW = parts[2] ?? 100;
@@ -1456,7 +1499,8 @@ function MinimapOverlay({ trackD, viewBox, dotPos }: {
 
   return (
     <div style={{
-      position: 'absolute', bottom: 30, right: 10,
+      position: 'absolute', bottom: 30, right: rightOffset,
+      transition: 'right 0.15s',
       width: 92, height: 70,
       background: 'rgba(4,4,10,0.88)',
       border: `1px solid rgba(255,255,255,0.08)`,
@@ -1472,35 +1516,6 @@ function MinimapOverlay({ trackD, viewBox, dotPos }: {
         position: 'absolute', top: 2, left: 4,
         fontSize: 6, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.1em', fontFamily: 'monospace',
       }}>MAP</div>
-    </div>
-  );
-}
-
-// ── Panel collapse tab ────────────────────────────────────────────────────────
-
-function PanelCollapseTab({ open, direction, onClick }: {
-  open: boolean; direction: 'left' | 'right'; onClick: () => void;
-}) {
-  const chevron = direction === 'left'
-    ? (open ? '‹' : '›')
-    : (open ? '›' : '‹');
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        width: 12, flexShrink: 0,
-        background: 'transparent',
-        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: C.dim, fontSize: 13, userSelect: 'none',
-        borderLeft:  direction === 'right' ? `1px solid ${C.border}` : undefined,
-        borderRight: direction === 'left'  ? `1px solid ${C.border}` : undefined,
-        transition: 'background 0.1s',
-      }}
-      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)'; }}
-      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
-      title={`${open ? 'Collapse' : 'Expand'} panel`}
-    >
-      {chevron}
     </div>
   );
 }
