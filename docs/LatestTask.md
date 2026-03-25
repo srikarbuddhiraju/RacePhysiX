@@ -10,10 +10,13 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 **Milestones** (save status after each):
 - [x] M1: Data layer — extend `buildLapTrace` with tyre/brake temp per step; sector splits for 22 circuits
-- [ ] M2: Left panel — tyre+brake icon widget (FL/FR/RL/RR), sector timing, TC/Turbo icons, tyre wear
-- [ ] M3: Right panel — live G-G diagram + friction circle with Full Lap / Live toggle
-- [ ] M4: Bottom strip — replace Lat-G/Long-G with Throttle%/Brake%, brake fade indicator
-- [ ] M5: Camera — top view (car centred + minimap), chase view (G-reactive), 3D effects (brake glow, body roll, suspension)
+- [x] M2: Left panel — tyre+brake corner widget (FL/FR/RL/RR), sector timing S1/S2/S3, TC/Turbo/ERS icons, tyre wear bars
+- [x] M3: Right panel — live G-G diagram + friction circle, Full Lap / Live toggle
+- [x] M4: Bottom strip — Throttle%/Brake% replace Lat-G/Long-G; brake fade indicator (disc temp, FADE/WARM/OK)
+- [x] M5a: Car-centred view (dynamic viewBox tracks car) + minimap overlay + Chase view (circuit rotates, car faces up)
+- [x] Collapse tabs — left/right panels (VSCode-style 12px edge tabs) + bottom strip (click handle)
+- [x] Fullscreen — browser Fullscreen API (⛶ button in header)
+- [ ] M5b: 3D effects — brake disc glow, body roll/pitch, suspension compression (next session — needs Three.js)
 
 **Full spec:**
 - Header: circuit name centred, better contrast
