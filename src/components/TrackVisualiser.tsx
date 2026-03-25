@@ -422,11 +422,13 @@ interface Props {
   triggerRace: number;
   params:      VehicleParams;
   onClose:     () => void;
+  /** Stage 47: circuit key for sector split lookup. */
+  circuitKey?: string;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function TrackVisualiser({ layout, result, lapSimInput, raceResult, triggerRace, params, onClose }: Props) {
+export function TrackVisualiser({ layout, result, lapSimInput, raceResult, triggerRace, params, onClose, circuitKey = '' }: Props) {
   const [playing,    setPlaying]    = useState(true);
   const [playSpeed,  setPlaySpeed]  = useState(4);
   const [dotPos,     setDotPos]     = useState<{ x: number; y: number } | null>(null);
@@ -459,7 +461,7 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
   useEffect(() => { paramsRef.current = params; }, [params]);
 
   // Build trace from physics
-  const trace = useMemo(() => buildLapTrace(layout, lapSimInput), [layout, lapSimInput]);
+  const trace = useMemo(() => buildLapTrace(layout, lapSimInput, circuitKey), [layout, lapSimInput, circuitKey]);
   useEffect(() => { traceRef.current = trace; }, [trace]);
 
   // SVG path

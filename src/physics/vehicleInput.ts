@@ -165,5 +165,9 @@ export function buildLapSimInput(params: VehicleParams, coeffs: PacejkaCoeffs): 
     brakeHalfWidthC:    params.brakeHalfWidthC ?? 200,
     brakeFloorMu:       params.brakeFloorMu    ?? 0.65,
     ambientTempC:       params.ambientTempC    ?? 20,
+    // Stage 47 — tyre thermal trace inputs
+    tyreTempStartC:     params.tyreTempCurrentC    ?? 85,
+    tyreOptTempC:       params.tyreOptTempC        ?? 85,
+    tyreTempHalfWidthC: params.tyreTempHalfWidthC  ?? 30,
   };
 }
