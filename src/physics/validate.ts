@@ -89,6 +89,7 @@ const BASE: VehicleParams = {
   trackRubberLevel: 0.5,
   trackWetness: 0.0,
   ersEnabled: false, ersPowerKW: 0, ersBatteryKJ: 1000, ersDeployStrategy: 'full',
+  frontRollCentreHeightMm: 30, rearRollCentreHeightMm: 40, camberGainFront: 0.7, camberGainRear: 0.5,
 };
 
 let allPassed = true;

@@ -83,6 +83,7 @@ const ROAD_CAR: VehiclePreset = {
     trackRubberLevel: 0.5,
     trackWetness: 0.0,
     ersEnabled: false, ersPowerKW: 0, ersBatteryKJ: 1000, ersDeployStrategy: 'full',
+    frontRollCentreHeightMm: 30, rearRollCentreHeightMm: 40, camberGainFront: 0.7, camberGainRear: 0.5,
   },
   coeffs: { B: 10.0, C: 1.30, peakMu: 1.00, E: -1.50 },
 };
@@ -151,6 +152,7 @@ const FORMULA_STUDENT: VehiclePreset = {
     trackRubberLevel: 0.5,
     trackWetness: 0.0,
     ersEnabled: false, ersPowerKW: 0, ersBatteryKJ: 500, ersDeployStrategy: 'full',
+    frontRollCentreHeightMm: 20, rearRollCentreHeightMm: 30, camberGainFront: 1.0, camberGainRear: 0.8,
   },
   coeffs: { B: 12.0, C: 1.30, peakMu: 1.80, E: -0.80 },
 };
@@ -219,6 +221,7 @@ const GT3: VehiclePreset = {
     trackRubberLevel: 0.5,
     trackWetness: 0.0,
     ersEnabled: false, ersPowerKW: 0, ersBatteryKJ: 1000, ersDeployStrategy: 'full',
+    frontRollCentreHeightMm: 35, rearRollCentreHeightMm: 50, camberGainFront: 0.8, camberGainRear: 0.6,
   },
   coeffs: { B: 10.0, C: 1.35, peakMu: 1.60, E: -0.70 },
 };
@@ -288,6 +291,7 @@ const FORMULA_1: VehiclePreset = {
     trackRubberLevel: 0.5,
     trackWetness: 0.0,
     ersEnabled: true, ersPowerKW: 120, ersBatteryKJ: 4000, ersDeployStrategy: 'full',
+    frontRollCentreHeightMm: 25, rearRollCentreHeightMm: 35, camberGainFront: 1.2, camberGainRear: 0.9,
   },
   coeffs: { B: 15.0, C: 1.40, peakMu: 2.00, E: -1.00 },
 };

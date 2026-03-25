@@ -242,7 +242,7 @@ const DEFAULT_PARAMS: VehicleParams = {
 
 function loadInitialParams(): VehicleParams {
   if (window.location.hash.length > 1) {
-    const { params: decoded, presetId } = decodeParams(window.location.hash);
+    const { params: decoded } = decodeParams(window.location.hash);
     if (decoded && typeof decoded === 'object' && Object.keys(decoded).length > 0) {
       // Always merge over DEFAULT_PARAMS so any missing fields (e.g. new stages added
       // after a URL was shared) fall back to sensible defaults.

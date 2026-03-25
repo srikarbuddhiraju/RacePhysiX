@@ -9,7 +9,7 @@
 import React, { useMemo } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  Legend, ResponsiveContainer,
+  ResponsiveContainer,
 } from 'recharts';
 import type { TracePoint } from '../physics/laptime';
 import { interp } from '../utils/parseTelemetryCSV';
