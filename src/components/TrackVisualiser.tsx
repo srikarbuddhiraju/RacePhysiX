@@ -457,10 +457,13 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
   const raceResultRef  = useRef(raceResult);
   const traceRef       = useRef<TracePoint[]>([]);
   const prevGearRef    = useRef(1);
+  // paramsRef: keeps params current inside the stable tick callback without triggering RAF restart
+  const paramsRef      = useRef(params);
 
   useEffect(() => { raceResultRef.current = raceResult; }, [raceResult]);
   useEffect(() => { playSpeedRef.current = playSpeed; }, [playSpeed]);
   useEffect(() => { gpsAnimRef.current = gpsAnim; }, [gpsAnim]);
+  useEffect(() => { paramsRef.current = params; }, [params]);
 
   // Build trace from physics
   const trace = useMemo(() => buildLapTrace(layout, lapSimInput), [layout, lapSimInput]);
@@ -487,12 +490,9 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
       const newGpsAnim = { anim: result.anim, lapTimeSec: result.lapTimeSec };
       setZoneOverlay(result.segs);
       setGpsAnim(newGpsAnim);
-      // Update ref immediately — don't wait for the setState→re-render→ref-sync cycle.
-      // Without this, the RAF tick (restarted right after this effect in effect[tick])
-      // would read stale gpsAnimRef on its first frame and lock startRef to the old
-      // lap timing, causing erratic speeds until the next React render cycle completes.
+      // Update ref immediately so the running RAF tick reads fresh physics on its next frame
+      // without waiting for the setState → re-render → useEffect[gpsAnim] chain.
       gpsAnimRef.current = newGpsAnim;
-      startRef.current = null; // force rolling-start to recalibrate with new lap timing
     } else {
       // Schematic circuit — trace-based zones
       setGpsAnim(null);
@@ -521,12 +521,15 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
     setRaceLabel(`Lap 1 / ${raceResult.laps.length}`);
   }, [triggerRace]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Reset animation on layout/trace change
-  useEffect(() => { startRef.current = null; prevGearRef.current = 1; }, [layout, trace]);
+  // Reset animation only on circuit (layout) change — NOT on params/trace change.
+  // Resetting on params change caused the RAF restart race condition: refs updated async
+  // while a fresh RAF started synchronously, reading stale physics data.
+  useEffect(() => { startRef.current = null; prevGearRef.current = 1; }, [layout]);
 
-  const PLAYBACK_SPEED = playSpeedRef.current;
-
-  // Core RAF tick
+  // Core RAF tick — stable callback (only recreated when `playing` changes).
+  // All mutable values (params, gpsAnim, trace, playSpeed) are read via refs so the RAF
+  // never restarts due to physics/params changes. This eliminates the race condition where
+  // a fresh RAF tick fired before refs could be updated with new physics data.
   const tick = useCallback((timestamp: number) => {
     // Q3: cap per-frame real-time delta to prevent jumps when tab is backgrounded
     const realDelta = lastRealTimestamp.current > 0 ? timestamp - lastRealTimestamp.current : 0;
@@ -562,7 +565,7 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
       if (lapStartRef.current === null) lapStartRef.current = timestamp;
       const lapData     = raceRes.laps[raceAnim.lapIdx];
       const lapMs       = lapData.lapTimeSec * 1000;
-      const elapsed     = (timestamp - lapStartRef.current) * PLAYBACK_SPEED;
+      const elapsed     = (timestamp - lapStartRef.current) * playSpeedRef.current;
       const t           = Math.min(elapsed / lapMs, 1);
       timeSec_cur       = t * traceTotalTime;
       if (elapsed >= lapMs) {
@@ -593,7 +596,7 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
         const ptB   = pathEl.getPointAtLength(Math.min(pLen - eps, Math.max(sampleAt + eps, 2 * eps)));
         const hdg   = Math.atan2(ptB.y - ptA.y, ptB.x - ptA.x) * 180 / Math.PI;
 
-        const { gear, rpm } = computeGearRPM(gpt.speedKph, params, prevGearRef.current);
+        const { gear, rpm } = computeGearRPM(gpt.speedKph, paramsRef.current, prevGearRef.current);
         prevGearRef.current = gear;
 
         setDotPos({ x: pt.x, y: pt.y });
@@ -624,7 +627,7 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
     const headingDeg = Math.atan2(ptB.y - ptA.y, ptB.x - ptA.x) * 180 / Math.PI;
 
     // Gear / RPM
-    const { gear, rpm } = computeGearRPM(tp.speedKph, params, prevGearRef.current);
+    const { gear, rpm } = computeGearRPM(tp.speedKph, paramsRef.current, prevGearRef.current);
     prevGearRef.current = gear;
 
     setDotPos({ x: pt.x, y: pt.y });
@@ -637,7 +640,7 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
     }
 
     rafRef.current = requestAnimationFrame(tick);
-  }, [playing, params]);
+  }, [playing]); // params removed — read via paramsRef so RAF never restarts on param change
 
   useEffect(() => {
     rafRef.current = requestAnimationFrame(tick);
