@@ -24,10 +24,9 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 - 0 TypeScript errors, 0 npm vulnerabilities
 
 ### Next session plan
-1. **Browser verify** — end-to-end check all Stages 23–39 in UI
-2. **URL compression** — custom-param URLs still long
-3. **Surface Pro 6 camera** — needs device testing
-4. **Docs + README**, **Marketing Phase 1**
+1. **URL compression** — custom-param URLs still long
+2. **Docs + README**, **Marketing Phase 1**
+3. **Multi-device / user testing** — Surface Pro 6 + real users (future session)
 
 ---
 
