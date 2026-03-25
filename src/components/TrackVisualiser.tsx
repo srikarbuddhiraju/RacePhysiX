@@ -484,11 +484,19 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
     if (layout.svgPath && layout.svgIsGps) {
       // GPS circuit — GPS-native animation
       const result = buildGpsZoneOverlay(pathEl, lapSimInput, totalDist);
+      const newGpsAnim = { anim: result.anim, lapTimeSec: result.lapTimeSec };
       setZoneOverlay(result.segs);
-      setGpsAnim({ anim: result.anim, lapTimeSec: result.lapTimeSec });
+      setGpsAnim(newGpsAnim);
+      // Update ref immediately — don't wait for the setState→re-render→ref-sync cycle.
+      // Without this, the RAF tick (restarted right after this effect in effect[tick])
+      // would read stale gpsAnimRef on its first frame and lock startRef to the old
+      // lap timing, causing erratic speeds until the next React render cycle completes.
+      gpsAnimRef.current = newGpsAnim;
+      startRef.current = null; // force rolling-start to recalibrate with new lap timing
     } else {
       // Schematic circuit — trace-based zones
       setGpsAnim(null);
+      gpsAnimRef.current = null;
       const N       = 400;
       const pathLen = pathEl.getTotalLength();
       const ptArr   = Array.from({ length: N + 1 }, (_, i) => {
