@@ -17,47 +17,123 @@ import { VEHICLE_PRESETS } from './physics/vehiclePresets';
 import './App.css';
 
 // ── URL hash persistence ──────────────────────────────────────────────────────
-// Short URLs: preset match → "#p=f1", diff from defaults → base64 of changed keys only.
+// Tier 1: exact preset  → "#p=gt3"          (~6 chars)
+// Tier 2: preset + diff → "#p=gt3&{base64}" (~20–50 chars for small tweaks)
+// Tier 3: full diff     → "#{base64}"        (fallback for fully custom setups)
+// All diffs use 2–3 char short keys to minimise base64 length.
+// Old full-key base64 URLs (pre-compression) still decode correctly.
+
+const SHORT_KEYS: Record<keyof VehicleParams, string> = {
+  mass: 'ms', wheelbase: 'wb', frontWeightFraction: 'fwf',
+  corneringStiffnessNPerDeg: 'csf', rearCorneringStiffnessNPerDeg: 'csr',
+  cgHeight: 'cgh', trackWidth: 'tw', tyreSectionWidth: 'tsw',
+  turnRadius: 'tr', speedKph: 'sp', vehicleClass: 'vc',
+  drivetrainType: 'dt', throttlePercent: 'tpc', enginePowerKW: 'ep',
+  awdFrontBias: 'afb', frontSpringRate: 'fsp', rearSpringRate: 'rsp',
+  frontARBRate: 'far', rearARBRate: 'rar', brakingG: 'bg', brakeBias: 'bb',
+  aeroCL: 'cl', aeroCD: 'cd', aeroReferenceArea: 'ara', aeroBalance: 'ab',
+  tyreLoadSensitivity: 'tls', tyreOptTempC: 'tot', tyreTempHalfWidthC: 'thw',
+  tyreTempCurrentC: 'ttc', tyreTempFloorMu: 'tfm',
+  gearCount: 'gc', firstGearRatio: 'fgr', topGearRatio: 'tgr',
+  finalDriveRatio: 'fdr', wheelRadiusM: 'wr', enginePeakRpm: 'epr',
+  engineRedlineRpm: 'err', fuelLoadKg: 'fl', fuelBurnRateKgPerLap: 'fbr',
+  frontCamberDeg: 'fcd', rearCamberDeg: 'rcd', frontToeDeg: 'ftd', rearToeDeg: 'rtd',
+  tyreCompound: 'tc', altitudeM: 'alt', ambientTempC: 'atc',
+  windSpeedKph: 'wsp', windAngleDeg: 'wad', driverAggression: 'da',
+  diffType: 'dft', lsdLockingPercent: 'lsd', brakeDiscMassKg: 'bdm',
+  brakeOptTempC: 'bot', brakeHalfWidthC: 'bhw', brakeFloorMu: 'bfm',
+  frontTyrePressureBar: 'ftp', rearTyrePressureBar: 'rtp',
+  frontRideHeightMm: 'frh', rearRideHeightMm: 'rrh',
+  engineCurveType: 'ect', engineMaxTorqueNm: 'emt', engineTorquePeakRpm: 'etp',
+  turboBoostRpm: 'tbr', tcEnabled: 'tce', tcSlipThreshold: 'tct',
+  trackRubberLevel: 'trl', trackWetness: 'twt', ersEnabled: 'ere',
+  ersPowerKW: 'erp', ersBatteryKJ: 'erb', ersDeployStrategy: 'eds',
+};
+
+// Reverse map: short key → full VehicleParams key
+const LONG_KEYS = Object.fromEntries(
+  Object.entries(SHORT_KEYS).map(([k, v]) => [v, k as keyof VehicleParams])
+) as Record<string, keyof VehicleParams>;
+
+// Applies a diff object to target; handles both short keys (new) and full keys (old URLs).
+function applyDiff(target: Record<string, unknown>, diff: Record<string, unknown>): void {
+  for (const [k, v] of Object.entries(diff)) {
+    const fullKey: string = LONG_KEYS[k] ?? k;
+    target[fullKey] = v;
+  }
+}
+
 function paramsMatchPreset(p: VehicleParams): string | null {
   const pRec = p as unknown as Record<string, unknown>;
   for (const preset of VEHICLE_PRESETS) {
     const prRec = preset.params as unknown as Record<string, unknown>;
-    const allMatch = Object.keys(preset.params).every(k => pRec[k] === prRec[k]);
-    if (allMatch) return preset.id;
+    if (Object.keys(preset.params).every(k => pRec[k] === prRec[k])) return preset.id;
   }
   return null;
 }
 
 function encodeParams(p: VehicleParams): string {
-  // If params exactly match a preset, use short preset ID
-  const presetId = paramsMatchPreset(p);
-  if (presetId) return `p=${presetId}`;
+  // Tier 1: exact preset match
+  const exactId = paramsMatchPreset(p);
+  if (exactId) return `p=${exactId}`;
 
-  // Otherwise encode only keys that differ from defaults
-  const diff: Partial<VehicleParams> = {};
-  let hasDiff = false;
+  // Find nearest preset (most fields in common)
   const pRec = p as unknown as Record<string, unknown>;
-  const dRec = DEFAULT_PARAMS as unknown as Record<string, unknown>;
+  let bestId = '', bestMatches = 0;
+  for (const pr of VEHICLE_PRESETS) {
+    const prRec = pr.params as unknown as Record<string, unknown>;
+    const matches = Object.keys(pr.params).filter(k => pRec[k] === prRec[k]).length;
+    if (matches > bestMatches) { bestMatches = matches; bestId = pr.id; }
+  }
+
+  const bestPreset  = bestMatches > 0 ? VEHICLE_PRESETS.find(pr => pr.id === bestId)! : null;
+  const baseParams  = (bestPreset?.params ?? DEFAULT_PARAMS) as unknown as Record<string, unknown>;
+  const defaultsRec = DEFAULT_PARAMS as unknown as Record<string, unknown>;
+
+  // Build short-key diff (only fields that differ from chosen base)
+  const diff: Record<string, unknown> = {};
   for (const key of Object.keys(DEFAULT_PARAMS) as (keyof VehicleParams)[]) {
-    if (pRec[key] !== dRec[key]) {
-      (diff as unknown as Record<string, unknown>)[key] = pRec[key];
-      hasDiff = true;
+    if (pRec[key] !== baseParams[key]) {
+      // Also skip if identical to DEFAULT and base is DEFAULT (avoids redundant keys)
+      if (!bestPreset && pRec[key] === defaultsRec[key]) continue;
+      diff[SHORT_KEYS[key] ?? key] = pRec[key];
     }
   }
-  if (!hasDiff) return '';
-  try { return btoa(JSON.stringify(diff)); } catch { return ''; }
+
+  if (Object.keys(diff).length === 0) return bestPreset ? `p=${bestId}` : '';
+  try {
+    const b64 = btoa(JSON.stringify(diff));
+    return bestPreset ? `p=${bestId}&${b64}` : b64;
+  } catch { return ''; }
 }
 
 function decodeParams(hash: string): { params: Partial<VehicleParams>; presetId: string | null } {
   const raw = hash.replace(/^#/, '');
-  // Short preset ID format
-  if (raw.startsWith('p=')) {
-    const id = raw.slice(2);
+  const ampIdx = raw.indexOf('&');
+  const left  = ampIdx >= 0 ? raw.slice(0, ampIdx) : raw;
+  const right = ampIdx >= 0 ? raw.slice(ampIdx + 1) : '';
+
+  // Tier 1: preset only "#p=gt3"
+  if (left.startsWith('p=') && !right) {
+    const id = left.slice(2);
     const preset = VEHICLE_PRESETS.find(pr => pr.id === id);
     if (preset) return { params: preset.params, presetId: id };
   }
+
+  // Tier 2: preset + diff "#p=gt3&{base64}"
+  if (left.startsWith('p=') && right) {
+    const id = left.slice(2);
+    const preset = VEHICLE_PRESETS.find(pr => pr.id === id);
+    const base: Record<string, unknown> = { ...(preset?.params ?? DEFAULT_PARAMS) };
+    try { applyDiff(base, JSON.parse(atob(right))); } catch { /* use base as-is */ }
+    return { params: base as Partial<VehicleParams>, presetId: id };
+  }
+
+  // Tier 3: raw base64 diff (new short-key OR old full-key — both handled by applyDiff)
   try {
-    return { params: JSON.parse(atob(raw)) as Partial<VehicleParams>, presetId: null };
+    const out: Record<string, unknown> = {};
+    applyDiff(out, JSON.parse(atob(raw)));
+    return { params: out as Partial<VehicleParams>, presetId: null };
   } catch {
     return { params: {}, presetId: null };
   }
@@ -161,9 +237,9 @@ function loadInitialParams(): VehicleParams {
   if (window.location.hash.length > 1) {
     const { params: decoded, presetId } = decodeParams(window.location.hash);
     if (decoded && typeof decoded === 'object' && Object.keys(decoded).length > 0) {
-      const result = presetId
-        ? (decoded as VehicleParams)          // preset: decoded IS the full params
-        : { ...DEFAULT_PARAMS, ...decoded };  // diff: merge over defaults
+      // Always merge over DEFAULT_PARAMS so any missing fields (e.g. new stages added
+      // after a URL was shared) fall back to sensible defaults.
+      const result = { ...DEFAULT_PARAMS, ...decoded } as VehicleParams;
       // Re-compress URL (replaces old full-blob URLs with short form)
       const compressed = encodeParams(result);
       history.replaceState(null, '', compressed ? `#${compressed}` : window.location.pathname);

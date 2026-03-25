@@ -30,6 +30,14 @@
   }
 }
 
+@media (max-width: 1100px) {
+  .results-panel {
+    width: 200px;
+    min-width: 200px;
+    padding: 12px 10px;
+  }
+}
+
 @media (max-width: 900px) {
   .results-panel {
     width: 100%;
