@@ -4,6 +4,59 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
+## Session 27 — 2026-03-25  |  branch: `feature/fix-animation-stale-state` (IN PROGRESS)
+
+### Completed this session
+
+**P0 Bug fix: erratic animation after param change**
+
+Root cause identified and fixed. Race condition in `TrackVisualiser.tsx`:
+1. When `params` change → `tick` (useCallback) is recreated → `useEffect([tick])` restarts the RAF
+2. The zone overlay `useEffect` fires first, calls `setGpsAnim(newResult)` — but this is async (needs a re-render before `gpsAnimRef.current` updates)
+3. The new RAF tick fires immediately with `startRef.current = null` (reset from trace change)
+4. Rolling start reads `gpsAnimRef.current` = **OLD animation** → locks `startRef` to wrong timing + old speed profile
+5. Old animation plays (wrong speeds, wrong physics) until next React render cycle (~1-3 frames)
+
+**Fix** (`src/components/TrackVisualiser.tsx`):
+- In zone overlay effect: update `gpsAnimRef.current` directly after `buildGpsZoneOverlay` returns (no waiting for re-render)
+- Also reset `startRef.current = null` at that point so rolling start always recalibrates with new lap timing
+- Same for schematic path: explicitly null `gpsAnimRef.current` on param change
+- 0 TypeScript errors, clean production build
+
+**Commit:** `a47cda5` — `feature/fix-animation-stale-state`
+
+### Pending verification
+
+- [ ] Srikar to verify: open circuit map on any GPS circuit (e.g. Spa), change a param (e.g. switch Road → F1 preset), confirm animation no longer goes erratic
+
+### Eau Rouge braking zone — analysis
+
+Root cause analysis (not fixed yet):
+- **F1**: based on kAero = 0.009 m⁻¹, F1 is flat-out for any R > 109m. Raidillon is ~115-200m in 2D plan view → F1 should be flat-out ✓. If F1 is still showing braking, it suggests GPS curvature < 109m at some point — possible GPS artifact at the S-curve inflection.
+- **GT3**: threshold is R > 185m to be flat-out (kAero = 0.0028 m⁻¹). At R = 115-150m (racing line through Eau Rouge dip), GT3 correctly brakes on flat-road physics. The real-world flat-out requires track banking (~4-8° at Raidillon) which adds lateral grip.
+- **Conclusion**: the braking zone for GT3 is physically correct for a flat-road model. The fix requires Stage 37 (track banking/elevation). NOT a code bug.
+- **Action needed from Srikar**: confirm if F1 also shows braking (if yes → possible GPS artifact, needs curvature debug), or if only GT3 (if yes → Stage 37 is the right fix, mark as "known limitation pending banking model")
+
+### State
+- Branch: `feature/fix-animation-stale-state`
+- Physics: 21/21 checks pass | 424/424 extended tests pass
+- 0 TypeScript errors, 0 npm vulnerabilities
+
+### Remaining P0 bugs (after verification merges)
+1. ~~Erratic animation after param change~~ FIXED ✓ (pending verification)
+2. **Eau Rouge braking zone** — see analysis above
+3. **URL compression** — custom-param URLs still long; needs short-key map + binary packing (~5 bytes/param), ~100 chars for 15 changed params
+4. **Surface Pro 6 camera** — needs device testing
+
+### Next session plan (unchanged from Session 26)
+5. **Browser verify** — end-to-end check all Stages 23–36 in UI
+6. **Stage 37** — Track banking/elevation (would fix Eau Rouge)
+7. **Stage 38** — Data export (CSV/JSON)
+8. **Stage 39** — Telemetry replay
+9. **Docs + README**, **Marketing Phase 1**
+
+---
+
 ## Session 26 — 2026-03-24  |  branch: `main` (COMPLETE ✅)
 
 ### Completed this session
