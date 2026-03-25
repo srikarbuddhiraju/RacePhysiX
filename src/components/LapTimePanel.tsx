@@ -7,7 +7,8 @@ import type { OptimiseResult } from '../physics/optimise';
 import type { VehicleParams, PacejkaCoeffs } from '../physics/types';
 import { buildLapSimInput } from '../physics/vehicleInput';
 import { InfoTooltip } from './InfoTooltip';
-import { exportLapTimeCSV } from '../utils/export';
+import { exportLapTimeCSV, exportLapTraceCSV, exportRaceTelemetryCSV } from '../utils/export';
+import { buildLapTrace, buildRaceLapTraces } from '../physics/laptime';
 import { type PowerUnit, fmtPower } from '../utils/units';
 
 interface Props {
@@ -345,7 +346,41 @@ export function LapTimePanel({
             borderRadius: 5, color: 'var(--text-secondary)', cursor: 'pointer',
           }}
         >
-          Export CSV
+          Lap Summary
+        </button>
+        <button
+          onClick={() => {
+            const trace = buildLapTrace(effectiveLayout, inpBuilder(params));
+            exportLapTraceCSV(trace, effectiveLayout.name, 'lap1', params);
+          }}
+          title="Export high-res single-lap telemetry trace (~5 m steps): speed, gear, RPM, G-forces, zone"
+          style={{
+            padding: '3px 10px', fontSize: 10, fontWeight: 600,
+            background: 'var(--bg-card)', border: '1px solid var(--border)',
+            borderRadius: 5, color: 'var(--text-secondary)', cursor: 'pointer',
+          }}
+        >
+          Lap Trace
+        </button>
+        <button
+          onClick={() => {
+            if (raceState.status !== 'done') return;
+            const baseInp = inpBuilder(params);
+            const traces  = buildRaceLapTraces(effectiveLayout, baseInp, raceState.result);
+            exportRaceTelemetryCSV(traces, raceState.result, effectiveLayout.name, params);
+          }}
+          title={raceState.status === 'done' ? 'Export full race telemetry (all laps): speed, gear, RPM, G-forces, zone + lap summary header' : 'Run race simulation first'}
+          disabled={raceState.status !== 'done'}
+          style={{
+            padding: '3px 10px', fontSize: 10, fontWeight: 600,
+            background: 'var(--bg-card)', border: '1px solid var(--border)',
+            borderRadius: 5,
+            color: raceState.status === 'done' ? 'var(--text-secondary)' : 'var(--text-muted)',
+            cursor: raceState.status === 'done' ? 'pointer' : 'not-allowed',
+            opacity: raceState.status === 'done' ? 1 : 0.45,
+          }}
+        >
+          Race Telemetry
         </button>
         <select
           value={trackKey}

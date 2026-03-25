@@ -1330,3 +1330,32 @@ export function simulateRace(
     totalTimeSec: laps.reduce((s, l) => s + l.lapTimeSec, 0),
   };
 }
+
+// ── Race telemetry traces ─────────────────────────────────────────────────────
+
+/**
+ * Stage 38 — builds a high-resolution physics trace for every lap in a race simulation.
+ *
+ * For each lap the base LapSimInput is scaled to match the physics that simulateRace
+ * used for that lap:
+ *   peakMu      × muFraction × wearFactor   (tyre temperature + wear degradation)
+ *   mass        + fuelMassKg                  (fuel load at lap start adds to vehicle mass)
+ *   brakingCapG × brakeFadeFactor             (thermal brake fade)
+ *
+ * Returns one TracePoint[] per lap, in lap order.
+ */
+export function buildRaceLapTraces(
+  layout:     TrackLayout,
+  baseInp:    LapSimInput,
+  raceResult: RaceResult,
+): TracePoint[][] {
+  return raceResult.laps.map(lapData => {
+    const scaledInp: LapSimInput = {
+      ...baseInp,
+      peakMu:      baseInp.peakMu * lapData.muFraction * lapData.wearFactor,
+      mass:        baseInp.mass + lapData.fuelMassKg,
+      brakingCapG: baseInp.brakingCapG * lapData.brakeFadeFactor,
+    };
+    return buildLapTrace(layout, scaledInp);
+  });
+}

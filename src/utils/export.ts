@@ -1,13 +1,16 @@
 /**
- * Export utilities — Item 5.
+ * Export utilities — Stage 38.
  *
- * exportParamsAndResultsCSV: serialises vehicle params + key results to CSV.
- * exportLapTimeCSV: serialises lap time + segment breakdown for a chosen circuit.
- * exportChartAsSVG: grabs an SVG element from the DOM and downloads it.
+ * exportParamsAndResultsCSV: vehicle params + key results.
+ * exportLapTimeCSV:          lap time + per-segment breakdown.
+ * exportLapTraceCSV:         high-res single-lap telemetry trace (~5m steps).
+ * exportRaceTelemetryCSV:    multi-lap race telemetry (all laps concatenated).
+ * exportChartAsSVG:          SVG chart download.
  */
 
 import type { VehicleParams, PhysicsResult, PacejkaResult, PacejkaCoeffs } from '../physics/types';
-import type { LapResult } from '../physics/laptime';
+import type { LapResult, TracePoint, RaceResult } from '../physics/laptime';
+import { computeGearRPM } from '../physics/gearUtils';
 
 // ── Internal helper ───────────────────────────────────────────────────────────
 
@@ -145,6 +148,80 @@ export function exportLapTimeCSV(
 
   const safeCircuit = circuitName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
   downloadBlob(new Blob([csv], { type: 'text/csv' }), `racephysix_laptime_${safeCircuit}.csv`);
+}
+
+// ── Lap trace CSV (Stage 38 v1) ───────────────────────────────────────────────
+
+/**
+ * Exports a high-resolution single-lap telemetry trace.
+ * Columns: dist_m, time_s, speed_kph, gear, rpm, long_g, lat_g, zone
+ * ~400–500 rows at 5 m spacing for a typical 2–7 km circuit.
+ */
+export function exportLapTraceCSV(
+  trace:       TracePoint[],
+  circuitName: string,
+  lapLabel:    string,
+  params:      VehicleParams,
+): void {
+  const header = 'dist_m,time_s,speed_kph,gear,rpm,long_g,lat_g,zone';
+  let prevGear = 1;
+  const rows = trace.map(pt => {
+    const { gear, rpm } = computeGearRPM(pt.speedKph, params, prevGear);
+    prevGear = gear;
+    return [
+      pt.distM.toFixed(1), pt.timeSec.toFixed(3), pt.speedKph.toFixed(1),
+      gear, rpm.toFixed(0),
+      pt.longG.toFixed(3), pt.latG.toFixed(3), pt.zone,
+    ].join(',');
+  });
+  const csv = `# RacePhysiX Lap Trace — ${circuitName} — ${lapLabel}\n${header}\n${rows.join('\n')}`;
+  const safe = `${circuitName}_${lapLabel}`.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+  downloadBlob(new Blob([csv], { type: 'text/csv' }), `racephysix_trace_${safe}.csv`);
+}
+
+// ── Race telemetry CSV (Stage 38 v2) ─────────────────────────────────────────
+
+/**
+ * Exports multi-lap race telemetry — one row per trace point, lap-indexed.
+ * Columns: lap, dist_m, time_s, speed_kph, gear, rpm, long_g, lat_g, zone
+ * Also prepends a per-lap summary header block for quick reference.
+ */
+export function exportRaceTelemetryCSV(
+  traces:      TracePoint[][],
+  raceResult:  RaceResult,
+  circuitName: string,
+  params:      VehicleParams,
+): void {
+  // Summary block
+  const summaryLines = [
+    `# RacePhysiX Race Telemetry — ${circuitName} — ${raceResult.laps.length} laps`,
+    `# fastest_lap,${raceResult.fastestLapNum},${raceResult.fastestLapSec.toFixed(3)}`,
+    '# lap,lap_time_s,s1_s,s2_s,s3_s,tyre_temp_c,tyre_wear,fuel_kg,brake_temp_c',
+    ...raceResult.laps.map(l =>
+      `# ${l.lap},${l.lapTimeSec.toFixed(3)},${l.s1Sec.toFixed(3)},${l.s2Sec.toFixed(3)},${l.s3Sec.toFixed(3)},${l.tyreTempC.toFixed(1)},${l.tyreWearFraction.toFixed(3)},${l.fuelMassKg.toFixed(2)},${l.brakeDiscTempC.toFixed(0)}`
+    ),
+    '',
+  ];
+
+  const header = 'lap,dist_m,time_s,speed_kph,gear,rpm,long_g,lat_g,zone';
+  const rows: string[] = [];
+  traces.forEach((trace, idx) => {
+    const lapNum = raceResult.laps[idx].lap;
+    let prevGear = 1;
+    for (const pt of trace) {
+      const { gear, rpm } = computeGearRPM(pt.speedKph, params, prevGear);
+      prevGear = gear;
+      rows.push([
+        lapNum, pt.distM.toFixed(1), pt.timeSec.toFixed(3), pt.speedKph.toFixed(1),
+        gear, rpm.toFixed(0),
+        pt.longG.toFixed(3), pt.latG.toFixed(3), pt.zone,
+      ].join(','));
+    }
+  });
+
+  const csv = summaryLines.join('\n') + header + '\n' + rows.join('\n');
+  const safe = circuitName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+  downloadBlob(new Blob([csv], { type: 'text/csv' }), `racephysix_race_telemetry_${safe}.csv`);
 }
 
 // ── SVG export ────────────────────────────────────────────────────────────────
