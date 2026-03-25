@@ -19,7 +19,7 @@ RacePhysiX is an open-source vehicle dynamics simulator covering the full physic
 
 ---
 
-## Physics Model (39 stages)
+## Physics Model (41 stages)
 
 | Stage | Model | What it captures |
 |---|---|---|
@@ -60,8 +60,10 @@ RacePhysiX is an open-source vehicle dynamics simulator covering the full physic
 | 37 | Track banking + elevation | Banked corner FBD (Milliken RCVD §2.5), gradient drive/brake forces |
 | 38 | Data export | Lap trace + race telemetry CSV (speed, gear, RPM, G-forces, zone) |
 | 39 | Telemetry overlay | Upload any lap trace CSV — compare against sim in overlaid charts |
+| 40 | MF-Swift combined slip | Pacejka Fx + Gky/Gxa cosine reduction (replaces Kamm circle) |
+| 41 | Roll centre + dynamic camber | Geometric/elastic load transfer split; outer tyre camber gain from roll |
 
-All 21 physics validation checks pass. Extended suite: 424/424 pass.
+All 28 physics validation checks pass. Extended suite: 424/424 pass.
 
 ---
 
