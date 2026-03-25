@@ -4,6 +4,35 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
+## Session 30 — 2026-03-25  |  branch: `main` (IN PROGRESS)
+
+### Completed this session
+
+**URL compression + desktop responsive layout** (merged `57d7e6c`)
+
+URL:
+- Short-key map: 56 VehicleParams fields → 2–3 char codes
+- Nearest-preset encoding: `#p=gt3&{tiny-b64}` (~28 chars) vs old ~950 chars
+- Backwards-compatible: old full-key base64 URLs still decode
+
+Layout:
+- `min-width: 900px` on `.app` — horizontal scroll before collapse
+- 1100px breakpoint: panels shrink to 200px, canvas gets more space
+- `max-height: 700px` query: vertical scroll on short screens, charts accessible
+- ChartsPanel: collapses to 1-column at ≤1000px
+- Multi-device testing deferred (will test on different devices later)
+
+### State
+- Branch: `main`, pushed, live on Cloudflare Pages (commit `57d7e6c`)
+- Physics: 21/21 checks pass | 424/424 extended tests pass
+- 0 TypeScript errors, 0 npm vulnerabilities
+
+### Next session plan
+1. **Docs + README**, **Marketing Phase 1**
+2. **Multi-device testing** (Surface Pro 6 + real users — deferred)
+
+---
+
 ## Session 29 — 2026-03-25  |  branch: `main` (COMPLETE ✅)
 
 ### Completed this session
