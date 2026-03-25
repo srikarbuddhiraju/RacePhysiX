@@ -98,6 +98,11 @@ export interface VehicleParams {
   ersPowerKW:         number;   // kW — MGU-K max deploy power
   ersBatteryKJ:       number;   // kJ — max energy available per lap
   ersDeployStrategy:  string;   // 'full' | 'saving' | 'attack'
+  // ── Stage 41 — Roll centre height + dynamic camber ───────────────────────────
+  frontRollCentreHeightMm: number; // mm — front RC height above ground (0 = ground; typical DWB: 20–50)
+  rearRollCentreHeightMm:  number; // mm — rear RC height (typical DWB: 30–60)
+  camberGainFront:         number; // deg/deg — camber gained per degree of body roll (outer tyre gains neg. camber)
+  camberGainRear:          number; // deg/deg — rear camber gain per degree of roll
 }
 
 export type Balance = 'understeer' | 'neutral' | 'oversteer';

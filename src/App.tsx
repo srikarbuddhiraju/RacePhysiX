@@ -48,6 +48,8 @@ const SHORT_KEYS: Record<keyof VehicleParams, string> = {
   turboBoostRpm: 'tbr', tcEnabled: 'tce', tcSlipThreshold: 'tct',
   trackRubberLevel: 'trl', trackWetness: 'twt', ersEnabled: 'ere',
   ersPowerKW: 'erp', ersBatteryKJ: 'erb', ersDeployStrategy: 'eds',
+  frontRollCentreHeightMm: 'frc', rearRollCentreHeightMm: 'rrc',
+  camberGainFront: 'cgf', camberGainRear: 'cgr',
 };
 
 // Reverse map: short key → full VehicleParams key
@@ -231,6 +233,11 @@ const DEFAULT_PARAMS: VehicleParams = {
   ersPowerKW: 120,
   ersBatteryKJ: 4000,
   ersDeployStrategy: 'full',
+  // Stage 41 — Roll centre height + dynamic camber
+  frontRollCentreHeightMm: 30,   // mm — typical DWB front RC height
+  rearRollCentreHeightMm:  40,   // mm — typical DWB rear RC height
+  camberGainFront:         0.7,  // deg/deg — outer tyre camber gain per deg body roll
+  camberGainRear:          0.5,
 };
 
 function loadInitialParams(): VehicleParams {

@@ -22,6 +22,8 @@ import { computeTyreTempFactor, computeTyreEffectiveMu } from './tyreTemp';
 import { optimiseSetup, OPTIMISE_BOUNDS } from './optimise';
 import { computeLapTime, TRACK_PRESETS } from './laptime';
 import type { TrackLayout, LapSimInput } from './laptime';
+import { combinedSlipGky } from './pacejka';
+import { computeLoadTransfer } from './loadTransfer';
 import type { VehicleParams, PacejkaCoeffs } from './types';
 
 const PASS = '\x1b[32mPASS\x1b[0m';
@@ -575,6 +577,72 @@ console.log('\nCheck 14c — Stage 13C: Transient yaw penalty formula');
   allPassed = check('Check 14c: t_penalty = τ×(1−Vc/Ve)×0.5 (±1e-6)', penalty_actual, penalty_expected, 1e-6) && allPassed;
 }
 
+// ─── Check 15: Stage 40 — Combined slip Gky reduction function ───────────────
+// Hand-calc (Pacejka §4.3.2): Gκy = cos(Cκy × arctan(Bκy × κ))
+//   Bκy=3.5, Cκy=1.0
+//   κ=0:   cos(0) = 1.000
+//   κ=0.1: cos(arctan(0.35)) = cos(0.33667) ≈ 0.9440   (light braking)
+//   κ=0.2: cos(arctan(0.70)) = cos(0.61073) ≈ 0.8165   (heavy braking)
+console.log('\nCheck 15 — Stage 40: Combined slip Gky (Bκy=3.5, Cκy=1.0)');
+{
+  const gky0   = combinedSlipGky(0);
+  const gky01  = combinedSlipGky(0.1);
+  const gky02  = combinedSlipGky(0.2);
+  const gky01_exp = Math.cos(Math.atan(3.5 * 0.1));  // 0.94398
+  const gky02_exp = Math.cos(Math.atan(3.5 * 0.2));  // 0.81653
+  console.log(`  Gky(0)   = ${gky0.toFixed(6)} (expected 1.000000)`);
+  console.log(`  Gky(0.1) = ${gky01.toFixed(6)} (expected ${gky01_exp.toFixed(6)})`);
+  console.log(`  Gky(0.2) = ${gky02.toFixed(6)} (expected ${gky02_exp.toFixed(6)})`);
+  allPassed = check('Check 15a: Gky(0) = 1.000000', gky0, 1.0, 1e-6) && allPassed;
+  allPassed = check('Check 15b: Gky(0.1) ≈ 0.9440 (±0.002)', gky01, gky01_exp, 1e-6) && allPassed;
+  allPassed = check('Check 15c: Gky(0.2) ≈ 0.8165 (±0.003)', gky02, gky02_exp, 1e-6) && allPassed;
+}
+
+// ─── Check 16: Stage 41 — RC load transfer + dynamic camber ──────────────────
+// Hand-calc (RCVD §17.5):
+// 16a: RC=50mm front, mass=1500kg, fwf=0.55, ay=1g (9.81 m/s²), TW=1.5m
+//   ΔFz_front_geom = 1500 × 9.81 × 0.55 × 0.05 / 1.5 = 269.775 N
+//   (with rollStiffRatio=0.5, hCG=0.4m: elastic = 1500×9.81×(0.4−0.05)×0.5/1.5 = 1715.25 N)
+//   Total front (geom+elastic) = 269.775 + 1715.25 = 1985.025 N
+// 16b: Dynamic camber: rollAngle=3°, camberGainFront=0.7, staticFront=−1.5°
+//   dynamicCamberFront = −1.5 − 3×0.7 = −3.6°
+console.log('\nCheck 16 — Stage 41: RC load transfer + dynamic camber');
+{
+  // 16a: RC load transfer split
+  const mass16 = 1500, fwf16 = 0.55, ay16 = 9.81, TW16 = 1.5, hCG16 = 0.4;
+  const rcF = 0.05;  // 50 mm → 0.05 m
+  const rollStiff16 = 0.5;
+  const lt16 = computeLoadTransfer(
+    { mass: mass16, wheelbase: 2.6, cgHeight: hCG16, trackWidth: TW16,
+      frontWeightFraction: fwf16, rollStiffRatio: rollStiff16,
+      rcHeightFront: rcF, rcHeightRear: 0 },
+    ay16, 0,
+  );
+  const geomExp = mass16 * ay16 * fwf16 * rcF / TW16;   // 269.775 N
+  const elasticExp = mass16 * ay16 * (hCG16 - rcF) * rollStiff16 / TW16;  // 1715.25 N
+  const totalExp = geomExp + elasticExp;
+  console.log(`  ΔFz_front geom    = ${geomExp.toFixed(3)} N (expected 269.775 N)`);
+  console.log(`  ΔFz_front elastic = ${elasticExp.toFixed(3)} N (expected 1715.250 N)`);
+  console.log(`  ΔFz_front total   = ${lt16.latTransferFront.toFixed(3)} N (expected ${totalExp.toFixed(3)} N)`);
+  allPassed = check('Check 16a: geometric ΔFz_front = m×ay×fwf×rcH/TW (±0.1 N)', lt16.latTransferFront, totalExp, 0.1) && allPassed;
+  // RC=0 should match old formula exactly
+  const lt16_noRC = computeLoadTransfer(
+    { mass: mass16, wheelbase: 2.6, cgHeight: hCG16, trackWidth: TW16,
+      frontWeightFraction: fwf16, rollStiffRatio: rollStiff16 },
+    ay16, 0,
+  );
+  const oldFormulaFront = mass16 * ay16 * hCG16 * rollStiff16 / TW16;
+  console.log(`  RC=0 front ΔFz    = ${lt16_noRC.latTransferFront.toFixed(3)} N (old formula: ${oldFormulaFront.toFixed(3)} N)`);
+  allPassed = check('Check 16a: RC=0 reduces to old elastic-only formula (±0.001 N)', lt16_noRC.latTransferFront, oldFormulaFront, 0.001) && allPassed;
+
+  // 16b: dynamic camber formula
+  const rollDeg16 = 3.0, camberGain16 = 0.7, staticCamber16 = -1.5;
+  const dynCamber16 = staticCamber16 - rollDeg16 * camberGain16;
+  const dynCamber16_exp = -3.6;
+  console.log(`  Dynamic camber = ${dynCamber16.toFixed(3)}° (expected ${dynCamber16_exp.toFixed(3)}°)`);
+  allPassed = check('Check 16b: dynamic camber = static − roll×gain (±0.001°)', dynCamber16, dynCamber16_exp, 0.001) && allPassed;
+}
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 console.log('\n' + '─'.repeat(55));
 if (allPassed) {
@@ -586,6 +654,8 @@ if (allPassed) {
   console.log('Check  12:   Stage 11 tyre thermal model (f at optimal, half-width, floor).');
   console.log('Check  13:   Stage 12 setup optimiser (improves bad setup ≥ 1 s).');
   console.log('Checks 14a–c: Stage 13 — separate front/rear Cα, combined slip, yaw transient.');
+  console.log('Checks 15a–c: Stage 40 — Gky combined-slip reduction (Bκy=3.5, Cκy=1.0).');
+  console.log('Checks 16a–b: Stage 41 — RC geometric load transfer + dynamic camber formula.');
 } else {
   console.log('\x1b[31mOne or more checks FAILED.\x1b[0m');
   process.exit(1);

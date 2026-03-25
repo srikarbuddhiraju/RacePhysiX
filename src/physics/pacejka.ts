@@ -1,14 +1,14 @@
 /**
- * Pacejka Magic Formula — pure lateral (v0.1), with Stage 9 load sensitivity.
+ * Pacejka Magic Formula — lateral + longitudinal + MF-Swift combined slip.
+ *
+ * Stage 40 additions:
+ *  - pacejkaFx: longitudinal Pacejka (κ → Fx), fixed coefficients Bx=12, Cx=1.65, Ex=−0.80
+ *  - combinedSlipGky: proper Pacejka '96 Fy reduction from longitudinal slip κ (Pacejka §4.3.2)
+ *  - combinedSlipGxa: proper Pacejka '96 Fx reduction from lateral slip α
+ *  - solveSlipAngleTyreAxle: Kamm circle replaced with Gky cosine reduction (more accurate shape)
  *
  * Reference: docs/physics-reference/tyre-pacejka.md §2, §7, §8
- *
- * Limitations (v0.1):
- *  1. Pure lateral only — Fx = 0 (no braking/traction combined slip)
- *  2. Full friction circle available for Fy at all times
- *  3. Stage 9: D = peakMu × Fz × (1 − qFz × (Fz/Fz0 − 1)) — degressive with load
- *  4. No camber thrust
- *  5. No aligning moment Mz
+ *            Pacejka TVSB §4.2 (longitudinal), §4.3.2 (combined slip reduction functions)
  */
 
 /**
@@ -57,6 +57,74 @@ export function pacejkaFy(
   const D  = muEff * Fz;
   const Bx = B * alpha_rad;
   return D * Math.sin(C * Math.atan(Bx - E * (Bx - Math.atan(Bx))));
+}
+
+/**
+ * Stage 40 — Longitudinal Pacejka Magic Formula (Fx vs slip ratio κ).
+ *
+ * Uses fixed longitudinal coefficients per Pacejka §4.2 (typical passenger/racing tyre):
+ *   Bx = 12.0  (longitudinal stiffness ≈ 2.5× lateral — builds force faster in κ)
+ *   Cx = 1.65  (sharper peak, narrower than lateral C=1.30)
+ *   Ex = −0.80 (softer post-peak drop than lateral)
+ *
+ * @param kappa    Slip ratio [-]; >0 = drive, <0 = brake
+ * @param Fz       Normal load [N]
+ * @param peakMu   Peak friction coefficient at Fz0
+ * @param qFz      Load sensitivity (Stage 9); 0 = off
+ * @param Fz0      Nominal load [N]
+ * @returns        Longitudinal force [N], same sign as kappa
+ */
+export function pacejkaFx(
+  kappa: number,
+  Fz: number,
+  peakMu: number,
+  qFz = 0,
+  Fz0 = Fz,
+): number {
+  const BX = 12.0;
+  const CX = 1.65;
+  const EX = -0.80;
+  const muEff = loadSensitiveMu(Fz, Fz0, peakMu, qFz);
+  const D  = muEff * Fz;
+  const Bk = BX * kappa;
+  return D * Math.sin(CX * Math.atan(Bk - EX * (Bk - Math.atan(Bk))));
+}
+
+/**
+ * Stage 40 — MF-Swift combined-slip reduction of Fy due to longitudinal slip.
+ *
+ * Gκy(κ) = cos(Cκy × arctan(Bκy × κ))
+ *
+ * Constants: Bκy = 3.5, Cκy = 1.0 (Pacejka §4.3.2, typical passenger tyre)
+ * Properties:
+ *   κ = 0   → Gky = 1.00 (no reduction — pure lateral)
+ *   κ = 0.1 → Gky ≈ 0.944 (light braking: ~6% Fy reduction)
+ *   κ = 0.2 → Gky ≈ 0.819 (heavy braking: ~18% Fy reduction)
+ *
+ * Replaces the Kamm circle sqrt(1 − (Fx/Fxmax)²) which overestimates reduction
+ * at moderate slip ratios.
+ */
+export function combinedSlipGky(kappa: number): number {
+  const Bky = 3.5;
+  const Cky = 1.0;
+  return Math.cos(Cky * Math.atan(Bky * kappa));
+}
+
+/**
+ * Stage 40 — MF-Swift combined-slip reduction of Fx due to lateral slip.
+ *
+ * Gxα(α) = cos(Cxα × arctan(Bxα × α))
+ *
+ * Constants: Bxα = 3.0, Cxα = 1.0 (Pacejka §4.3.2)
+ * Properties:
+ *   α = 0    → Gxa = 1.00 (no reduction — pure longitudinal)
+ *   α = 5°   → Gxa ≈ 0.958 (~4% Fx reduction under light cornering)
+ *   α = 10°  → Gxa ≈ 0.847 (~15% Fx reduction under heavy cornering)
+ */
+export function combinedSlipGxa(alpha_rad: number): number {
+  const Bxa = 3.0;
+  const Cxa = 1.0;
+  return Math.cos(Cxa * Math.atan(Bxa * alpha_rad));
 }
 
 /**
@@ -152,12 +220,14 @@ export function solveSlipAngleTyreAxle(
 ): number {
   const FxPerTyre = FxAxle / 2;
 
-  // Effective peak mu: load sensitivity first, then friction ellipse
+  // Effective peak mu: load sensitivity + Gky combined-slip reduction (replaces Kamm circle)
   const ellipseScale = (Fz: number) => {
     const muLS  = loadSensitiveMu(Fz, Fz0, peakMu, qFz);
-    const FxMax = Math.max(muLS * Fz, 1);   // avoid /0
-    const ratio = Math.min(Math.abs(FxPerTyre) / FxMax, 0.98);
-    return muLS * Math.sqrt(1 - ratio * ratio);
+    // Approximate kappa from Fx/FxMax ratio (preserves sign for direction)
+    const kappa = FxAxle !== 0
+      ? Math.min(Math.abs(FxPerTyre) / Math.max(muLS * Fz, 1), 1.0) * Math.sign(FxAxle)
+      : 0;
+    return muLS * combinedSlipGky(kappa);
   };
 
   const peakMuOuter = ellipseScale(FzOuter);

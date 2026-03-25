@@ -25,6 +25,9 @@ export interface LoadTransferInput {
   rollStiffRatio?:     number;  // KΦ_front / KΦ_total (Stage 4). Defaults to b/L.
   FzBoostFront?:       number;  // N, aero downforce boost on front (Stage 6)
   FzBoostRear?:        number;  // N, aero downforce boost on rear
+  // Stage 41 — roll centre heights [m]. Default 0 = pure elastic (reduces to old formula).
+  rcHeightFront?:      number;  // m — front roll centre height above ground
+  rcHeightRear?:       number;  // m — rear roll centre height above ground
 }
 
 export interface LoadTransferResult {
@@ -52,6 +55,8 @@ export function computeLoadTransfer(
     rollStiffRatio,
     FzBoostFront = 0,
     FzBoostRear  = 0,
+    rcHeightFront = 0,
+    rcHeightRear  = 0,
   } = p;
 
   const b = frontWeightFraction * L;
@@ -66,12 +71,23 @@ export function computeLoadTransfer(
   const FzFrontAxle  = Math.max(0, FzFront_s - longTransfer);
   const FzRearAxle   = Math.max(0, FzRear_s  + longTransfer);
 
-  // Lateral: use roll stiffness ratio if available, else weight fraction b/L
+  // ── Lateral load transfer: geometric + elastic split (Stage 41) ───────────
+  // Geometric: transferred directly through the RC linkage (bypasses springs/ARBs).
+  //   ΔFz_geom_axle = Fy_axle × rcHeight / TW = mass × ay × (axleWeightFrac) × rcH / TW
+  // Elastic: via body roll through springs+ARBs, using reduced moment arm (hCG − rcH).
+  //   ΔFz_elastic_axle = mass × ay × (hCG − rcH) × rollStiffFrac / TW
+  // When rcH = 0 → geometric = 0 → elastic = mass × ay × hCG × rollStiffFrac / TW → same as before.
+  // Reference: Milliken & Milliken RCVD Ch.17 §17.5
   const phiFront = rollStiffRatio !== undefined ? rollStiffRatio : (b / L);
   const phiRear  = 1 - phiFront;
 
-  const latTransferFront = mass * ay_ms2 * hCG * phiFront / TW;
-  const latTransferRear  = mass * ay_ms2 * hCG * phiRear  / TW;
+  const latTransferFrontGeom    = mass * ay_ms2 * frontWeightFraction * rcHeightFront / TW;
+  const latTransferRearGeom     = mass * ay_ms2 * (1 - frontWeightFraction) * rcHeightRear / TW;
+  const latTransferFrontElastic = mass * ay_ms2 * Math.max(0, hCG - rcHeightFront) * phiFront / TW;
+  const latTransferRearElastic  = mass * ay_ms2 * Math.max(0, hCG - rcHeightRear)  * phiRear  / TW;
+
+  const latTransferFront = latTransferFrontGeom + latTransferFrontElastic;
+  const latTransferRear  = latTransferRearGeom  + latTransferRearElastic;
 
   const FzFL = Math.max(0, FzFrontAxle / 2 - latTransferFront);
   const FzFR = Math.max(0, FzFrontAxle / 2 + latTransferFront);
