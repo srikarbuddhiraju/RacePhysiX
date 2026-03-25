@@ -10,6 +10,8 @@ import { InfoTooltip } from './InfoTooltip';
 import { exportLapTimeCSV, exportLapTraceCSV, exportRaceTelemetryCSV } from '../utils/export';
 import { buildLapTrace, buildRaceLapTraces } from '../physics/laptime';
 import { type PowerUnit, fmtPower } from '../utils/units';
+import { parseTelemetryCSV, type ParsedTelemetry } from '../utils/parseTelemetryCSV';
+import TelemetryOverlayChart from './TelemetryOverlayChart';
 
 interface Props {
   params:              VehicleParams;
@@ -115,6 +117,8 @@ export function LapTimePanel({
   } | null>(null);
   const [numLaps,     setNumLaps]     = useState<number>(10);
   const [startTempC,  setStartTempC]  = useState<number>(30);
+  const [uploadedTelemetry, setUploadedTelemetry] = useState<ParsedTelemetry | null>(null);
+  const telemetryFileInputRef = useRef<HTMLInputElement>(null);
 
   // Custom circuit registry (localStorage backed)
   const [customTracks, setCustomTracks] = useState<Record<string, TrackLayout>>(loadCustomTracks);
@@ -382,6 +386,35 @@ export function LapTimePanel({
         >
           Race Telemetry
         </button>
+        <button
+          onClick={() => telemetryFileInputRef.current?.click()}
+          title="Upload a Lap Trace CSV to overlay against the current sim"
+          style={{
+            padding: '3px 10px', fontSize: 10, fontWeight: 600,
+            background: uploadedTelemetry ? '#0c2a3a' : 'var(--bg-card)',
+            border: `1px solid ${uploadedTelemetry ? '#38bdf8' : 'var(--border)'}`,
+            borderRadius: 5, color: uploadedTelemetry ? '#38bdf8' : 'var(--text-secondary)',
+            cursor: 'pointer',
+          }}
+        >
+          {uploadedTelemetry ? 'Overlay: ON' : 'Import Telemetry'}
+        </button>
+        <input
+          ref={telemetryFileInputRef}
+          type="file"
+          accept=".csv"
+          style={{ display: 'none' }}
+          onChange={e => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            file.text().then(txt => {
+              const parsed = parseTelemetryCSV(txt, file.name);
+              if (parsed) setUploadedTelemetry(parsed);
+              else alert('Could not parse CSV — file needs at least dist_m and speed_kph columns.');
+            }).catch(err => console.error('telemetry import error', err));
+            e.target.value = '';
+          }}
+        />
         <select
           value={trackKey}
           onChange={e => onTrackChange(e.target.value)}
@@ -444,6 +477,15 @@ export function LapTimePanel({
         <SummaryCard label="Top speed" value={`${result.maxSpeedKph.toFixed(1)} km/h`} />
         <SummaryCard label="Min corner" value={`${result.minCornerKph.toFixed(1)} km/h`} />
       </div>
+
+      {/* Stage 39 — Telemetry overlay */}
+      {uploadedTelemetry && (
+        <TelemetryOverlayChart
+          simTrace={buildLapTrace(effectiveLayout, inpBuilder(params))}
+          uploaded={uploadedTelemetry}
+          onClose={() => setUploadedTelemetry(null)}
+        />
+      )}
 
       {/* Stage 20 — Setup comparison */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
