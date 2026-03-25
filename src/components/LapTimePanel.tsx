@@ -884,26 +884,43 @@ function AboutSection() {
               Physics Model Stages
             </div>
             {[
-              ['1',  'Bicycle model',         'Steady-state yaw / understeer gradient (Gillespie Ch.6)'],
-              ['2',  'Pacejka Magic Formula',  'Nonlinear tyre Fy + Fx (RCVD Ch.2)'],
-              ['3',  'Load transfer',          'Per-corner Fz, combined slip, FWD/RWD/AWD/AWD+TV'],
-              ['4',  'Suspension (roll)',       'Roll angle, ARB, Fz split front/rear'],
-              ['5',  'Braking model',          'Brake bias, ABS clip, combined braking + cornering'],
-              ['6',  'Aerodynamics',           'Speed-dependent downforce + drag, axle splits'],
-              ['7',  'Lap time estimator',     'Point-mass sim over corner + straight segments'],
-              ['8',  '14-DOF time domain',     'Step steer / sine sweep / brake-in-turn (RK4 ODE)'],
-              ['9',  'Tyre load sensitivity',  'Pacejka degressive μ with Fz (qFz)'],
-              ['10', 'Gear + powertrain',      'Gear ratios, shift points, rev-limited P/V curve'],
-              ['11', 'Tyre thermal model',     'μ bell curve vs temperature, warmup/degradation'],
-              ['12', 'Setup optimisation',     'Nelder-Mead simplex over 7 params → min lap time'],
-              ['13', 'Full nonlinear model',   'Separate F/R Cα, friction circle, yaw transient'],
-              ['14', 'Race simulation',        'Multi-lap: tyre warmup, fuel burn, sector times'],
-              ['15', 'Track editor',           'Editable segment table + SVG preview, JSON export'],
-              ['16', 'GPS circuit maps',       '22 circuits: TUMFTM LGPL-3.0 + OSM ODbL GPS paths'],
-              ['18', 'Vehicle presets',        'Road / Formula Student / GT3 / F1 one-click params'],
-              ['19', 'Onboarding',             'First-visit banner + inline tooltips on every slider'],
-              ['20', 'Setup comparison',       'Save baseline → run variant → show Δ lap time'],
-              ['22', 'Camber + toe',           'Camber thrust (Cγ × γ) + toe effective Cα (RCVD §2.3)'],
+              ['1',  'Bicycle model',           'Steady-state yaw / understeer gradient (Gillespie Ch.6)'],
+              ['2',  'Pacejka Magic Formula',    'Nonlinear tyre Fy + Fx (RCVD Ch.2)'],
+              ['3',  'Load transfer',            'Per-corner Fz, combined slip, FWD/RWD/AWD/AWD+TV'],
+              ['4',  'Suspension (roll)',         'Roll angle, ARB, Fz split front/rear (RCVD Ch.16)'],
+              ['5',  'Braking model',            'Brake bias, ABS clip, combined braking + cornering'],
+              ['6',  'Aerodynamics',             'Speed-dependent downforce + drag, axle splits'],
+              ['7',  'Lap time estimator',       'Point-mass sim over corner + straight segments'],
+              ['8',  '14-DOF time domain',       'Step steer / sine sweep / brake-in-turn (RK4 ODE)'],
+              ['9',  'Tyre load sensitivity',    'Pacejka degressive μ with Fz (qFz)'],
+              ['10', 'Gear + powertrain',        'Gear ratios, shift points, rev-limited P/V curve'],
+              ['11', 'Tyre thermal model',       'μ bell curve vs temperature, warmup/degradation'],
+              ['12', 'Setup optimisation',       'Nelder-Mead simplex over 7 params → min lap time'],
+              ['13', 'Full nonlinear model',     'Separate F/R Cα, friction circle, yaw transient'],
+              ['14', 'Race simulation',          'Multi-lap: tyre warmup, fuel burn, sector times'],
+              ['15', 'Track editor',             'Editable segment table + SVG preview, JSON export'],
+              ['16', 'GPS circuit maps',         '22 circuits: TUMFTM LGPL-3.0 + OSM ODbL GPS paths'],
+              ['18', 'Vehicle presets',          'Road / Formula Student / GT3 / F1 one-click params'],
+              ['19', 'Onboarding',               'First-visit banner + inline tooltips on every slider'],
+              ['20', 'Setup comparison',         'Save baseline → run variant → show Δ lap time'],
+              ['22', 'Camber + toe',             'Camber thrust (Cγ × γ) + toe effective Cα (RCVD §2.3)'],
+              ['23', 'Tyre wear model',          'Soft/medium/hard/inter/wet — warmup, wear cliff, graining'],
+              ['24', 'Wind + ambient',           'ISA air density (altitude + temp), headwind, crosswind μ'],
+              ['25', 'Driver model',             'Aggression 0–100%: heat rate, wear rate, μ utilisation'],
+              ['26', 'Differential model',       'Open / LSD / Locked — traction efficiency + yaw moment'],
+              ['27', 'Brake temperature',        'Disc temp per lap, Gaussian fade, braking capacity scaling'],
+              ['28', 'Tyre pressure',            'Cα × (p/2.0)^0.35, μ × (2.0/p)^0.10 (Pacejka §4.3.1)'],
+              ['29', 'Ride height + rake',       'Rake → aero balance shift; CL boost at low ride height'],
+              ['30', 'Race strategy optimizer',  'Brute-force 1/2-stop over soft/medium/hard compounds'],
+              ['31', 'Engine torque curve',      'NA bell curve, turbo plateau, electric flat from 0'],
+              ['32', 'Traction control',         'Slip ratio threshold — clamps drive force on driven axle'],
+              ['33', 'Track rubber evolution',   'peakMu × (1 + 0.15 × rubberLevel) — green to rubbed'],
+              ['34', 'Wet track + drying line',  'Per-compound wetGripFactor — slick → 0.30 at standing water'],
+              ['35', 'ERS / Hybrid',             'MGU-K additive force, deploy strategies, energy budget'],
+              ['36', 'Multi-car comparison',     'Mass/power/peakMu vs baseline — Δ lap time cards'],
+              ['37', 'Track banking + elevation','Banked corner FBD (RCVD §2.5), gradient drive/brake forces'],
+              ['38', 'Data export',              'Lap trace + race telemetry CSV (speed, gear, RPM, G-forces)'],
+              ['39', 'Telemetry overlay',        'Upload CSV → compare vs sim in overlaid speed/G-force charts'],
             ].map(([n, name, desc]) => (
               <div key={n} style={{ display: 'grid', gridTemplateColumns: '16px 100px 1fr', gap: 4, fontSize: 9, alignItems: 'baseline' }}>
                 <span style={{ color: 'var(--accent)', fontWeight: 700 }}>{n}</span>
@@ -922,7 +939,7 @@ function AboutSection() {
               <span>Milliken &amp; Milliken — <em>Race Car Vehicle Dynamics</em> (RCVD), SAE 1995</span>
               <span>Gillespie — <em>Fundamentals of Vehicle Dynamics</em>, SAE 1992</span>
               <span>Pacejka — <em>Tyre and Vehicle Dynamics</em>, 3rd ed., Butterworth-Heinemann 2012</span>
-              <span>All 22 validation checks pass · Extended suite: 424/424 pass</span>
+              <span>All 21 validation checks pass · Extended suite: 424/424 pass</span>
             </div>
           </div>
 
