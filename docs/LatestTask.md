@@ -24,9 +24,16 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 - 4 sliders in ParameterPanel Suspension tab under "Roll Centre Heights (Stage 41)"
 - Checks 16a–b: RC load transfer formula + dynamic camber verified
 
+**Post-merge validation fixes** (commits `4419997`, `9192b6d`)
+
+- Build was failing (`tsc -b` stricter than `--noEmit`): 4 presets + validate.ts + test-extended.ts missing Stage 41 fields; unused imports in TelemetryOverlayChart + App.tsx — all fixed
+- `buildHandlingCurve` was using RC=0 load transfer even when user set RC heights → fixed by passing `rcF_m/rcR_m` through
+- Track minimap / zone overlay / animation confirmed unaffected (isolated from Stage 40+41 code path)
+- 424/424 extended tests, 28/28 validation checks pass post-fix
+
 ### State
-- Branch: `main`, pushed, live on Cloudflare Pages (commit `5de4902`)
-- Physics: 28/28 checks pass
+- Branch: `main`, pushed, live on Cloudflare Pages (commit `9192b6d`)
+- Physics: 28/28 checks pass | 424/424 extended tests pass
 - 0 TypeScript errors, 0 npm vulnerabilities
 
 ### Next session plan
