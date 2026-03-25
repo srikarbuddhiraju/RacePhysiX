@@ -4,6 +4,50 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
+## Session 28 — 2026-03-25  |  branch: `main` (IN PROGRESS)
+
+### Completed this session
+
+**Stage 37 — Track banking & elevation** (commit `aa5d0a5`)
+
+Physics: banked corner FBD (Milliken RCVD §2.5):
+- `muEff = μ cosθ + sinθ` — gravity assists centripetal force on banked road
+- `gradientPct` on straights: `F_grade = mg sinα` reduces drive accel; assists braking uphill
+- GPS circuits: `BankingProfile` lookup in `buildGpsZoneOverlay` raises `vMax[i]`
+
+Circuit data added:
+| Circuit | Corner | Banking | Effect |
+|---|---|---|---|
+| Spa | Eau Rouge | 5° | GT3 flat-out (208 kph) ✓ |
+| Spa | Raidillon | 6° | GT3 flat-out (235 kph) ✓ |
+| Spa | Uphill to Eau Rouge | 18% gradient | Reduced accel on uphill run |
+| Spa | Kemmel Straight | -4% gradient | Slight downhill speed boost |
+| Monza | Parabolica | 3° | Slight corner speed increase |
+| Silverstone | Copse | 3° | Slight corner speed increase |
+| Suzuka | 130R | 2° | Slight corner speed increase |
+
+Verified by Srikar in UI: Eau Rouge/Raidillon zone overlay **blue (full-throttle)** for GT3 ✓
+
+### State
+- Branch: `main`, pushed, live on Cloudflare Pages (commit `aa5d0a5`)
+- Physics: 21/21 checks pass | 424/424 extended tests pass
+- 0 TypeScript errors, 0 npm vulnerabilities
+
+### Remaining P0 bugs
+1. ~~Erratic animation after param change~~ FIXED ✓
+2. ~~Race simulation wrong speeds on GPS circuits~~ FIXED ✓
+3. ~~Eau Rouge braking zone~~ FIXED ✓ (Stage 37 banking)
+4. **URL compression** — custom-param URLs still long
+5. **Surface Pro 6 camera** — needs device testing
+
+### Next session plan
+1. **Stage 38** — Data export (CSV/JSON)
+2. **Stage 39** — Telemetry replay
+3. **Browser verify** — end-to-end check all Stages 23–37 in UI
+4. **Docs + README**, **Marketing Phase 1**
+
+---
+
 ## Session 27 — 2026-03-25  |  branch: `main` (COMPLETE ✅)
 
 ### Completed this session
@@ -126,57 +170,15 @@ Two root causes fixed in `TrackVisualiser.tsx`:
 9. **Docs + README** — User-facing docs, README, in-app landing copy (prerequisite for marketing)
 10. **Marketing Phase 1** — Screenshots/GIF, first Reddit post (see `docs/marketing.md`)
 
-#### Realism Improvement Stages (logged 2026-03-24 — start session 27+)
-Priority order — each is independent, implement incrementally:
+#### Realism roadmap (Stages 40–45 — future)
+MF-Swift tyres (+15%), non-linear suspension (+10%), damper model (+8%), aero yaw (+5%), tyre thermal core (+8%), pre-computed CFD map (+20%). Target ~93% accuracy by Stage 45.
 
-| Stage | Model | Est. realism gain | Notes |
-|---|---|---|---|
-| 40 | MF-Swift tyre (belt dynamics) | +10–15% | Adds lateral carcass stiffness + transient slip on top of Pacejka |
-| 41 | Non-linear suspension kinematics | +10% | Camber/toe change through travel (bump steer, roll camber) — currently linearised |
-| 42 | Damper model | +8% | Dynamic load transfer with damper force — improves transient accuracy |
-| 43 | Aero yaw sensitivity | +5% | Cornering yaw angle → drag increase + downforce shift |
-| 44 | Tyre structural thermal | +8% | Surface vs core temp differential (~30°C gradient in real tyres) |
-| 45 | Pre-computed aero map (lookup table) | +15–20% | CFD offline → Cl/Cd vs yaw vs ride height 2D table → runtime interpolation |
-
-Target: Level 2 (~85–88% accuracy) by Stage 43, Level 3 (~90–93%) by Stage 45.
-
-#### v3 Architecture Direction — Local App + FEA (logged 2026-03-24, long-term)
-Once browser feature set is complete, evolve toward a downloadable local app with real FEA physics.
-
-**Stack:**
-- Frontend: React (unchanged)
-- App wrapper: Tauri (Rust backend, ~10MB overhead vs Electron's ~150MB)
-- FEA solver: Rust → compiled to native (local app) or WASM (browser fallback)
-- GPU compute: WebGPU for matrix assembly/solve on consumer GPU
-
-**FEA scope:**
-| Component | Approach | Notes |
-|---|---|---|
-| Tyre contact | Shell ring model, ~200–500 elements, explicit integration | Replaces/augments Pacejka. ~500–1000 Hz on CPU, higher on GPU. Srikar to lead physics formulation. |
-| Chassis compliance | Static FEA, beam elements | Solve once per param change (<1s). Feeds suspension kinematics. |
-| Aerodynamics | Pre-computed CFD table (lookup) | CFD not real-time feasible — tables remain correct approach. |
-
-**Why Tauri + Rust WASM:**
-- WASM module works in browser (limited perf) AND local app (full perf) — same codebase
-- Rust is ideal: zero-cost abstractions, BLAS/LAPACK bindings, safe memory
-- No existing open-source consumer tyre shell FEA exists — this would be novel
-
-**Realism ceiling:** ~95%+ for tyre dynamics (vs ~85% with MF-Swift). Matches FTire-class accuracy on consumer hardware.
-
-**Prerequisite:** Stages 40–45 complete, browser v2 stable, Srikar to draft tyre shell FE formulation.
+#### v3 (long-term): Tauri + Rust WASM + tyre shell FEA (~95% accuracy). Srikar to lead FE formulation.
 
 ---
 
-## Session 24 — 2026-03-22  |  COMPLETE ✅
+## Sessions 1–27 — COMPLETE / MERGED
 
-Stages 23–36: tyre wear, ambient, driver model, differential, brake temp, tyre pressure,
-ride height, strategy optimizer, torque curve, TC, rubber, wet track, ERS, multi-car comparison.
-Aero tab → "Aero & Braking". kW/BHP/PS toggle. All 4 presets carry all fields.
-
----
-
-## Sessions 1–23 — COMPLETE / MERGED
-
-Stages 1–22: full physics from bicycle model through camber+toe.
-Stage 18–22: presets, onboarding, setup comparison, about, camber+toe.
+Stages 1–37: full physics from bicycle model through track banking/elevation.
+See git history for details.
 22 GPS circuits. 424/424 tests. See git history.
