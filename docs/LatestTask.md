@@ -4,6 +4,22 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
+## Session 33 — 2026-03-25  |  branch: `main` (IN PROGRESS)
+
+### Current work
+**Stage 46 — Pre-computed CFD aero map** (planning complete, implementation starting)
+
+- Removes Stage 17 (Racing line overlay) from roadmap — not being implemented
+- Stage 46 replaces Stage 29's crude CL boost with a 2D lookup table (ride height × yaw) per vehicle class
+- No new user params — uses existing `vehicleClass`, `frontRideHeightMm`, `rearRideHeightMm`, `windAngleDeg`
+
+### State
+- Branch: `main`, commit `5cc9b23` (Stages 42–45 merged)
+- Physics: 32/32 checks pass | 424/424 extended tests pass
+- 0 TypeScript errors (`tsc -b` clean)
+
+---
+
 ## Session 32 — 2026-03-25  |  branch: `feature/stage-42-45-suspension-damper-aero-thermal` (COMPLETE ✅)
 
 ### Completed this session

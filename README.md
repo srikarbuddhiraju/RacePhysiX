@@ -19,7 +19,7 @@ RacePhysiX is an open-source vehicle dynamics simulator covering the full physic
 
 ---
 
-## Physics Model (45 stages)
+## Physics Model (46 stages)
 
 | Stage | Model | What it captures |
 |---|---|---|
@@ -49,7 +49,7 @@ RacePhysiX is an open-source vehicle dynamics simulator covering the full physic
 | 26 | Differential model | Open / LSD / Locked — traction efficiency + yaw moment (RCVD Ch.22) |
 | 27 | Brake temperature | Disc temp per lap, Gaussian fade model, braking capacity scaling |
 | 28 | Tyre pressure | Cα × (p/2.0)^0.35, μ × (2.0/p)^0.10 (Pacejka §4.3.1) |
-| 29 | Ride height + rake | Rake → aero balance shift; CL boost at low ride height |
+| 29 | Ride height + rake | Rake → aero balance shift; ground effect via Stage 46 CFD map |
 | 30 | Race strategy optimizer | Brute-force 1/2-stop over soft/medium/hard, per-stint grip model |
 | 31 | Engine torque curve | NA bell curve, turbo flat plateau after boost RPM, electric flat |
 | 32 | Traction control | Driven axle slip ratio threshold — clamps drive force |
@@ -66,8 +66,9 @@ RacePhysiX is an open-source vehicle dynamics simulator covering the full physic
 | 43 | Roll damper model | Critical damping ratio ζ for body roll in 14-DOF transient sim |
 | 44 | Crosswind in balance model | Lateral crosswind force added to tyre load balance in Pacejka model |
 | 45 | Tyre thermal core | Two-layer surface/core model; μ evaluated at core temp; coreTemp lags surface via tyreCoreHeatLag |
+| 46 | Pre-computed CFD aero map | 2D lookup [rideHeight × yaw] per vehicle class — non-linear ground effect + yaw CD penalty |
 
-All 32 physics validation checks pass. Extended suite: 424/424 pass.
+All 37 physics validation checks pass. Extended suite: 424/424 pass.
 
 ---
 

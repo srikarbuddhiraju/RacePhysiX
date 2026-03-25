@@ -8,6 +8,7 @@ import type { VehicleParams, PacejkaCoeffs }     from './types';
 import type { LapSimInput }                       from './laptime';
 import { airDensity, headwindMs as computeHeadwind, crosswindLateralForceN } from './ambient';
 import { diffTractionFactor, diffYawMoment, type DiffType } from './differential';
+import { computeAeroMapFactors } from './aeroMap';
 
 const G       = 9.81;
 
@@ -51,7 +52,7 @@ export function buildLapSimInput(params: VehicleParams, coeffs: PacejkaCoeffs): 
   const pressMuFactor = Math.pow(P_NOM / Math.max(0.5, pAvg), 0.10);
   const peakMuWithPressure = peakMuWithWind * pressMuFactor;
 
-  // Stage 29: Ride height → aero balance shift + ground effect CL boost
+  // Stage 29 + 46: Ride height → rake-based aero balance shift + Stage 46 CFD map CL/CD correction
   const frontH = params.frontRideHeightMm ?? 100;
   const rearH  = params.rearRideHeightMm  ?? 100;
   const wheelbaseMm = params.wheelbase * 1000;
@@ -60,9 +61,14 @@ export function buildLapSimInput(params: VehicleParams, coeffs: PacejkaCoeffs): 
     params.aeroBalance - 0.015 * rakeAngleDeg
   ));
   void effectiveAeroBalance; // informational — aeroBalance not in LapSimInput
-  const h_min = Math.min(frontH, rearH);
-  const clBoost = params.aeroCL > 2.0 ? 0.20 * Math.max(0, 1 - h_min / 80) : 0;
-  const effectiveAeroCL = params.aeroCL * (1 + clBoost);
+
+  // Stage 46: CFD map replaces Stage 29 crude clBoost
+  const avgRideHeightMm = (frontH + rearH) / 2;
+  const aeroMap = computeAeroMapFactors(
+    params.vehicleClass, avgRideHeightMm, params.windAngleDeg ?? 0,
+  );
+  const effectiveAeroCL = params.aeroCL * aeroMap.CLfactor;
+  const effectiveAeroCD = aeroCD * aeroMap.CDfactor;
 
   // Stage 33: Track rubber — grip builds up on racing line across session
   const rubberLevel = params.trackRubberLevel ?? 0.5;
@@ -130,11 +136,11 @@ export function buildLapSimInput(params: VehicleParams, coeffs: PacejkaCoeffs): 
     peakMu:            peakMuFinal,
     brakingCapG,
     aeroCL:            effectiveAeroCL,
-    aeroCD,
+    aeroCD:            effectiveAeroCD,
     aeroReferenceArea,
     dragForce:         (V: number) => {
       const Veff = V + headWind;  // headwind adds to effective airspeed
-      return 0.5 * rhoAir * Veff * Veff * aeroReferenceArea * aeroCD;
+      return 0.5 * rhoAir * Veff * Veff * aeroReferenceArea * effectiveAeroCD;
     },
     driveForce:        (V: number) => {
       const raw = computeMaxDriveForce(V, params) * diffFactor;

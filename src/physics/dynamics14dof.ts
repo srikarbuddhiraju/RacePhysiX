@@ -18,6 +18,7 @@ import { pacejkaFy }           from './pacejka';
 import { computeLoadTransfer } from './loadTransfer';
 import { computeSuspension }   from './suspension';
 import { computeAero }         from './aero';
+import { computeAeroMapFactors } from './aeroMap';
 import type { VehicleParams, PacejkaCoeffs } from './types';
 import type { VehicleState, SimInput, SimResult } from './vehicleState';
 import type { ScenarioDef } from './scenarios';
@@ -171,9 +172,15 @@ function computeDerivatives(
   const { B, C, peakMu, E } = coeffs;
   const { steerAngle: delta, throttle, brake } = inp;
 
-  // 1. Aerodynamics
+  // 1. Aerodynamics — Stage 46 CFD map corrects CL/CD for ride height + yaw
+  const _aeroMapDyn = computeAeroMapFactors(
+    params.vehicleClass,
+    ((params.frontRideHeightMm ?? 100) + (params.rearRideHeightMm ?? 100)) / 2,
+    params.windAngleDeg ?? 0,
+  );
   const aero = computeAero({
-    aeroCL: params.aeroCL, aeroCD: params.aeroCD,
+    aeroCL: params.aeroCL * _aeroMapDyn.CLfactor,
+    aeroCD: params.aeroCD * _aeroMapDyn.CDfactor,
     aeroReferenceArea: params.aeroReferenceArea, aeroBalance: params.aeroBalance,
     speedMs: Math.max(s.Vx, 0),
   });
