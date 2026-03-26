@@ -1026,7 +1026,7 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
             <div style={{
               position: 'absolute', right: 8, top: 8,
               width: 200,
-              height: 220,
+              height: 270,
               background: 'rgba(10,10,22,0.94)',
               border: '1px solid rgba(255,255,255,0.10)',
               borderRadius: 6,
@@ -1062,13 +1062,39 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
                 />
               </div>
 
-              {/* G-G footer */}
+              {/* G-G footer — μ label + live Lat-G / Long-G readout */}
               <div style={{
                 padding: '4px 8px 6px',
-                fontSize: 8, color: C.dim, letterSpacing: '0.1em', textAlign: 'center',
                 borderTop: `1px solid ${C.border}`,
               }}>
-                μ={lapSimInput.peakMu.toFixed(2)} · LAT-G (x) vs LONG-G (y)
+                <div style={{ fontSize: 8, color: C.dim, letterSpacing: '0.1em', textAlign: 'center', marginBottom: 4 }}>
+                  μ={lapSimInput.peakMu.toFixed(2)} · LAT-G (x) vs LONG-G (y)
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-around' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{
+                      fontFamily: 'monospace', fontSize: 18, fontWeight: 700,
+                      color: telemetry ? (Math.abs(telemetry.latG) > lapSimInput.peakMu * 0.85 ? '#ffcc00' : C.text) : C.dim,
+                      lineHeight: 1,
+                    }}>
+                      {telemetry ? Math.abs(telemetry.latG).toFixed(2) : '0.00'}
+                    </div>
+                    <div style={{ fontSize: 8, color: C.dim, letterSpacing: '0.12em', marginTop: 2 }}>LAT-G</div>
+                  </div>
+                  <div style={{ width: 1, background: C.border }} />
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{
+                      fontFamily: 'monospace', fontSize: 18, fontWeight: 700,
+                      color: telemetry
+                        ? (telemetry.longG < -0.5 ? '#ff4040' : telemetry.longG > 0.3 ? '#22cc55' : C.text)
+                        : C.dim,
+                      lineHeight: 1,
+                    }}>
+                      {telemetry ? telemetry.longG.toFixed(2) : '0.00'}
+                    </div>
+                    <div style={{ fontSize: 8, color: C.dim, letterSpacing: '0.12em', marginTop: 2 }}>LONG-G</div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
