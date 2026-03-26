@@ -678,7 +678,7 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
         updateGGAndViewBox(gpt.latG, gpt.longG, tGps, timestamp, pt.x, pt.y);
         if (timestamp - lastLiveUpdate.current >= 100) {
           lastLiveUpdate.current = timestamp;
-          setLiveTimeSec(tGps);
+          setLiveTimeSec(tGps * (traceTotalTime / gpsA.lapTimeSec));
         }
         rafRef.current = requestAnimationFrame(tick);
         return;
@@ -719,7 +719,7 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
         updateGGAndViewBox(gpt.latG, gpt.longG, tGps, timestamp, pt.x, pt.y);
         if (timestamp - lastLiveUpdate.current >= 100) {
           lastLiveUpdate.current = timestamp;
-          setLiveTimeSec(tGps);
+          setLiveTimeSec(tGps * (traceTotalTime / gpsA.lapTimeSec));
         }
         rafRef.current = requestAnimationFrame(tick);
         return;
@@ -773,7 +773,7 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
   const zoneColor  = telemetry ? ZONE_COLORS[telemetry.zone] : C.dim;
 
   // Sector timing (render-time, no extra state needed)
-  const lapTimeSec    = gpsAnim?.lapTimeSec ?? result.totalTimeSec;
+  const lapTimeSec    = result.totalTimeSec;   // always matches LapTimePanel
   const s1EndSec      = (sectorTimes.total > 0 ? sectorTimes.s1 / sectorTimes.total : 0.333) * lapTimeSec;
   const s2EndSec      = (sectorTimes.total > 0 ? (sectorTimes.s1 + sectorTimes.s2) / sectorTimes.total : 0.667) * lapTimeSec;
   const activeSector: 1 | 2 | 3 = liveTimeSec < s1EndSec ? 1 : liveTimeSec < s2EndSec ? 2 : 3;
@@ -930,7 +930,7 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
 
           {/* Zone legend — bottom-left, shifts right when left panel open */}
           <div style={{
-            position: 'absolute', bottom: 8, left: leftOpen ? 178 : 10,
+            position: 'absolute', bottom: 8, left: 10,
             display: 'flex', gap: 10, flexWrap: 'wrap',
             background: 'rgba(7,7,15,0.80)', borderRadius: 4, padding: '4px 6px',
             zIndex: 4, transition: 'left 0.15s',
@@ -965,21 +965,27 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
           {/* ── Left overlay panel ── */}
           {leftOpen && (
             <div style={{
-              position: 'absolute', left: 0, top: 0, bottom: 0, width: 170,
-              background: 'rgba(7,7,15,0.92)',
-              borderRight: '1px solid rgba(255,255,255,0.07)',
+              position: 'absolute', left: 8, top: 8,
+              width: 188,
+              background: 'rgba(10,10,22,0.94)',
+              border: '1px solid rgba(255,255,255,0.10)',
+              borderRadius: 6,
               display: 'flex', flexDirection: 'column', overflow: 'hidden',
               zIndex: 5,
+              boxShadow: '0 4px 24px rgba(0,0,0,0.6)',
             }}>
               {/* Corner temps */}
               <div style={{ padding: '8px 8px 4px', borderBottom: `1px solid ${C.border}` }}>
-                <div style={{ fontSize: 7, color: C.dim, letterSpacing: '0.18em', marginBottom: 4 }}>CORNER TEMPS</div>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
+                  <span style={{ fontSize: 9, color: C.dim, letterSpacing: '0.15em', flex: 1 }}>CORNER TEMPS</span>
+                  <span onClick={() => setLeftOpen(false)} style={{ fontSize: 14, color: C.dim, cursor: 'pointer', padding: '0 2px', lineHeight: 1 }} title="Close">×</span>
+                </div>
                 <CornerTempWidget telemetry={telemetry} params={params} />
               </div>
 
               {/* Sector timing */}
               <div style={{ padding: '8px', borderBottom: `1px solid ${C.border}` }}>
-                <div style={{ fontSize: 7, color: C.dim, letterSpacing: '0.18em', marginBottom: 6 }}>SECTORS</div>
+                <div style={{ fontSize: 9, color: C.dim, letterSpacing: '0.15em', marginBottom: 6 }}>SECTORS</div>
                 <SectorDisplay
                   liveTimeSec={liveTimeSec}
                   s1EndSec={s1EndSec}
@@ -999,39 +1005,34 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
 
               {/* Tyre wear */}
               <div style={{ padding: '6px 8px', flex: 1 }}>
-                <div style={{ fontSize: 7, color: C.dim, letterSpacing: '0.18em', marginBottom: 6 }}>TYRE WEAR (EST)</div>
+                <div style={{ fontSize: 9, color: C.dim, letterSpacing: '0.15em', marginBottom: 6 }}>TYRE WEAR (EST)</div>
                 <TyreWearDisplay lapFrac={liveTimeSec / Math.max(lapTimeSec, 1)} params={params} />
               </div>
             </div>
           )}
 
-          {/* Left collapse tab — floats at panel edge */}
-          <div
-            onClick={() => setLeftOpen(v => !v)}
-            style={{
-              position: 'absolute', left: leftOpen ? 170 : 0, top: '50%',
-              transform: 'translateY(-50%)',
-              width: 14, height: 44,
-              background: 'rgba(20,20,36,0.92)',
-              border: '1px solid rgba(255,255,255,0.09)',
-              borderRadius: leftOpen ? '0 4px 4px 0' : '4px',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: C.dim, fontSize: 13, userSelect: 'none', zIndex: 6,
-              transition: 'left 0.15s',
-            }}
-            title={leftOpen ? 'Collapse panel' : 'Expand panel'}
-          >
-            {leftOpen ? '‹' : '›'}
-          </div>
+          {/* Left open button — shown when panel is closed */}
+          {!leftOpen && (
+            <div onClick={() => setLeftOpen(true)} style={{
+              position: 'absolute', left: 8, top: 8, zIndex: 6,
+              background: 'rgba(10,10,22,0.85)', border: '1px solid rgba(255,255,255,0.09)',
+              borderRadius: 4, cursor: 'pointer', padding: '4px 8px',
+              fontSize: 9, color: C.dim, letterSpacing: '0.1em',
+            }} title="Show telemetry panel">☰ TEL</div>
+          )}
 
           {/* ── Right overlay panel ── */}
           {rightOpen && (
             <div style={{
-              position: 'absolute', right: 0, top: 0, bottom: 0, width: 190,
-              background: 'rgba(7,7,15,0.92)',
-              borderLeft: '1px solid rgba(255,255,255,0.07)',
+              position: 'absolute', right: 8, top: 8,
+              width: 200,
+              height: 220,
+              background: 'rgba(10,10,22,0.94)',
+              border: '1px solid rgba(255,255,255,0.10)',
+              borderRadius: 6,
               display: 'flex', flexDirection: 'column', overflow: 'hidden',
               zIndex: 5,
+              boxShadow: '0 4px 24px rgba(0,0,0,0.6)',
             }}>
               {/* G-G header */}
               <div style={{
@@ -1039,7 +1040,7 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
                 padding: '8px 8px 4px',
                 borderBottom: `1px solid ${C.border}`,
               }}>
-                <span style={{ fontSize: 7, color: C.dim, letterSpacing: '0.18em', flex: 1 }}>G-G DIAGRAM</span>
+                <span style={{ fontSize: 9, color: C.dim, letterSpacing: '0.15em', flex: 1 }}>G-G DIAGRAM</span>
                 {(['full', 'live'] as const).map(m => (
                   <button key={m} onClick={() => setGgMode(m)} style={{
                     background: ggMode === m ? 'rgba(68,102,255,0.2)' : 'none',
@@ -1049,6 +1050,7 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
                     letterSpacing: '0.1em',
                   }}>{m.toUpperCase()}</button>
                 ))}
+                <span onClick={() => setRightOpen(false)} style={{ fontSize: 14, color: C.dim, cursor: 'pointer', padding: '0 2px', lineHeight: 1, marginLeft: 2 }} title="Close">×</span>
               </div>
 
               {/* G-G diagram */}
@@ -1071,24 +1073,15 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
             </div>
           )}
 
-          {/* Right collapse tab — floats at panel edge */}
-          <div
-            onClick={() => setRightOpen(v => !v)}
-            style={{
-              position: 'absolute', right: rightOpen ? 190 : 0, top: '50%',
-              transform: 'translateY(-50%)',
-              width: 14, height: 44,
-              background: 'rgba(20,20,36,0.92)',
-              border: '1px solid rgba(255,255,255,0.09)',
-              borderRadius: rightOpen ? '4px 0 0 4px' : '4px',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: C.dim, fontSize: 13, userSelect: 'none', zIndex: 6,
-              transition: 'right 0.15s',
-            }}
-            title={rightOpen ? 'Collapse panel' : 'Expand panel'}
-          >
-            {rightOpen ? '›' : '‹'}
-          </div>
+          {/* Right open button — shown when panel is closed */}
+          {!rightOpen && (
+            <div onClick={() => setRightOpen(true)} style={{
+              position: 'absolute', right: 8, top: 8, zIndex: 6,
+              background: 'rgba(10,10,22,0.85)', border: '1px solid rgba(255,255,255,0.09)',
+              borderRadius: 4, cursor: 'pointer', padding: '4px 8px',
+              fontSize: 9, color: C.dim, letterSpacing: '0.1em',
+            }} title="Show G-G diagram">G-G ☰</div>
+          )}
         </div>
 
       {/* ── Bottom strip (collapsible) ── */}
@@ -1160,17 +1153,18 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
                 {telemetry ? Math.round(telemetry.brakePct) : '0'}%
               </TValue>
               <LinearBar frac={(telemetry?.brakePct ?? 0) / 100} color="#ff4040" />
-              {/* Brake fade indicator */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
-                <div style={{
-                  width: 6, height: 6, borderRadius: '50%',
-                  background: fadeColor, opacity: fadeFrac > 0.05 ? 1 : 0.25,
-                }} />
-                <span style={{ fontSize: 7, color: fadeFrac > 0.1 ? fadeColor : C.dim, letterSpacing: '0.1em' }}>
-                  {fadeFrac > 0.15 ? 'FADE' : fadeFrac > 0.05 ? 'WARM' : 'DISC OK'}
-                </span>
-                <span style={{ fontSize: 7, color: C.dim }}>{Math.round(discTemp)}°</span>
-              </div>
+              {/* Brake fade — only meaningful while actually braking */}
+              {(telemetry?.brakePct ?? 0) > 5 ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: fadeColor }} />
+                  <span style={{ fontSize: 7, color: fadeColor, letterSpacing: '0.1em' }}>
+                    {fadeFrac > 0.20 ? 'FADE' : fadeFrac > 0.08 ? 'WARM' : 'OK'}
+                  </span>
+                  <span style={{ fontSize: 7, color: C.dim }}>{Math.round(discTemp)}°</span>
+                </div>
+              ) : (
+                <div style={{ fontSize: 7, color: C.dim, marginTop: 2 }}>{Math.round(discTemp)}°C</div>
+              )}
               <TLabel>BRAKE</TLabel>
             </TCell>
 
@@ -1456,15 +1450,15 @@ function GGDiagram({ points, livePoint, peakMu }: {
 
       {/* Friction circle */}
       <circle cx={0} cy={0} r={peakMu}
-        fill="none" stroke="rgba(100,255,100,0.22)" strokeWidth={0.04} />
+        fill="none" stroke="rgba(80,220,80,0.75)" strokeWidth={0.05} strokeDasharray="0.15 0.08" />
       <circle cx={0} cy={0} r={peakMu}
-        fill="none" stroke="rgba(100,255,100,0.08)" strokeWidth={0.12} />
+        fill="none" stroke="rgba(80,220,80,0.14)" strokeWidth={0.18} />
 
       {/* Scatter — latG mirrored (unsigned → symmetric display) */}
       {points.map((p, i) => (
         <g key={i}>
-          <circle cx={p.x}  cy={-p.y} r={0.035} fill="rgba(140,160,220,0.45)" />
-          <circle cx={-p.x} cy={-p.y} r={0.035} fill="rgba(140,160,220,0.22)" />
+          <circle cx={p.x}  cy={-p.y} r={0.042} fill="rgba(110,145,240,0.70)" />
+          <circle cx={-p.x} cy={-p.y} r={0.042} fill="rgba(110,145,240,0.32)" />
         </g>
       ))}
 
@@ -1501,20 +1495,20 @@ function MinimapOverlay({ trackD, viewBox, dotPos, rightOffset = 10 }: {
     <div style={{
       position: 'absolute', bottom: 30, right: rightOffset,
       transition: 'right 0.15s',
-      width: 92, height: 70,
-      background: 'rgba(4,4,10,0.88)',
-      border: `1px solid rgba(255,255,255,0.08)`,
-      borderRadius: 4, overflow: 'hidden',
+      width: 100, height: 76,
+      background: 'rgba(8,8,20,0.92)',
+      border: `1px solid rgba(255,255,255,0.16)`,
+      borderRadius: 5, overflow: 'hidden',
     }}>
-      <svg viewBox={viewBox} style={{ width: '100%', height: '100%' }} preserveAspectRatio="xMidYMid meet">
-        <path d={trackD} fill="none" stroke="#222236" strokeWidth={20 / mapScale} strokeLinecap="round" strokeLinejoin="round" />
-        <path d={trackD} fill="none" stroke="#32324c" strokeWidth={12 / mapScale} strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx={dotPos.x} cy={dotPos.y} r={dotR} fill="#4466ff" />
-        <circle cx={dotPos.x} cy={dotPos.y} r={dotR * 2.5} fill="none" stroke="rgba(68,102,255,0.35)" strokeWidth={dotR * 0.5} />
+      <svg viewBox={viewBox} style={{ width: '100%', height: '100%' }} preserveAspectRatio="xMidYMid meet" shapeRendering="geometricPrecision">
+        <path d={trackD} fill="none" stroke="#1a1a38" strokeWidth={22 / mapScale} strokeLinecap="round" strokeLinejoin="round" />
+        <path d={trackD} fill="none" stroke="#5555a0" strokeWidth={10 / mapScale} strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx={dotPos.x} cy={dotPos.y} r={dotR} fill="#5577ff" />
+        <circle cx={dotPos.x} cy={dotPos.y} r={dotR * 2.5} fill="none" stroke="rgba(85,119,255,0.55)" strokeWidth={dotR * 0.5} />
       </svg>
       <div style={{
         position: 'absolute', top: 2, left: 4,
-        fontSize: 6, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.1em', fontFamily: 'monospace',
+        fontSize: 7, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.1em', fontFamily: 'monospace',
       }}>MAP</div>
     </div>
   );
