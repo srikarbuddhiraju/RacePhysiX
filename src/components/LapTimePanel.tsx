@@ -354,7 +354,7 @@ export function LapTimePanel({
         </button>
         <button
           onClick={() => {
-            const trace = buildLapTrace(effectiveLayout, inpBuilder(params));
+            const trace = buildLapTrace(effectiveLayout, inpBuilder(params), trackKey);
             exportLapTraceCSV(trace, effectiveLayout.name, 'lap1', params);
           }}
           title="Export high-res single-lap telemetry trace (~5 m steps): speed, gear, RPM, G-forces, zone"
@@ -481,7 +481,7 @@ export function LapTimePanel({
       {/* Stage 39 — Telemetry overlay */}
       {uploadedTelemetry && (
         <TelemetryOverlayChart
-          simTrace={buildLapTrace(effectiveLayout, inpBuilder(params))}
+          simTrace={buildLapTrace(effectiveLayout, inpBuilder(params), trackKey)}
           uploaded={uploadedTelemetry}
           onClose={() => setUploadedTelemetry(null)}
         />

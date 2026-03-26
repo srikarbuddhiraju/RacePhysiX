@@ -4,18 +4,36 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
-## Session 33 — 2026-03-25  |  branch: `main` (IN PROGRESS)
+## Session 34 — 2026-03-25  |  branch: `feature/stage-47-visual-enhancements` (IN PROGRESS)
 
-### Current work
-**Stage 46 — Pre-computed CFD aero map** (planning complete, implementation starting)
+### Stage 47 — Visual Enhancements (full spec confirmed)
 
-- Removes Stage 17 (Racing line overlay) from roadmap — not being implemented
-- Stage 46 replaces Stage 29's crude CL boost with a 2D lookup table (ride height × yaw) per vehicle class
-- No new user params — uses existing `vehicleClass`, `frontRideHeightMm`, `rearRideHeightMm`, `windAngleDeg`
+**Milestones** (save status after each):
+- [x] M1: Data layer — extend `buildLapTrace` with tyre/brake temp per step; sector splits for 22 circuits
+- [x] M2: Left panel — tyre+brake corner widget (FL/FR/RL/RR), sector timing S1/S2/S3, TC/Turbo/ERS icons, tyre wear bars
+- [x] M3: Right panel — live G-G diagram + friction circle, Full Lap / Live toggle
+- [x] M4: Bottom strip — Throttle%/Brake% replace Lat-G/Long-G; brake fade indicator (disc temp, FADE/WARM/OK)
+- [x] M5a: Car-centred view (dynamic viewBox tracks car) + minimap overlay + Chase view (circuit rotates, car faces up)
+- [x] Collapse tabs — left/right panels (VSCode-style 12px edge tabs) + bottom strip (click handle)
+- [x] Fullscreen — browser Fullscreen API (⛶ button in header)
+- [ ] M5b: 3D effects — brake disc glow, body roll/pitch, suspension compression (next session — needs Three.js)
 
-### State
-- Branch: `main`, commit `5cc9b23` (Stages 42–45 merged)
-- Physics: 32/32 checks pass | 424/424 extended tests pass
+**Full spec:**
+- Header: circuit name centred, better contrast
+- Left panel: 4-corner tyre (large rounded rect, temp colour) + brake (small rect attached, brake temp colour); FL/FR/RL/RR labels; sector S1/S2/S3 + elapsed + Δ prev; TC icon + Turbo icon (always visible, lights up); tyre wear per corner
+- Right panel: G-G diagram + friction circle (μ limit ring); toggle "Full Lap" (scatter + live dot) ↔ "Live" (progressive trace)
+- Bottom strip: Throttle% + Brake% replace Lat-G/Long-G; brake fade indicator near Brake%
+- Top view: car centred (circuit scrolls) + minimap overlay
+- Chase view: rolls with lateral G, pitches with longitudinal G
+- 3D effects: brake disc glow, car body roll/pitch, suspension compression visible
+- Data: pre-computed thermal trace per lap step drives left panel animation
+- Real sector splits hard-coded for all 22 circuits (generic = auto-thirds)
+
+**Next session (Stage 48):** Vehicle setup JSON import/export with validation layer
+
+### State (session start)
+- Branch: `main`, commit `d22ae79` (Stage 46 merged)
+- Physics: 37/37 checks pass | 424/424 extended tests pass
 - 0 TypeScript errors (`tsc -b` clean)
 
 ---

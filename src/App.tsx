@@ -359,6 +359,7 @@ export function App() {
                 triggerRace={triggerRace}
                 params={params}
                 onClose={() => setShowTrackViz(false)}
+                circuitKey={trackKey}
               />
             </div>
           )}

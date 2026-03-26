@@ -17,6 +17,7 @@
 
 import { tyreWearFactor, tyreLifeFraction, type TyreCompound } from './tyreWear';
 import { brakeFadeFactorFromTemp, brakeHeatRisePerLap, brakeDiscCoolingPerLap } from './brakeTemp';
+import { getSectorIndex } from './sectorSplits';
 
 const G       = 9.81;
 const RHO_AIR = 1.225;   // kg/m³
@@ -847,6 +848,10 @@ export interface LapSimInput {
   brakeHalfWidthC?:     number;
   brakeFloorMu?:        number;
   ambientTempC?:        number;
+  // ── Stage 47 — Thermal trace inputs (optional; defaults used if absent) ──
+  tyreTempStartC?:      number;   // starting tyre temperature (°C); default 80
+  tyreOptTempC?:        number;   // optimal tyre temp (°C); default 85
+  tyreTempHalfWidthC?:  number;   // thermal half-width; default 30
 }
 
 // ── Per-segment and lap result ────────────────────────────────────────────────
@@ -1045,14 +1050,34 @@ export interface TracePoint {
   longG:    number;   // longitudinal G: +ve = accelerating, -ve = braking
   latG:     number;   // lateral G magnitude (always ≥ 0)
   zone:     'braking' | 'trail-braking' | 'cornering' | 'full-throttle';
+  // Stage 47 additions
+  throttlePct:    number;   // 0–100 throttle position estimate
+  brakePct:       number;   // 0–100 brake pedal position estimate
+  tyreTempC:      number;   // estimated tyre temperature at this point (°C)
+  brakeDiscTempC: number;   // estimated brake disc temperature at this point (°C)
+  sectorIndex:    1 | 2 | 3; // current sector
 }
 
 const TRACE_STEP_M = 5;  // target distance between trace points (m)
 
+/** Stage 47: Estimate throttle% and brake% from zone + longitudinal G. */
+function throttleBrakeFromZone(
+  zone: TracePoint['zone'],
+  longG: number,
+): { throttlePct: number; brakePct: number } {
+  switch (zone) {
+    case 'full-throttle': return { throttlePct: 100, brakePct: 0 };
+    case 'trail-braking': return { throttlePct: 20,  brakePct: Math.round(Math.abs(longG) * 40) };
+    case 'braking':       return { throttlePct: 0,   brakePct: Math.min(100, Math.round(Math.abs(longG) * 80)) };
+    case 'cornering':     return { throttlePct: 60,  brakePct: 0 };
+  }
+}
+
 /** Build a high-resolution physics trace of one lap.
  *  Re-runs the same Euler integration as computeLapTime but records state
- *  every ~5 m, enabling smooth animation and zone-accurate colouring. */
-export function buildLapTrace(layout: TrackLayout, inp: LapSimInput): TracePoint[] {
+ *  every ~5 m, enabling smooth animation and zone-accurate colouring.
+ *  Stage 47: also tracks tyre/brake disc temperature, throttle%, brake%, sector index. */
+export function buildLapTrace(layout: TrackLayout, inp: LapSimInput, circuitKey = ''): TracePoint[] {
   const { segments } = layout;
   const n = segments.length;
   const DT = 0.005;
@@ -1068,8 +1093,26 @@ export function buildLapTrace(layout: TrackLayout, inp: LapSimInput): TracePoint
   let cumTime = 0;
   let vPrev = vCorner.find(v => isFinite(v)) ?? 20;
 
+  // Stage 47: Total lap distance for sector fractions
+  const totalDist = layout.segments.reduce((s, seg) => s + seg.length, 0);
+
+  // Stage 47: Thermal state along trace
+  const tyreTempStart  = inp.tyreTempStartC ?? 80;
+  const ambientTemp    = inp.ambientTempC   ?? 20;
+  let tyreTempC        = tyreTempStart;
+  let brakeDiscTempC   = inp.brakeOptTempC  ?? 400;  // start warm (in-lap already done)
+
+  // Thermal constants (calibrated for ~10-20°C tyre rise over a lap, ~100°C brake rise under heavy braking)
+  const TYRE_HEAT_K    = 0.0025;   // heat input per unit slip power (°C per J/m)
+  const TYRE_COOL_TAU  = 80;       // tyre cooling time constant (s)
+  const BRAKE_HEAT_K   = 0.0006;   // heat input per unit brake power (°C per J/m)
+  const BRAKE_COOL_TAU = 35;       // brake cooling time constant (s)
+
   // Initial point
-  trace.push({ distM: 0, timeSec: 0, speedKph: vPrev * 3.6, longG: 0, latG: 0, zone: 'full-throttle' });
+  trace.push({
+    distM: 0, timeSec: 0, speedKph: vPrev * 3.6, longG: 0, latG: 0, zone: 'full-throttle',
+    throttlePct: 100, brakePct: 0, tyreTempC, brakeDiscTempC, sectorIndex: 1,
+  });
 
   for (let i = 0; i < n; i++) {
     const seg = segments[i];
@@ -1083,7 +1126,17 @@ export function buildLapTrace(layout: TrackLayout, inp: LapSimInput): TracePoint
       for (let s = 0; s < steps; s++) {
         cumDist += stepLen;
         cumTime += stepTime;
-        trace.push({ distM: cumDist, timeSec: cumTime, speedKph: vC * 3.6, longG: 0, latG, zone: 'cornering' });
+        // Stage 47: thermal update — tyres heat from lateral slip, brakes cool
+        const slipPower = latG * G * vC;
+        tyreTempC      += TYRE_HEAT_K  * slipPower  * stepTime - (tyreTempC      - ambientTemp) / TYRE_COOL_TAU  * stepTime;
+        brakeDiscTempC -= (brakeDiscTempC - ambientTemp) / BRAKE_COOL_TAU * stepTime;  // cooling only in corners
+        tyreTempC      = Math.max(ambientTemp, tyreTempC);
+        brakeDiscTempC = Math.max(ambientTemp, brakeDiscTempC);
+        const sectorIndex = getSectorIndex(cumDist / totalDist, circuitKey);
+        trace.push({
+          distM: cumDist, timeSec: cumTime, speedKph: vC * 3.6, longG: 0, latG, zone: 'cornering',
+          throttlePct: 60, brakePct: 0, tyreTempC, brakeDiscTempC, sectorIndex,
+        });
       }
       vPrev = vC;
 
@@ -1124,13 +1177,33 @@ export function buildLapTrace(layout: TrackLayout, inp: LapSimInput): TracePoint
         cumDist += dx;
         cumTime += DT;
 
+        // Stage 47: thermal update — tyres and brakes heat/cool per DT step
+        const slipPower  = Math.max(0, -lastLongG) * G * V;  // braking power generates slip heat
+        const brakePower = Math.max(0, -lastLongG) * G * inp.mass * V;
+        tyreTempC      += TYRE_HEAT_K  * slipPower  * DT - (tyreTempC      - ambientTemp) / TYRE_COOL_TAU  * DT;
+        brakeDiscTempC += BRAKE_HEAT_K * brakePower * DT - (brakeDiscTempC - ambientTemp) / BRAKE_COOL_TAU * DT;
+        tyreTempC      = Math.max(ambientTemp, tyreTempC);
+        brakeDiscTempC = Math.max(ambientTemp, brakeDiscTempC);
+
         if (cumDist - lastPushDist >= TRACE_STEP_M) {
-          trace.push({ distM: cumDist, timeSec: cumTime, speedKph: V * 3.6, longG: lastLongG, latG: 0, zone: lastZone });
+          const { throttlePct, brakePct } = throttleBrakeFromZone(lastZone, lastLongG);
+          const sectorIndex = getSectorIndex(cumDist / totalDist, circuitKey);
+          trace.push({
+            distM: cumDist, timeSec: cumTime, speedKph: V * 3.6, longG: lastLongG, latG: 0, zone: lastZone,
+            throttlePct, brakePct, tyreTempC, brakeDiscTempC, sectorIndex,
+          });
           lastPushDist = cumDist;
         }
       }
       // Segment-end point ensures no gaps in trace
-      trace.push({ distM: cumDist, timeSec: cumTime, speedKph: V * 3.6, longG: lastLongG, latG: 0, zone: lastZone });
+      {
+        const { throttlePct, brakePct } = throttleBrakeFromZone(lastZone, lastLongG);
+        const sectorIndex = getSectorIndex(cumDist / totalDist, circuitKey);
+        trace.push({
+          distM: cumDist, timeSec: cumTime, speedKph: V * 3.6, longG: lastLongG, latG: 0, zone: lastZone,
+          throttlePct, brakePct, tyreTempC, brakeDiscTempC, sectorIndex,
+        });
+      }
       vPrev = Math.max(V, vExitTarget * 0.95);
     }
   }
@@ -1348,6 +1421,7 @@ export function buildRaceLapTraces(
   layout:     TrackLayout,
   baseInp:    LapSimInput,
   raceResult: RaceResult,
+  circuitKey  = '',
 ): TracePoint[][] {
   return raceResult.laps.map(lapData => {
     const scaledInp: LapSimInput = {
@@ -1356,6 +1430,6 @@ export function buildRaceLapTraces(
       mass:        baseInp.mass + lapData.fuelMassKg,
       brakingCapG: baseInp.brakingCapG * lapData.brakeFadeFactor,
     };
-    return buildLapTrace(layout, scaledInp);
+    return buildLapTrace(layout, scaledInp, circuitKey);
   });
 }
