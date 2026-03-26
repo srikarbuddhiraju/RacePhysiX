@@ -4,32 +4,19 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
-## Session 34 — 2026-03-25  |  branch: `feature/stage-47-visual-enhancements` (IN PROGRESS)
+## Session 35 — 2026-03-26  |  branch: `main` (COMPLETE ✅)
 
-### Stage 47 — Visual Enhancements (full spec confirmed)
+### Stage 47 — Visual Enhancements — MERGED TO MAIN (commit `ef8e20b`)
 
-**Milestones** (save status after each):
-- [x] M1: Data layer — extend `buildLapTrace` with tyre/brake temp per step; sector splits for 22 circuits
-- [x] M2: Left panel — tyre+brake corner widget (FL/FR/RL/RR), sector timing S1/S2/S3, TC/Turbo/ERS icons, tyre wear bars
-- [x] M3: Right panel — live G-G diagram + friction circle, Full Lap / Live toggle
-- [x] M4: Bottom strip — Throttle%/Brake% replace Lat-G/Long-G; brake fade indicator (disc temp, FADE/WARM/OK)
-- [x] M5a: Car-centred view (dynamic viewBox tracks car) + minimap overlay + Chase view (circuit rotates, car faces up)
-- [x] Collapse tabs — left/right panels (VSCode-style 12px edge tabs) + bottom strip (click handle)
-- [x] Fullscreen — browser Fullscreen API (⛶ button in header)
-- [ ] M5b: 3D effects — brake disc glow, body roll/pitch, suspension compression (next session — needs Three.js)
+- [x] M1: buildLapTrace extended with tyreTempC, brakeDiscTempC, throttlePct, brakePct, sectorIndex; sectorSplits.ts for all 22 circuits
+- [x] M2: Left overlay panel (floating card) — 4-corner tyre+brake temps, sectors S1/S2/S3, TC/Turbo/ERS icons, tyre wear bars
+- [x] M3: Right overlay panel — G-G diagram + dashed friction circle, Full Lap/Live toggle, live Lat-G/Long-G numerical readout below diagram
+- [x] M4: Bottom telemetry strip — Throttle%/Brake% bars + brake fade indicator (gated on brakePct > 5)
+- [x] M5a: Car-centred view + minimap + Chase view; panel open/close buttons; fullscreen; 1×/4×/8× playback
+- [x] Bug fixes: GPS lap time mismatch, GPS throttle/brake from zone model, SVG hi-res (geometricPrecision)
+- [ ] M5b: 3D effects (brake glow, body roll/pitch) — deferred, needs Three.js
 
-**Full spec:**
-- Header: circuit name centred, better contrast
-- Left panel: 4-corner tyre (large rounded rect, temp colour) + brake (small rect attached, brake temp colour); FL/FR/RL/RR labels; sector S1/S2/S3 + elapsed + Δ prev; TC icon + Turbo icon (always visible, lights up); tyre wear per corner
-- Right panel: G-G diagram + friction circle (μ limit ring); toggle "Full Lap" (scatter + live dot) ↔ "Live" (progressive trace)
-- Bottom strip: Throttle% + Brake% replace Lat-G/Long-G; brake fade indicator near Brake%
-- Top view: car centred (circuit scrolls) + minimap overlay
-- Chase view: rolls with lateral G, pitches with longitudinal G
-- 3D effects: brake disc glow, car body roll/pitch, suspension compression visible
-- Data: pre-computed thermal trace per lap step drives left panel animation
-- Real sector splits hard-coded for all 22 circuits (generic = auto-thirds)
-
-**Next session (Stage 48):** Vehicle setup JSON import/export with validation layer
+**Next session (Stage 48):** Vehicle setup JSON import/export — all VehicleParams + PacejkaCoeffs, validation layer, "Apply anyway" option, buttons in preset row.
 
 ### State (session start)
 - Branch: `main`, commit `d22ae79` (Stage 46 merged)
