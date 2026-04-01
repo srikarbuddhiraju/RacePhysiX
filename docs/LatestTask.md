@@ -4,7 +4,7 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
-## Session 36 — 2026-04-01  |  branch: `feature/stage-48-json-import-export` (IN PROGRESS)
+## Session 36 — 2026-04-01  |  branch: `main` (COMPLETE ✅)
 
 ### Advanced tab label fix
 - [x] Changed `adv-header` `align-items: baseline` → `center` + `min-height: 18px` (header was collapsing)
@@ -23,7 +23,7 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 - [ ] Advanced tab: labels visible in both light and dark themes
 
 ### State
-- Branch: `feature/stage-48-json-import-export`, commit `a398e03`
+- Branch: `main`, merged commit `4c6d678`, live on Cloudflare Pages
 - Physics: 37/37 checks pass | 424/424 extended tests pass
 - 0 TypeScript errors, build clean
 
