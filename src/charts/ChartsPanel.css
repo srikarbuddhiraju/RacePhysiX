@@ -162,17 +162,25 @@
 .adv-header {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   gap: 4px;
+  min-height: 18px;
 }
 
 .adv-label {
   font-size: 10px;
-  font-weight: 500;
+  font-weight: 600;
   display: flex;
   align-items: center;
   gap: 2px;
   white-space: nowrap;
+  color: var(--text-secondary);   /* theme-safe fallback; inline color overrides for accent */
+}
+
+/* Description part of each label — always readable in both themes */
+.adv-label-desc {
+  color: var(--text-muted);
+  font-weight: 500;
 }
 
 .adv-value {
@@ -181,6 +189,7 @@
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .adv-row input[type="range"] {

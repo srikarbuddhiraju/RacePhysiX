@@ -367,11 +367,15 @@ function AdvancedTab({
       <div className="adv-sliders">
         {COEFF_SLIDERS.map(({ key, label, min, max, step, format, tip, color }) => {
           const val = coeffs[key] as number;
+          // Split "B — Stiffness factor" into symbol "B" and desc "Stiffness factor"
+          const [symbol, ...descParts] = label.split(' — ');
+          const desc = descParts.join(' — ');
           return (
             <div className="adv-row" key={key}>
               <div className="adv-header">
-                <span className="adv-label" style={{ color }}>
-                  {label}
+                <span className="adv-label">
+                  <span style={{ color }}>{symbol}</span>
+                  {desc && <span className="adv-label-desc"> — {desc}</span>}
                   <InfoTooltip text={tip} />
                 </span>
                 <span className="adv-value">{format(val)}</span>
@@ -388,7 +392,7 @@ function AdvancedTab({
         {/* Section width slider */}
         <div className="adv-row">
           <div className="adv-header">
-            <span className="adv-label" style={{ color: '#e2e8f0' }}>
+            <span className="adv-label">
               Section width
               <InfoTooltip text="Physical tyre section width in metres. Changes the visual wheel width in the 3D view. Wider tyres have a larger contact patch area → typically higher Cα and peak μ. This slider is independent of B/μ — adjust those manually to match." />
             </span>
@@ -397,7 +401,6 @@ function AdvancedTab({
           <input
             type="range" min={0.155} max={0.305} step={0.005}
             value={tyreSectionWidth}
-            style={{ accentColor: '#e2e8f0' }}
             onChange={e => onWidthChange(Number(e.target.value))}
           />
         </div>

@@ -315,7 +315,14 @@ export function App() {
 
   return (
     <div className="app">
-      <VehiclePresetSelector onSelect={handlePresetSelect} onReset={resetToDefaults} powerUnit={powerUnit} onPowerUnitChange={setPowerUnit} />
+      <VehiclePresetSelector
+        onSelect={handlePresetSelect}
+        onReset={resetToDefaults}
+        powerUnit={powerUnit}
+        onPowerUnitChange={setPowerUnit}
+        params={params}
+        coeffs={coeffs}
+      />
       <WelcomeBanner />
       {/* Top row: param panel | 3D view | results */}
       <div className="app-main">
