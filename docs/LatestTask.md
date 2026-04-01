@@ -4,6 +4,31 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
+## Session 36 — 2026-04-01  |  branch: `feature/stage-48-json-import-export` (IN PROGRESS)
+
+### Advanced tab label fix
+- [x] Changed `adv-header` `align-items: baseline` → `center` + `min-height: 18px` (header was collapsing)
+- [x] Split label: coefficient symbol coloured inline, description text uses `var(--text-muted)` (readable in both themes)
+- [x] Added `.adv-label-desc` CSS class
+
+### Stage 48 — Vehicle Setup JSON import/export
+- [x] `vehicleSetup.ts`: `exportSetupJSON()` (browser download) + `validateSetupJSON()` (75 VehicleParams + 4 coeffs — type + range)
+- [x] `VehiclePresetSelector`: ↓ Export + ↑ Import buttons after Reset separator; inline banner for errors/warnings; "Apply anyway" for hard-error state
+- [x] `App.tsx`: passes `params` + `coeffs` to selector
+
+### Pending verification
+- [ ] Browser verify: Export downloads valid JSON → re-import → Δ = 0 on lap time
+- [ ] Browser verify: Import with out-of-range field → yellow warning banner shown, setup applied
+- [ ] Browser verify: Import with missing field → red error banner, "Apply anyway" visible
+- [ ] Advanced tab: labels visible in both light and dark themes
+
+### State
+- Branch: `feature/stage-48-json-import-export`, commit `a398e03`
+- Physics: 37/37 checks pass | 424/424 extended tests pass
+- 0 TypeScript errors, build clean
+
+---
+
 ## Session 35 — 2026-03-26  |  branch: `main` (COMPLETE ✅)
 
 ### Stage 47 — Visual Enhancements — MERGED TO MAIN (commit `ef8e20b`)
