@@ -94,6 +94,15 @@ Updated after every correction per CLAUDE.md Self-Improvement Loop.
 
 ---
 
+## Three.js HiDPI / DPR
+
+### Never manually multiply setViewport/setScissor coords by devicePixelRatio
+- **Rule**: `renderer.setViewport(x, y, w, h)` and `renderer.setScissor(x, y, w, h)` take **CSS pixel** coordinates in Three.js ≥ r125. They internally multiply by `pixelRatio`. Multiplying manually causes double-scaling on HiDPI screens (DPR=2 → coords are 4× off).
+- **Why**: Session 37 — Top View and Chase View were completely misaligned on Surface Pro 6 (DPR=2). Root cause: `setViewport(vx * dpr, vy * dpr, ...)` double-multiplied.
+- **How to apply**: Always pass raw `clientWidth`/`clientHeight`-based coords. Only use `dpr` for `renderer.setPixelRatio(dpr)` and `renderer.setSize(w, h)` (where Three.js does NOT auto-scale).
+
+---
+
 ## Animation / Visual Physics
 
 ### Net heading = 2π does NOT mean the SVG path spatially closes
@@ -207,10 +216,11 @@ Updated after every correction per CLAUDE.md Self-Improvement Loop.
 
 ## Screenshots / Browser Capture
 
-### On Bazzite (Wayland + rpm-ostree): just ask Srikar for screenshots
-- **Rule**: Do NOT attempt automated screenshot capture on this machine. Research display server first (`echo $XDG_SESSION_TYPE`), then act — not trial-and-error.
-- **Why**: System is Bazzite (Fedora Atomic, rpm-ostree). `$XDG_SESSION_TYPE=wayland`. `import` (ImageMagick) needs X11. `grim` is not in brew. `gnome-screenshot` not installed. Flameshot flatpak fails on Wayland. `rpm-ostree install` requires a reboot.
-- **How to apply**: When Agent F (screenshots) is requested, ask Srikar: "Which circuit/state do you want captured? I'll guide you on what to look for." Don't burn tokens on tool-discovery loops.
+### On Wayland (any distro): ask Srikar for screenshots
+- **Rule**: Do NOT attempt automated screenshot capture on Wayland sessions. Check `$XDG_SESSION_TYPE` first. If `wayland`, stop and ask.
+- **Why**: `import` (ImageMagick) needs X11. `gnome-screenshot` often not installed. GNOME D-Bus Screenshot API returns "Access Denied" from a terminal session. `grim`/`wlr-screencopy` not available on GNOME Wayland without explicit install.
+- **How to apply**: Ask Srikar to take a screenshot (PrtSc key or `gnome-screenshot` in their own terminal) and paste it into the conversation. Don't burn tokens on tool-discovery loops.
+- **Devices seen**: Bazzite (Surface Pro, session 19), Ubuntu (Surface Pro 6, session 37).
 
 ---
 
