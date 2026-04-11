@@ -4,6 +4,26 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
+## Session 37 — 2026-04-11  |  branch: `feature/fix-ui-layout-surface` (IN PROGRESS)
+
+### UI Layout — Surface Pro 6 responsive fixes
+
+- [x] `App.css`: `max-height: 880px` → `app-main: 50-51%` (gives charts more vertical space)
+- [x] `ResultsPanel.css`: `max-width: 1400px` → 240px (covers 1368px Surface Pro width)
+- [x] `ChartsPanel.css`: compact controls at `max-height: 880px` (tighter tabs, hide preset desc)
+- [x] `TrackVisualiser.tsx`: left overlay 188→170px, right overlay 200×270→182×248px
+
+### Pending verification
+- [x] Browser verify on Surface Pro 6: charts taller, layout correct ✓
+- [x] Top View / Chase View vectors aligned (DPR double-scaling fixed) ✓
+- [x] Verified no regressions (build clean, Srikar confirmed "looks good")
+
+### State
+- Merged to `main`, commit `a77fdd9`, live on Cloudflare Pages
+- SSH key configured for all 3 repos (Surface Pro 6 Ubuntu)
+
+---
+
 ## Session 36 — 2026-04-01  |  branch: `main` (COMPLETE ✅)
 
 ### Advanced tab label fix
