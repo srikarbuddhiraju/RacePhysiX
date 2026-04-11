@@ -22,6 +22,15 @@
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 
+/* Surface Pro 6 width (1368px) falls between 1200 and 1400 — catches it */
+@media (max-width: 1400px) {
+  .results-panel {
+    width: 240px;
+    min-width: 240px;
+    padding: 16px 12px;
+  }
+}
+
 @media (max-width: 1200px) {
   .results-panel {
     width: 220px;

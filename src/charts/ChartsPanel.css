@@ -278,6 +278,20 @@
   transition: width 0.1s ease;
 }
 
+/* ── Short-viewport compact mode (Surface Pro 6 etc.) ────────────────────── */
+
+@media (max-height: 880px) {
+  /* Tighter tab bar */
+  .ctrl-tab { padding: 5px 12px; }
+
+  /* Presets tab: tighter padding, hide long description text */
+  .presets-tab { padding: 5px 14px 6px; gap: 5px; }
+  .preset-desc { display: none; }
+
+  /* Advanced tab: tighter padding */
+  .advanced-tab { padding: 5px 14px 5px; gap: 4px; }
+}
+
 /* Handling diagram annotation */
 .handling-annotation {
   display: flex;

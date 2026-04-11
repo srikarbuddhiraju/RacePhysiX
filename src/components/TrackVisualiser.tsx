@@ -947,13 +947,13 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
 
           {/* Minimap overlay — shown in centred + chase modes, avoids right panel */}
           {viewMode !== 'full' && dotPos && (
-            <MinimapOverlay trackD={trackD} viewBox={viewBox} dotPos={dotPos} rightOffset={rightOpen ? 198 : 10} />
+            <MinimapOverlay trackD={trackD} viewBox={viewBox} dotPos={dotPos} rightOffset={rightOpen ? 180 : 10} />
           )}
 
           {/* View mode label — top-right of circuit */}
           {viewMode !== 'full' && (
             <div style={{
-              position: 'absolute', top: 8, right: rightOpen ? 198 : 8,
+              position: 'absolute', top: 8, right: rightOpen ? 180 : 8,
               fontSize: 8, color: C.dim, letterSpacing: '0.14em',
               background: 'rgba(7,7,15,0.7)', borderRadius: 3, padding: '2px 5px',
               zIndex: 4,
@@ -966,7 +966,7 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
           {leftOpen && (
             <div style={{
               position: 'absolute', left: 8, top: 8,
-              width: 188,
+              width: 170,
               background: 'rgba(10,10,22,0.94)',
               border: '1px solid rgba(255,255,255,0.10)',
               borderRadius: 6,
@@ -1025,8 +1025,8 @@ export function TrackVisualiser({ layout, result, lapSimInput, raceResult, trigg
           {rightOpen && (
             <div style={{
               position: 'absolute', right: 8, top: 8,
-              width: 200,
-              height: 270,
+              width: 182,
+              height: 248,
               background: 'rgba(10,10,22,0.94)',
               border: '1px solid rgba(255,255,255,0.10)',
               borderRadius: 6,

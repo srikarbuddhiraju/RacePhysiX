@@ -48,6 +48,17 @@
   }
 }
 
+/* Short viewport (≤880px height, e.g. Surface Pro 6 at 200% DPI ≈ 840px):
+   shift space from top row to charts — must come after width rules to take precedence */
+@media (max-height: 880px) {
+  .app-main { flex: 0 0 51%; }
+}
+
+/* Surface Pro 6 combined target (≤1400px wide AND ≤880px tall): max chart space */
+@media (max-width: 1400px) and (max-height: 880px) {
+  .app-main { flex: 0 0 50%; }
+}
+
 /* Short screens (landscape laptop, small monitor): allow vertical scroll */
 @media (max-height: 700px) {
   .app {
