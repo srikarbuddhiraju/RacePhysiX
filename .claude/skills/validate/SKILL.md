@@ -1,13 +1,13 @@
 ---
 name: validate
-description: Run ApexSim physics validation — checks bicycle model against Gillespie Ch.6 reference values
+description: Run RacePhysiX physics validation — checks bicycle model against Gillespie Ch.6 reference values
 allowed-tools: Bash
 ---
 
-Run the ApexSim physics validation suite and report results.
+Run the RacePhysiX physics validation suite and report results.
 
 ```bash
-cd /var/home/srikarbuddhiraju/Srikar/Repo/ApexSim && npx tsx src/physics/validate.ts
+cd /home/srikarbuddhiraju/Srikar/Repos/RacePhysiX && npx tsx src/physics/validate.ts
 ```
 
 Then:

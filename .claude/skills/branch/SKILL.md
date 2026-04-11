@@ -1,12 +1,12 @@
 ---
 name: branch
-description: Create a new ApexSim feature branch following the project convention — commits current work first
+description: Create a new RacePhysiX feature branch following the project convention — commits current work first
 allowed-tools: Bash, Read
 ---
 
 Arguments: $ARGUMENTS (e.g. "stage4-quarter-car" or "fix-handling-diagram")
 
-Follow the ApexSim branching convention:
+Follow the RacePhysiX branching convention:
 
 1. Check current git status: `git status` and `git diff --stat`
 2. If there are uncommitted changes, commit them first:

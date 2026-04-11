@@ -1,10 +1,10 @@
 ---
 name: stage-status
-description: Show ApexSim physics stage completion status, current branch, and recommended next step
+description: Show RacePhysiX physics stage completion status, current branch, and recommended next step
 allowed-tools: Bash, Read
 ---
 
-Show the current state of the ApexSim project:
+Show the current state of the RacePhysiX project:
 
 1. Read `docs/LatestTask.md` for current work and open checklist items
 2. Run `git log --oneline -8` to show recent commits
