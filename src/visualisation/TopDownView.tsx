@@ -660,12 +660,13 @@ export function TopDownView({ params, result, pacejka, coeffs, darkMode = true }
     const render = (s: typeof stateRef.current) => {
       if (!s) return;
       const cw = mount.clientWidth, ch = mount.clientHeight;
-      const dpr = window.devicePixelRatio;
       const vps = computeViewports(cw, ch);
 
+      // Three.js setViewport/setScissor accept CSS pixels and internally
+      // multiply by pixelRatio — do NOT multiply by dpr here (double-scales on HiDPI)
       function setVP(vx: number, vy: number, vw: number, vh: number, cam: Camera) {
-        renderer.setViewport(vx * dpr, vy * dpr, vw * dpr, vh * dpr);
-        renderer.setScissor( vx * dpr, vy * dpr, vw * dpr, vh * dpr);
+        renderer.setViewport(vx, vy, vw, vh);
+        renderer.setScissor( vx, vy, vw, vh);
         renderer.render(s.scene, cam);
       }
 
