@@ -51,7 +51,7 @@ B, C, D, E are curve-fit parameters from the Magic Formula tyre model. They desc
 - D (peak factor): scales with tyre load and peak friction coefficient.
 - E (curvature factor): negative values = sharper peak with quicker drop-off (typical of slicks).
 
-See [Physics Models → Stage 2](physics-overview) for the full equation and coefficient roles.
+See [Physics Models → Stage 2](physics-foundations) for the full equation and coefficient roles.
 
 ### What is the understeer gradient?
 
@@ -130,7 +130,7 @@ TypeScript, React, Vite, Three.js (3D visualiser), Recharts (charts). Pure TypeS
 
 Point-mass simulation over circuit segments. For each corner, the maximum speed is computed from the tyre force and radius. The simulator then works backwards through the braking zone to find the maximum entry speed, and forwards through the acceleration zone to find the exit speed. Time for each segment = distance / average speed. Total lap time = sum over all segments.
 
-See [Physics Models → Stage 7](physics-overview) for the full detail.
+See [Physics Models → Stage 7](physics-foundations) for the full detail.
 
 ### How are the GPS circuits processed?
 

@@ -87,6 +87,7 @@ Click **Animate Circuit** (top of the 3D view) to open the track visualiser. You
 ## What to try next
 
 - [User Guide](user-guide) — detailed walkthrough of every panel and control
-- [Physics Models](physics-overview) — the equations behind every stage, from bicycle model to 14-DOF dynamics
+- [Physics — Foundations](physics-foundations) — bicycle model, Pacejka, load transfer, aero, lap time estimator
+- [Physics — Advanced](physics-advanced) — 14-DOF dynamics, race models, thermal models, CFD aero map
 - [Circuit Reference](circuits) — all 22 circuits, GPS accuracy, and data attribution
 - [FAQ](faq) — common questions and known limitations
