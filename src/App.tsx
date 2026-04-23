@@ -11,7 +11,8 @@ import type { LapResult, RaceResult, TrackLayout } from './physics/laptime';
 import type { VehicleParams, PacejkaCoeffs } from './physics/types';
 import { buildLapSimInput } from './physics/vehicleInput';
 import { VehiclePresetSelector } from './components/VehiclePresetSelector';
-import { WelcomeBanner } from './components/WelcomeBanner';
+import { WelcomeModal } from './components/WelcomeModal';
+import { DocsPage }      from './components/DocsPage';
 import { type PowerUnit } from './utils/units';
 import { VEHICLE_PRESETS } from './physics/vehiclePresets';
 import './App.css';
@@ -272,6 +273,32 @@ export function App() {
   const [darkMode, setDarkMode]     = useState(true);
   const [powerUnit, setPowerUnit]   = useState<PowerUnit>('kW');
 
+  // ── Hash-based routing (#docs, #docs/<section>) ───────────────────────────
+  const hashToRoute = (h: string) => h.startsWith('#docs') ? h : '';
+  const [route, setRoute] = useState<string>(() => hashToRoute(window.location.hash));
+  useEffect(() => {
+    const onHashChange = () => setRoute(hashToRoute(window.location.hash));
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  const openDocs = useCallback((section?: string) => {
+    const hash = section ? `#docs/${section}` : '#docs';
+    window.location.hash = hash;
+    setRoute(hash);
+  }, []);
+
+  const closeDocs = useCallback(() => {
+    window.location.hash = '';
+    setRoute('');
+  }, []);
+
+  // ── Welcome modal state ────────────────────────────────────────────────────
+  const STORAGE_KEY = 'racephysix_welcomed_v1';
+  const [modalVisible, setModalVisible] = useState<boolean>(() => {
+    try { return !localStorage.getItem(STORAGE_KEY); } catch { return true; }
+  });
+
   // Track Visualiser state — shared between LapTimePanel (editor) and TrackVisualiser (map)
   const [trackKey,      setTrackKey]      = useState<string>('club');
   const [lapResult,     setLapResult]     = useState<LapResult | null>(null);
@@ -313,7 +340,19 @@ export function App() {
     setCoeffs(c);
   }, [setParams]);
 
+  // Docs page takes over the whole viewport
+  if (route.startsWith('#docs')) {
+    const section = route.replace('#docs/', '').replace('#docs', '') || 'getting-started';
+    return <DocsPage initialSection={section} onBack={closeDocs} />;
+  }
+
   return (
+    <>
+    <WelcomeModal
+      visible={modalVisible}
+      onClose={() => setModalVisible(false)}
+      onOpenDocs={() => { setModalVisible(false); openDocs(); }}
+    />
     <div className="app">
       <VehiclePresetSelector
         onSelect={handlePresetSelect}
@@ -323,7 +362,6 @@ export function App() {
         params={params}
         coeffs={coeffs}
       />
-      <WelcomeBanner />
       {/* Top row: param panel | 3D view | results */}
       <div className="app-main">
         <ParameterPanel params={params} onChange={setParams} powerUnit={powerUnit} onPowerUnitChange={setPowerUnit} />
@@ -335,6 +373,36 @@ export function App() {
             title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
           >
             {darkMode ? '☀' : '🌙'}
+          </button>
+          {/* Help button — reopens welcome modal */}
+          <button
+            onClick={() => setModalVisible(true)}
+            title="Help / Welcome"
+            style={{
+              position: 'absolute', top: 8, left: 40,
+              padding: '4px 8px', fontSize: 11, fontWeight: 700,
+              background: 'rgba(99,102,241,0.15)',
+              border: '1px solid #6466f1',
+              borderRadius: 5, color: '#a0a0ff',
+              cursor: 'pointer', zIndex: 10, lineHeight: 1,
+            }}
+          >
+            ?
+          </button>
+          {/* Docs button */}
+          <button
+            onClick={() => openDocs()}
+            title="Open documentation"
+            style={{
+              position: 'absolute', top: 8, left: 72,
+              padding: '4px 8px', fontSize: 9, fontWeight: 700,
+              background: 'rgba(99,102,241,0.15)',
+              border: '1px solid #6466f1',
+              borderRadius: 5, color: '#a0a0ff',
+              cursor: 'pointer', zIndex: 10, whiteSpace: 'nowrap',
+            }}
+          >
+            Docs
           </button>
           {/* Circuit Map toggle — below theme-toggle */}
           <button
@@ -393,5 +461,6 @@ export function App() {
         />
       </div>
     </div>
+    </>
   );
 }

@@ -4,6 +4,36 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
+## Session 38 — 2026-04-23  |  branch: `feature/documentation` (IN PROGRESS)
+
+### Documentation — in-app popup + /docs page
+
+- [x] Feature branch `feature/documentation` created
+- [x] `react-markdown` v10.1.0 installed
+- [x] `public/docs/getting-started.md` — 3-step intro, audience table, result definitions
+- [x] `public/docs/user-guide.md` — every panel, tab, control, and output documented
+- [x] `public/docs/physics-overview.md` — all stages, formulas, derivations, validation
+- [x] `public/docs/circuits.md` — all 22 circuits, GPS attribution, banking data, limitations
+- [x] `public/docs/faq.md` — general, usage, physics, and technical questions
+- [x] `src/components/DocsPage.tsx` + `DocsPage.css` — sidebar nav, react-markdown render, version footer
+- [x] `src/components/WelcomeModal.tsx` — full-screen modal, "Don't show again" checkbox, docs link
+- [x] `src/App.tsx` — hash routing (#docs), WelcomeModal wired, Help (?) + Docs buttons added
+- [x] `tsc --noEmit` clean, `npm run build` clean
+
+### Pending verification
+- [ ] Browser verify: modal appears on load, "Don't show again" persists, "Start Exploring" dismisses
+- [ ] Browser verify: ? button re-opens modal, Docs button navigates to /docs
+- [ ] Browser verify: all 5 docs sections load and render markdown correctly
+- [ ] Browser verify: internal doc links (e.g. [Physics Models](physics-overview)) navigate correctly
+- [ ] Browser verify: "Back to Simulator" returns to simulator state
+
+### State
+- Branch: `feature/documentation`
+- Physics: 37/37 checks | 424/424 extended tests — unchanged
+- 0 TypeScript errors, build clean
+
+---
+
 ## Session 37 — 2026-04-11  |  branch: `feature/fix-ui-layout-surface` (IN PROGRESS)
 
 ### UI Layout — Surface Pro 6 responsive fixes
