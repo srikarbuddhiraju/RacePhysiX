@@ -1,0 +1,12 @@
+name = "racephysix-waitlist"
+main = "index.ts"
+compatibility_date = "2024-01-01"
+
+[[kv_namespaces]]
+binding = "WAITLIST_KV"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"        # fill in after: wrangler kv namespace create WAITLIST
+preview_id = "REPLACE_WITH_KV_PREVIEW_ID"  # fill in from the same command output
+
+# ADMIN_SECRET is set as an encrypted secret — never commit it here.
+# Run: wrangler secret put ADMIN_SECRET
+# Then enter a long random string (e.g. openssl rand -hex 32)

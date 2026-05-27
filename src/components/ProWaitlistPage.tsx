@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import './ProWaitlistPage.css';
 
-// ── Replace with your Formspree form ID after signing up at formspree.io ──────
-const FORMSPREE_ID = 'YOUR_FORMSPREE_ID';
+const WAITLIST_URL = import.meta.env.PROD
+  ? 'https://racephysix-waitlist.srikarbuddhiraju.workers.dev/waitlist'
+  : 'http://localhost:8787/waitlist';
 
 const PRO_FEATURES = [
   {
@@ -52,9 +53,9 @@ export function ProWaitlistPage() {
     setErrorMsg('');
 
     try {
-      const res = await fetch(`https://formspree.io/f/${FORMSPREE_ID}`, {
+      const res = await fetch(WAITLIST_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
 
