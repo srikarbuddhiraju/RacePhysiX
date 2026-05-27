@@ -29,6 +29,9 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 - [ ] **Task #2** — Re-deploy Worker (do after Task #3): `cd workers/waitlist && git pull && npx wrangler deploy`
 - [ ] Community posts: r/simracing → r/FormulaStudent → r/formula1
 
+### Next session — first item
+- [ ] **Task #4** — Docs still say MIT licence in at least one place. Grep `public/docs/` for "MIT", replace all with AGPL-3.0. Quick fix.
+
 ### State
 - Branch: `main`, all commits pushed, live on Cloudflare Pages
 - Physics: 37/37 checks | 424/424 extended tests — unchanged
