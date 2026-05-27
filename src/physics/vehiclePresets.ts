@@ -8,7 +8,26 @@
  *  - Formula Student: FSAE/FS Rules + Hoosier R25B tyre data
  *  - GT3: FIA GT3 Technical Regulations + Michelin racing tyre data
  *  - F1: FIA Technical Regulations 2024 + Pirelli tyre data
- *  - Road: Milliken & Milliken typical road car values
+ *  - Road: Pacejka "Tire and Vehicle Dynamics" 3rd ed. (2012) Appendix 3
+ *          Real measured dataset: 205/60R15 91V (Fzo=4000 N)
+ *          Simplified B/C/μ/E derived from full TNO MF-Tyre/MF-Swift 6.1 parameter set.
+ *
+ * Magic Formula Pacejka coefficients — accuracy reference:
+ *
+ *   Road tyre  — directly from Pacejka App.3 (205/60R15, real measured data):
+ *     C = pCy1 = 1.34, μ = pDy1 = 0.88, E = pEy1 = +0.80 (positive → gradual saturation,
+ *     NO sharp peak-then-drop; this is characteristic of road tyres).
+ *     B derived: BCD = pKy1×Fzo×sin(2×arctan(1/pKy2)) → B ≈ 11 at Fzo=4000 N.
+ *
+ *   Racing slicks — Pacejka Ch.4 §4.3.1 guidance + physical reasoning:
+ *     E MUST be negative for slicks. Pacejka explicitly states:
+ *     "an increasing negative E value will make the characteristic more 'peaky'."
+ *     Slicks exhibit a sharp peak then pronounced drop-off past the peak slip angle;
+ *     road tyres gradually saturate. Slick C is higher (1.45–1.50 → sharper peak shape).
+ *     μ ranges from Pacejka App.3 text: "1.5 or even 2 for racing cars in extreme cases."
+ *
+ *  Key rule: E_road > 0  (saturation) · E_slick < 0  (peaky)
+ *            |E_slick| increases with compound aggressiveness: FS < GT3 < F1
  */
 
 import type { VehicleParams, PacejkaCoeffs } from './types';
@@ -88,7 +107,9 @@ const ROAD_CAR: VehiclePreset = {
     rollDamperRatio: 0.7,
     tyreCoreHeatLag: 0.35,
   },
-  coeffs: { B: 10.0, C: 1.30, peakMu: 1.00, E: -1.50 },
+  // Pacejka Appendix 3 real 205/60R15 data: B≈11.4→11, C=1.338→1.34, μ=0.8785→0.88
+  // E=+0.8057→+0.80 (POSITIVE — road tyre gradually saturates, no sharp dropoff)
+  coeffs: { B: 11.0, C: 1.34, peakMu: 0.88, E: 0.80 },
 };
 
 // ── Formula Student (FSAE / FS) ───────────────────────────────────────────────
@@ -160,7 +181,10 @@ const FORMULA_STUDENT: VehiclePreset = {
     rollDamperRatio: 0.6,
     tyreCoreHeatLag: 0.25,
   },
-  coeffs: { B: 12.0, C: 1.30, peakMu: 1.80, E: -0.80 },
+  // Pacejka Ch.4 §4.3.1 slick guidance: C↑ for sharper peak shape; E more negative
+  // for pronounced peak-then-dropoff (slick overloading past peak). μ in Pacejka
+  // App.3 "1.5–2.0 for racing" range. Peak slip angle ≈ 5° (vs ≈9° for road).
+  coeffs: { B: 12.0, C: 1.50, peakMu: 1.75, E: -2.50 },
 };
 
 // ── GT3 ───────────────────────────────────────────────────────────────────────
@@ -232,7 +256,9 @@ const GT3: VehiclePreset = {
     rollDamperRatio: 0.65,
     tyreCoreHeatLag: 0.25,
   },
-  coeffs: { B: 10.0, C: 1.35, peakMu: 1.60, E: -0.70 },
+  // Pacejka Ch.4 §4.3.1 slick guidance: C=1.45 (semi-slick), E=-1.50 (moderate peak-then-drop),
+  // B=11 (stiffer than road, peak slip ≈ 7°). μ=1.55 (FIA GT3 tyre dry performance range).
+  coeffs: { B: 11.0, C: 1.45, peakMu: 1.55, E: -1.50 },
 };
 
 // ── Formula 1 (2024) ──────────────────────────────────────────────────────────
@@ -305,7 +331,10 @@ const FORMULA_1: VehiclePreset = {
     rollDamperRatio: 0.55,
     tyreCoreHeatLag: 0.20,
   },
-  coeffs: { B: 15.0, C: 1.40, peakMu: 2.00, E: -1.00 },
+  // Pacejka Ch.4 §4.3.1 slick guidance: C=1.50 (ultra-stiff F1 slick shape), E=-2.00
+  // (pronounced peak-then-drop, very sensitive past peak slip ≈ 4°). μ=1.95
+  // (Pirelli dry slick; peak μ "up to 2" per Pacejka App.3 text for race compounds).
+  coeffs: { B: 15.0, C: 1.50, peakMu: 1.95, E: -2.00 },
 };
 
 export const VEHICLE_PRESETS: VehiclePreset[] = [

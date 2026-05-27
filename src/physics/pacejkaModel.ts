@@ -27,11 +27,14 @@ const G          = 9.81;
 const RAD_TO_DEG = 180 / Math.PI;
 const DEG_TO_RAD = Math.PI / 180;
 
+// Default coefficients are representative of a performance road tyre.
+// E=+0.80 is correct for road tyres (gradual saturation — Pacejka App.3 pEy1=0.8057).
+// C=1.34 from real 205/60R15 data (Pacejka 3rd ed. Appendix 3, pCy1=1.338).
 export const DEFAULT_PACEJKA_COEFFS: PacejkaCoeffs = {
-  B:      10.0,
-  C:      1.30,
+  B:      11.0,
+  C:      1.34,
   peakMu: 1.20,
-  E:     -1.50,
+  E:      0.80,
 };
 
 const NEUTRAL_THRESHOLD_DEG = 0.1;
