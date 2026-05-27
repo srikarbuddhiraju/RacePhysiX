@@ -4,6 +4,40 @@ Running log. Most recent session at top.
 
 ---
 
+## Session 40 — 2026-05-27
+
+### Decisions Made
+- **Monetisation strategy agreed**: Full details in `docs/monetisation.md`. Summary:
+  - Free tier stays free forever — no features pulled back
+  - Pro tier (£6–8/month): cloud saves, setup library, PDF reports, custom track upload
+  - Team tier (£20–25/month): multi-user, FS Edition, API access, priority support
+  - Consulting (one-time): setup analysis reports at £100–250 each
+  - Formula Student teams identified as the priority wedge (replaces OptimumLap)
+- **Licence change decided**: MIT → **AGPL v3** + commercial dual licence
+  - AGPL v3: free for non-commercial, viral clause deters commercial extraction
+  - Commercial licence: sold separately to companies wanting non-AGPL terms
+  - MIT rejected: no protection against commercial exploitation
+  - BSL rejected: not technically open source, unnecessary friction
+- **Competitive position confirmed**: RacePhysiX is uncontested in browser-based space.
+  OptimumLap (~$250/yr, desktop) is the incumbent to displace for FS + club racing.
+- **v3 FEA direction confirmed** (from memory `project_v3_fea_direction.md`):
+  - Tauri + Rust WASM + WebGPU, ~200–500 element tyre shell model
+  - ~95% accuracy target, matches FTire-class on consumer hardware
+  - Srikar leads FE formulation; Claude implements solver
+  - Prerequisite: v2 stable + generating revenue first
+- **Docs updated**: `project-overview.md` rewritten, `docs/monetisation.md` created,
+  `docs/roadmap.md` created (v1/v2/v3 milestones + FEA prerequisites)
+- **Canvas button layout fixed**: flex group + centred ViewLabels (see LatestTask.md Session 40)
+
+### Open Questions / Next Steps
+- [ ] Implement licence change (LICENSE file + README + package.json)
+- [ ] GitHub Sponsors page
+- [ ] Marketing Phase 1: README, screenshots, community posts
+- [ ] Pro tier waitlist landing page (before building auth/billing)
+- [ ] M5b: 3D effects (brake glow, body roll) — deferred, Three.js work
+
+---
+
 ## Session 11 — 2026-03-16
 
 ### Decisions Made

@@ -1,49 +1,58 @@
 # RacePhysiX — Project Overview
 
-**Created:** 2026-03-15
+**Created:** 2026-03-15  |  **Last updated:** 2026-05-27
+**Live:** racephysix.srikarbuddhiraju.com (Cloudflare Pages)
 **Repo:** https://github.com/srikarbuddhiraju/RacePhysiX
-**Local path:** `/home/srikarbuddhiraju/Srikar/Repo/RacePhysiX`
-**Status:** v1 feature-complete — pending deployment
 
 ---
 
 ## What This Is
 
-An interactive, physics-accurate vehicle dynamics simulator that runs in the browser.
-Not a game. A tool where you change parameters and see real-world vehicle behaviour in real time.
+Browser-based, physics-accurate vehicle dynamics simulator. No install, no login, free.
+Not a toy — Pacejka Magic Formula, 14-DOF time domain, real GPS circuits, setup optimiser.
 
-**Primary purpose (v1):** Educational — understand *why* a car behaves the way it does.
-**Secondary purpose (v2):** Setup tool — tune a car for a specific circuit or condition.
-
----
-
-## Why This Works
-
-- Srikar can validate physics (MEng Automotive Engineering, Leeds 2019) — the hardest part, already solved
-- Gap is real: CarSim/VI-grade cost tens of thousands, nothing good on web
-- Open source fits: academia + motorsport community will contribute and share
-- No App Store needed — just a URL
-- Monetisation path clear: free educational core → paid pro setup tool
+**v1 (done):** Educational — understand why a car behaves the way it does.  
+**v2 (current):** Setup tool — tune a car for a specific circuit or condition.  
+**v3 (future):** Local desktop app with real-time FEA tyre model. See `roadmap.md`.
 
 ---
 
-## Target Audience
+## Owner
+
+Srikar Buddhiraju. MEng Automotive Engineering, University of Leeds (2019).
+Physics validated by Srikar. Implementation by Claude. Accuracy is non-negotiable.
+
+---
+
+## Current Status (Session 40 — 2026-05-27)
+
+- **36 physics stages** implemented and validated (see CLAUDE.md for full table)
+- **22 circuits** — 4 generic + 4 schematic + 14 GPS (TUMFTM LGPL-3.0 + OSM ODbL)
+- **37/37** validation checks | **424/424** extended tests
+- **0** TypeScript errors | **0** npm vulnerabilities
+- Deployed, live, publicly accessible
+
+---
+
+## Target Audiences
 
 | Audience | Why They Care |
 |---|---|
-| Automotive engineering students | Visualise lecture concepts interactively |
-| Formula Student teams | Setup tool they can actually afford |
-| Club/semi-pro motorsport engineers | Quick checks without expensive software |
-| Sim racing community | Understand why setup changes behaviour |
-| Vehicle dynamics researchers | Open source model to extend |
+| Sim racers | Understand setup physics, not just trial and error |
+| Automotive engineering students | Interactive, free, real physics — supplements lectures |
+| Formula Student teams | Affordable alternative to OptimumLap — does more |
+| Club/semi-pro racing engineers | Quick setup analysis without £500/yr desktop tools |
+| Vehicle dynamics researchers | Open-source model to extend and publish with |
 
 ---
 
-## Monetisation
+## Licence
 
-- **Community version**: MIT license, open source, free forever
-- **Pro hosted version**: Advanced parameters, save/share setups, paid subscription
-- No enterprise sales — individual pays with credit card
+**Current (as of Session 40 decision):** Changing from MIT → **AGPL v3** (open source, viral for
+commercial use) + separate **commercial licence** for companies wanting non-AGPL terms.
+
+This dual-licence model protects against commercial extraction while keeping the tool
+fully free and open for students, hobbyists, and non-commercial use. See `monetisation.md`.
 
 ---
 
@@ -56,74 +65,19 @@ Not a game. A tool where you change parameters and see real-world vehicle behavi
 | Build tool | Vite |
 | 3D Visualisation | Three.js |
 | Charts | Recharts |
-| Physics engine | Pure TypeScript module (framework-agnostic) |
-| Hosting | Cloudflare Pages — `racephysix.srikarbuddhiraju.com` |
-| License | MIT |
+| Physics engine | Pure TypeScript (framework-agnostic) |
+| Hosting | Cloudflare Pages |
 
 ---
 
-## Physics Models — v1 Complete
+## Key Docs
 
-| Stage | Model | Status |
-|---|---|---|
-| 1 | Bicycle model | ✅ done |
-| 2 | Pacejka Magic Formula | ✅ done |
-| 3 | Load transfer + drivetrain (FWD/RWD/AWD/AWD+TV) | ✅ done |
-| 4 | Suspension — roll stiffness, ARB | ✅ done |
-| 5 | Braking — brake bias, ABS clip | ✅ done |
-| 6 | Aerodynamics — downforce + drag | ✅ done |
-| 7 | Lap time estimator — 4 track presets | ✅ done |
-| 8 | Full 14-DOF | long term |
-
-All stages validated against Milliken & Milliken / Gillespie. 18 checks pass.
-
----
-
-## v1 Features
-
-- ParameterPanel: 3 tabs — Vehicle, Suspension, Aero & Braking
-- Aero presets: Road / Mild / GT / Formula
-- URL hash sharing: full params encoded in URL, shareable links
-- Export: CSV (all params + results) and SVG (charts)
-- Track map SVG: procedural per preset in LapTimePanel
-- Responsive layout: works at 1200px, 900px, mobile
-- Dark/light theme toggle
-- 3D top-down view (Three.js) with tyre force vectors
-
----
-
-## Reach Strategy
-
-- Search-optimised README: "vehicle dynamics simulation", "Pacejka interactive", "understeer oversteer calculator"
-- Submit to r/MotorsportEngineering, r/formula1tech, r/simracing
-- Formula Student community forums and Discord servers
-- Reach out to Leeds vehicle dynamics faculty for feedback + sharing
-- One professor linking it in course materials = hundreds of users overnight
-
----
-
-## Ideas Explored and Ruled Out
-
-| Idea | Why Ruled Out |
+| File | Purpose |
 |---|---|
-| Cloud account ownership lifecycle tool | Azure Policy + Power Automate already covers it. Enterprise sales too heavy. |
-| Platform knowledge graph | One-time problem, not a recurring product need |
-| Motorcycle app | Against Srikar's philosophy — freedom from screens |
-| Philosophy platform (Nadam) | Medium contradicts message. Advaita doesn't fit feeds/algorithms. |
-| 65x24 cinematic video app | Requires Mac + iOS dev. No Mac available. |
-
----
-
-## Reference Material
-
-- Milliken & Milliken — *Race Car Vehicle Dynamics* (the bible)
-- Pacejka — *Tyre and Vehicle Dynamics*
-- Gillespie — *Fundamentals of Vehicle Dynamics*
-
----
-
-## Relationship to Panchangam
-
-- Panchangam ships April 2026 — that takes priority
-- RacePhysiX runs in parallel, slow pace, no hard deadline
-- Separate repo, separate stack, separate Claude project context
+| `CLAUDE.md` | Full physics stage table, working conventions, hard rules |
+| `docs/roadmap.md` | v1/v2/v3 milestones + FEA prerequisites |
+| `docs/monetisation.md` | Licence, tier design, action items |
+| `docs/marketing.md` | Audiences, post strategy, content ideas |
+| `docs/ConvoQAClaude.md` | Session decisions log |
+| `docs/LatestTask.md` | Rolling task log |
+| `docs/lessons.md` | Mistakes + rules to avoid repeating |

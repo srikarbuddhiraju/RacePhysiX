@@ -7,18 +7,35 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 ## Session 40 — 2026-05-27  |  branch: `main` (COMPLETE ✅)
 
 ### Canvas button layout fix
-
-- [x] Canvas top-left buttons (🌙, ?, Docs) grouped into a single `position:absolute` flex container — eliminates scattered absolute coordinates
-- [x] `.theme-toggle` CSS: removed `position/top/left/z-index` (now participates in flex group)
-- [x] `ViewLabel` in TopDownView: replaced hardcoded `left:115px` with `panelLeft + panelWidth + textAlign:center` — "Top View" and "Chase View" labels always centred in their panels regardless of canvas width
+- [x] Canvas top-left buttons (🌙, ?, Docs) grouped into a single `position:absolute` flex container
+- [x] `.theme-toggle` CSS: removed individual absolute positioning (lives in flex group now)
+- [x] `ViewLabel` in TopDownView: `panelLeft + panelWidth + textAlign:center` — labels centred in their panels at all screen widths, no pixel-gap fragility
 - [x] `tsc --noEmit` clean, `npm run build` clean — merged to `main`
-- [x] ConvoQAClaude.md: all stale session 4–11 `[ ]` items marked `[x]` (work was done in subsequent sessions)
+- [x] ConvoQAClaude.md: all stale session 4–11 `[ ]` items marked `[x]`
+
+### Monetisation + roadmap strategy
+- [x] Competitive analysis completed — RacePhysiX uncontested in browser-based space; OptimumLap is the incumbent to displace
+- [x] Licence decision: MIT → AGPL v3 + commercial dual licence
+- [x] Tier design agreed: Free (all current) / Pro £6–8/month / Team £20–25/month / Consulting
+- [x] FS teams identified as priority revenue wedge
+- [x] v3 FEA direction confirmed: Tauri + Rust WASM + WebGPU, 200–500 element tyre shell
+- [x] `docs/monetisation.md` created — full licence + tier + action plan
+- [x] `docs/roadmap.md` created — v1/v2/v3 milestones + FEA prerequisites
+- [x] `docs/project-overview.md` rewritten (was severely stale from Session 3)
+- [x] `docs/marketing.md` monetisation stub updated to point to monetisation.md
+- [x] `.gitignore` updated: monetisation.md + roadmap.md added (private strategy docs)
 
 ### State
 - Branch: `main`, live on Cloudflare Pages
 - Physics: 37/37 checks | 424/424 extended tests — unchanged
 - 0 TypeScript errors, 0 npm vulnerabilities, build clean
-- One deferred item: M5b (3D brake glow / body roll) — explicitly deferred, needs Three.js work
+
+### Next session priorities (in order)
+1. **Licence change** — Update `LICENSE` → AGPL v3, `README`, `package.json`
+2. **GitHub Sponsors** — Set up page (30 min, covers hosting costs immediately)
+3. **Marketing Phase 1** — README, 2–3 screenshots/GIF, first community post
+4. **Pro waitlist landing page** — Simple "notify me" form before building auth/billing
+5. **M5b** — 3D brake glow + body roll/pitch (deferred visual enhancement)
 
 ---
 
