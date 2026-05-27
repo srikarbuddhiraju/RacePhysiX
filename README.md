@@ -1,25 +1,142 @@
-# RacePhysiX — Browser-Based Vehicle Dynamics & Lap Time Simulator
+# RacePhysiX — Vehicle Dynamics & Lap Time Simulator
 
-A physics-accurate car setup and lap time simulation tool that runs entirely in the browser.
-No install, no login, no account.
+> **Adjust any setup parameter. See the physics change in real time. Predict lap times across 22 real-world circuits — entirely in your browser.**
 
-**Live:** [racephysix.srikarbuddhiraju.com](https://racephysix.srikarbuddhiraju.com)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-racephysix.srikarbuddhiraju.com-blue?style=for-the-badge)](https://racephysix.srikarbuddhiraju.com)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-green?style=for-the-badge)](LICENSE)
+[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-pink?logo=github-sponsors&style=for-the-badge)](https://github.com/sponsors/srikarbuddhiraju)
+
+No install. No login. No account.
+
+---
+
+![RacePhysiX Screenshot](docs/assets/screenshot-main.png)
 
 ---
 
 ## What is RacePhysiX?
 
-RacePhysiX is an open-source vehicle dynamics simulator covering the full physics stack — from tyre contact patch forces to race strategy optimisation. Adjust any parameter and immediately see the effect on handling balance, cornering speed, braking performance, and predicted lap time across 22 real-world circuits.
+RacePhysiX is a **physics-accurate vehicle dynamics simulator** that runs entirely in the browser. It covers the full engineering stack — from tyre contact patch forces to race strategy — and gives instant feedback as you tune any of 56 vehicle parameters.
 
-**Who it's for:**
-- Motorsport engineering students learning vehicle dynamics from first principles
-- Formula Student / FSAE teams using it as a quick setup reference
-- Sim racers building intuition for how setup changes affect lap time
-- Anyone curious about the physics behind understeer, oversteer, and the Magic Formula tyre model
+Change spring rates, aero balance, brake bias, tyre compound, or driver aggression and immediately see:
+- **Understeer gradient and handling balance** (Pacejka Magic Formula tyre model)
+- **Predicted lap time** across 22 real circuits (Spa, Monza, Silverstone, Suzuka, and more)
+- **Tyre temperature and wear** lap-by-lap through a race
+- **Optimal race strategy** (pit stop windows, compound selection)
+- **14-DOF time-domain response** to step steer, sine sweep, and brake-in-turn inputs
 
 ---
 
-## Physics Model (46 stages)
+## Who is it for?
+
+| Audience | How they use it |
+|---|---|
+| 🎓 **Motorsport engineering students** | Learn vehicle dynamics from first principles with immediate visual feedback |
+| 🏎️ **Formula Student / FSAE teams** | Quick setup direction — spring rates, ARB, aero balance, brake bias |
+| 🕹️ **Sim racers** | Build intuition for how setup changes translate to lap time |
+| 🔬 **Curious engineers** | Explore Pacejka, Magic Formula, load transfer, and the bicycle model interactively |
+
+---
+
+## Features
+
+### Physics — 46 stages, fully validated
+
+- **Pacejka Magic Formula tyre model** — nonlinear Fy/Fx, load sensitivity, combined slip (MF-Swift)
+- **Full suspension model** — roll stiffness, ARB, roll centre, motion ratio, dynamic camber gain
+- **Aerodynamics** — speed-dependent downforce + drag, pre-computed CFD aero map (ride height × yaw), ERS/hybrid
+- **Lap time estimator** — point-mass quasi-static sim over real circuit segment geometry
+- **14-DOF time-domain** — RK4 ODE solver, step steer / sine sweep / brake-in-turn ISO scenarios
+- **Race simulation** — multi-lap tyre warmup/degradation, fuel burn, sector times, gap-to-fastest
+- **Race strategy optimiser** — brute-force 1/2-stop windows over soft/medium/hard compounds
+- **Setup optimiser** — Nelder-Mead simplex over 7 parameters → minimum lap time
+- **Tyre thermal + wear model** — Gaussian μ bell curve vs temperature; soft/medium/hard/inter/wet
+- **Engine torque curve** — NA bell, turbo plateau, electric flat; gear model with rev-limited P/V curve
+- **Driver model** — aggression 0–100%: scales tyre heat rate, wear rate, μ utilisation
+- **Multi-car comparison** — mass / power / peak μ vs baseline, Δ lap time cards
+
+All 37 physics validation checks pass. Extended suite: 424/424 pass.
+
+### Interface
+
+**Left panel** — 56 vehicle parameters grouped by system: Mass & Geometry, Tyres, Suspension, Brakes, Aerodynamics, Powertrain, Race, Driver, Ambient. One-click presets: Road car / Formula Student / GT3 / F1.
+
+**Centre** — Animated top-down circuit map with live telemetry strip (speed, gear, RPM, G-forces) and zone overlay (braking / trail-braking / cornering / full-throttle). Zones shift in real time when you change any parameter.
+
+**Right panel** — Physics results, lap time breakdown, race simulation, setup comparison (baseline vs variant Δ lap time), data export (CSV: lap trace, race telemetry).
+
+**Bottom** — Tyre curve (Fy vs slip angle), handling diagram (steering vs lateral G), Pacejka coefficient tuner, 14-DOF time-domain plots.
+
+---
+
+## Circuits (22 total)
+
+**Generic (4):** Club (~1.9 km), Karting (~1.0 km), GT Circuit (~3.2 km), Formula Test (~2.1 km)
+
+**Schematic real circuits (4):** Monza, Spa-Francorchamps, Silverstone, Suzuka
+
+**GPS-accurate — TUMFTM (LGPL-3.0, 10):**
+Nürburgring GP, Bahrain/Sakhir, Barcelona/Catalunya, Hungaroring, Montreal,
+Brands Hatch, Hockenheim, Red Bull Ring/Spielberg, Zandvoort, São Paulo/Interlagos
+
+**GPS-accurate — OSM (ODbL, 4):**
+Laguna Seca, Imola, Le Mans, Mugello
+
+---
+
+## GT3 Validation (BMW M4 GT3 2023, qualifying)
+
+| Circuit | Model | Real reference | Δ |
+|---|---|---|---|
+| Spa-Francorchamps | 2:13.8 | ~2:13–2:17 | ✓ |
+| Monza | 1:50.2 | ~1:49–1:53 | ✓ |
+| Silverstone | 2:00.8 | ~2:00–2:04 | ✓ |
+| Imola | 1:53.0 | ~1:52–1:56 | ✓ |
+| Red Bull Ring | 1:25.2 | ~1:24–1:28 | ✓ |
+| Hockenheim | 1:34.8 | ~1:34–1:38 | ✓ |
+| Zandvoort | 1:31.3 | ~1:31–1:35 | ✓ |
+| São Paulo | 1:33.9 | ~1:32–1:36 | ✓ |
+
+Overall accuracy: ±5–10% vs real-world lap times (adequate for setup direction decisions).
+
+---
+
+## Running Locally
+
+```bash
+npm install
+npm run dev
+```
+
+Build for production:
+
+```bash
+npm run build
+```
+
+---
+
+## Physics Validation
+
+```bash
+npx tsx src/physics/validate.ts
+```
+
+37 physics checks against Gillespie Ch.6 (bicycle model), RCVD Ch.16 (suspension),
+Pacejka §4.3 (tyre), and the 14-DOF time-domain model. Extended suite: 424/424 pass.
+
+---
+
+## Tech Stack
+
+TypeScript · React · Vite · Three.js · Recharts · Cloudflare Pages
+
+---
+
+## Physics Model — Full Stage List
+
+<details>
+<summary>Click to expand (46 stages)</summary>
 
 | Stage | Model | What it captures |
 |---|---|---|
@@ -68,80 +185,7 @@ RacePhysiX is an open-source vehicle dynamics simulator covering the full physic
 | 45 | Tyre thermal core | Two-layer surface/core model; μ evaluated at core temp; coreTemp lags surface via tyreCoreHeatLag |
 | 46 | Pre-computed CFD aero map | 2D lookup [rideHeight × yaw] per vehicle class — non-linear ground effect + yaw CD penalty |
 
-All 37 physics validation checks pass. Extended suite: 424/424 pass.
-
----
-
-## Circuits (22 total)
-
-**Generic (4):** Club (~1.9 km), Karting (~1.0 km), GT Circuit (~3.2 km), Formula Test (~2.1 km)
-
-**Schematic real circuits (4):** Monza, Spa-Francorchamps, Silverstone, Suzuka
-
-**GPS-accurate — TUMFTM (LGPL-3.0, 10):**
-Nürburgring GP, Bahrain/Sakhir, Barcelona/Catalunya, Hungaroring, Montreal,
-Brands Hatch, Hockenheim, Red Bull Ring/Spielberg, Zandvoort, São Paulo/Interlagos
-
-**GPS-accurate — OSM (ODbL, 4):**
-Laguna Seca, Imola, Le Mans, Mugello
-
----
-
-## Interface
-
-**Left panel — Vehicle Parameters**
-All 56 vehicle parameters grouped by system: Mass & Geometry, Tyres, Suspension, Brakes, Aerodynamics,
-Powertrain, Race, Driver, Ambient. Every change recalculates the full physics model in real time.
-One-click presets: Road car, Formula Student, GT3, F1.
-
-**Centre — Circuit Visualiser**
-Animated top-down circuit map with live telemetry strip (speed, gear, RPM, G-forces) and zone overlay
-(braking / trail-braking / cornering / full-throttle). Zones are computed from the physics model —
-they shift when you change mass, aero, or tyre compound. Supports single-lap and multi-lap race animation.
-
-**Right panel — Results + Lap Time**
-- Physics results: understeer gradient, lateral acceleration, per-corner tyre loads, combined utilisation
-- Lap time: per-segment speed breakdown (entry, apex, exit, time, time%)
-- Race simulation: lap-by-lap tyre temp/wear, fuel burn, sector times, gap to fastest
-- Setup comparison: baseline vs variant Δ lap time
-- Data export: lap summary CSV, high-res lap trace CSV (dist, time, speed, gear, RPM, G-forces), race telemetry CSV
-- Telemetry import: upload any CSV and overlay it against the current sim lap
-
-**Bottom panel — Charts**
-Tyre curve (Fy vs slip angle), handling diagram (steering vs lateral G), Pacejka coefficients tuner,
-14-DOF time-domain scenarios (step steer, sine sweep, brake-in-turn).
-
----
-
-## Running Locally
-
-```bash
-npm install
-npm run dev
-```
-
-Build for production:
-
-```bash
-npm run build
-```
-
----
-
-## Validation
-
-```bash
-npx tsx src/physics/validate.ts
-```
-
-Runs 21 physics checks against Gillespie Ch.6 (bicycle model), RCVD Ch.16 (suspension),
-Pacejka §4.3 (tyre), and the 14-DOF time-domain model. Extended suite: 424/424 pass.
-
----
-
-## Tech Stack
-
-TypeScript · React · Vite · Three.js · Recharts · Cloudflare Pages
+</details>
 
 ---
 
