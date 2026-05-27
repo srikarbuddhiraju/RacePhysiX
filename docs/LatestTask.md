@@ -31,9 +31,9 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 - 0 TypeScript errors, 0 npm vulnerabilities, build clean
 
 ### Next session priorities (in order)
-1. **Licence change** — Update `LICENSE` → AGPL v3, `README`, `package.json`
+1. ~~**Licence change**~~ ✅ Done — AGPL-3.0-or-later + COMMERCIAL_LICENSE.md, v1.0.0
 2. **GitHub Sponsors** — Set up page (30 min, covers hosting costs immediately)
-3. **Marketing Phase 1** — README, 2–3 screenshots/GIF, first community post
+3. **Marketing Phase 1** — README improvements, 2–3 screenshots/GIF, first community post
 4. **Pro waitlist landing page** — Simple "notify me" form before building auth/billing
 5. **M5b** — 3D brake glow + body roll/pitch (deferred visual enhancement)
 
