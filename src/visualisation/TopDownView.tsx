@@ -729,9 +729,9 @@ export function TopDownView({ params, result, pacejka, coeffs, darkMode = true }
       <div ref={mountRef} style={{ width: '100%', height: '100%' }}
         aria-label="Vehicle dynamics visualisation — top-down and chase views" />
 
-      {/* View labels */}
-      <ViewLabel text="Top View"   left="115px" top="6px" />
-      <ViewLabel text="Chase View" left="62%"   top="6px" />
+      {/* View labels — each spans its panel and centres the text */}
+      <ViewLabel text="Top View"   panelLeft="0"   panelWidth="60%" top="6px" />
+      <ViewLabel text="Chase View" panelLeft="60%" panelWidth="40%" top="6px" />
 
       {/* ── Top-down panel overlays (confined to left 60% so Chase View stays clear) ── */}
       <div style={{ position: 'absolute', top: 0, left: 0, width: '60%', height: '100%', pointerEvents: 'none' }}>
@@ -754,10 +754,13 @@ export function TopDownView({ params, result, pacejka, coeffs, darkMode = true }
 
 // ── UI overlays ───────────────────────────────────────────────────────────────
 
-function ViewLabel({ text, left, top }: { text: string; left: string; top: string }) {
+function ViewLabel({ text, panelLeft, panelWidth, top }: {
+  text: string; panelLeft: string; panelWidth: string; top: string;
+}) {
   return (
     <div style={{
-      position: 'absolute', left, top, pointerEvents: 'none',
+      position: 'absolute', left: panelLeft, top, width: panelWidth,
+      textAlign: 'center', pointerEvents: 'none',
       fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
       textTransform: 'uppercase', color: 'var(--text-muted)',
     }}>
