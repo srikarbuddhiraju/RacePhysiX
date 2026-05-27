@@ -4,6 +4,50 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
+## Session 41 — 2026-05-27  |  branch: `main` (COMPLETE ✅)
+
+### Accuracy push — Pacejka MF coefficient overhaul
+
+**Key finding:** Road tyre E was wrong sign. Validated against Pacejka "Tire and Vehicle Dynamics" 3rd ed.
+(2012) Appendix 3 — real measured 205/60R15 91V dataset (TNO MF-Tyre/MF-Swift 6.1, Fzo=4000 N).
+
+**Road tyre** (from real Appendix 3 data, free academic public domain):
+- [x] B: 10→11 (derived: BCD_y = pKy1×Fzo×sin(2arctan(1/pKy2)) / (C×D) → B≈11.4)
+- [x] C: 1.30→1.34 (pCy1=1.338)
+- [x] μ: 1.00→0.88 (pDy1=0.8785 — real dry road tyre peak)
+- [x] E: −1.50→**+0.80** (pEy1=+0.8057 — POSITIVE = gradual saturation, correct road tyre shape)
+
+**Racing slicks** (Pacejka Ch.4 §4.3.1 + Fig.4.10 guidance):
+- [x] FS:  C 1.30→1.50, μ 1.80→1.75, E −0.80→**−2.50** (sharp peak ~5°, pronounced dropoff)
+- [x] GT3: B 10→11, C 1.35→1.45, μ 1.60→1.55, E −0.70→**−1.50** (moderate peak ~7°)
+- [x] F1:  C 1.40→1.50, μ 2.00→1.95, E −1.00→**−2.00** (early peak ~4°, ultra-stiff slick)
+- [x] DEFAULT_PACEJKA_COEFFS updated to match corrected road tyre profile
+- [x] vehiclePresets.ts: all 4 presets updated + source comments citing Appendix 3 + Pacejka Ch.4
+
+**Validation:** 37/37 checks pass. TypeScript clean. Merged to `main`.
+
+**Physical interpretation of E values (now correct):**
+- Road: E > 0 → force builds gradually and saturates (no peak-then-drop). Real road tyre shape.
+- FS/GT3/F1: E < 0 → sharp peak then dropoff past peak slip angle. Classic slick behaviour.
+  The more negative, the more sensitive past the peak (F1 most sensitive at E=−2.0).
+
+**Source:** Pacejka, H.B. (2012). *Tire and Vehicle Dynamics* (3rd ed.). Appendix 3.
+Tyre: 205/60R15 91V. No proprietary data used.
+
+### State
+- Branch: `main`, live on Cloudflare Pages
+- Physics: 37/37 checks | 424/424 extended tests — unchanged
+- 0 TypeScript errors, build clean
+
+### Next session priorities (in order)
+1. **Validation against real-world lap times** — calibrate against published GT3/F1 lap times at Spa/Silverstone (check if μ changes affect predicted times correctly)
+2. **GitHub Sponsors** — Set up page (deferred from Session 40)
+3. **Marketing Phase 1** — README improvements, screenshots, first community post
+4. **Pro waitlist landing page** — Simple "notify me" form
+5. **M5b** — 3D brake glow + body roll/pitch (deferred)
+
+---
+
 ## Session 40 — 2026-05-27  |  branch: `main` (COMPLETE ✅)
 
 ### Canvas button layout fix
