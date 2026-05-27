@@ -709,7 +709,7 @@ export const TRACK_PRESETS: Record<string, TrackLayout> = {
       { type: 'corner',   length: 58,   radius: 50,  direction: 'left',  label: 'Motodrom T12'         },  // left — 66°
       { type: 'straight', length: 25                                                   },
       { type: 'corner',   length: 126,  radius: 80,  direction: 'right', label: 'Motodrom T13'         },  // sweeping right — 90°
-      { type: 'straight', length: 1006, label: 'Return to S/F'                        },  // filler
+      { type: 'straight', length: 1486, label: 'Return to S/F'                        },  // long Zielgerade return (~1490m) to make total 4574m
     ],
   },
 
@@ -728,7 +728,7 @@ export const TRACK_PRESETS: Record<string, TrackLayout> = {
       { type: 'corner',   length: 251,  radius: 180, direction: 'right', label: 'T1 Castrol curve'     },  // fast right — 80°
       { type: 'straight', length: 100                                                  },
       { type: 'corner',   length: 79,   radius: 25,  direction: 'right', label: 'T2 Remus hairpin'     },  // right hairpin — 181°
-      { type: 'straight', length: 250                                                  },
+      { type: 'straight', length: 600                                                  },  // long uphill climb Remus→Schlossgold (~600m)
       { type: 'corner',   length: 201,  radius: 230, direction: 'right', label: 'T3 Schlossgold'       },  // fast right — 50°
       { type: 'straight', length: 130                                                  },
       { type: 'corner',   length: 122,  radius: 140, direction: 'right', label: 'T4'                   },  // right — 50°
@@ -740,7 +740,10 @@ export const TRACK_PRESETS: Record<string, TrackLayout> = {
       { type: 'corner',   length: 126,  radius: 40,  direction: 'right', label: 'T7 hairpin'           },  // right hairpin — 181°
       { type: 'straight', length: 350                                                  },
       { type: 'corner',   length: 122,  radius: 100, direction: 'right', label: 'T8 Rindt curve'       },  // right — 70°
-      { type: 'straight', length: 550,  label: 'Return to S/F'                        },  // filler
+      { type: 'corner',   length: 80,   radius: 80,  direction: 'right', label: 'T9'                   },  // right sweeper — 57°
+      { type: 'straight', length: 80                                                   },
+      { type: 'corner',   length: 60,   radius: 45,  direction: 'right', label: 'T10'                  },  // final right — 76°
+      { type: 'straight', length: 980,  label: 'Return to S/F'                        },  // S/F straight to make total 4318m
     ],
   },
 
@@ -754,9 +757,9 @@ export const TRACK_PRESETS: Record<string, TrackLayout> = {
     // S/F → Tarzan hairpin (tight right) → Gerlachbocht (fast right) → Hugenholtz
     // → Scheivlak → Hunserug → Panoramabocht → Arie Luyendijk chicane → Marlboro hairpin → S/F
     segments: [
-      { type: 'straight', length: 550,  label: 'Start/Finish straight'                },
+      { type: 'straight', length: 650,  label: 'Start/Finish straight'                },
       { type: 'corner',   length: 79,   radius: 25,  direction: 'right', label: 'Tarzan hairpin'        },  // tight right — 181°
-      { type: 'straight', length: 200                                                  },
+      { type: 'straight', length: 450                                                  },  // climb from Tarzan to Gerlachbocht (~450m)
       { type: 'corner',   length: 174,  radius: 200, direction: 'right', label: 'Gerlachbocht'          },  // fast right sweeper — 50°
       { type: 'straight', length: 250                                                  },
       { type: 'corner',   length: 84,   radius: 80,  direction: 'right', label: 'Hugenholtz'            },  // right — 60°
@@ -765,14 +768,17 @@ export const TRACK_PRESETS: Record<string, TrackLayout> = {
       { type: 'straight', length: 100                                                  },
       { type: 'corner',   length: 125,  radius: 180, direction: 'right', label: 'Hunserug'              },  // fast right — 40°
       { type: 'straight', length: 200                                                  },
-      { type: 'corner',   length: 157,  radius: 150, direction: 'right', label: 'Panoramabocht'         },  // fast right — 60°
+      { type: 'corner',   length: 450,  radius: 150, direction: 'right', label: 'Panoramabocht'         },  // long banked sweeper — ~172° (540m real)
       { type: 'straight', length: 200                                                  },
       { type: 'corner',   length: 24,   radius: 30,  direction: 'right', label: 'Arie Luyendijk T1'     },  // right — 46°
       { type: 'straight', length: 25                                                   },
       { type: 'corner',   length: 22,   radius: 30,  direction: 'left',  label: 'Arie Luyendijk T2'     },  // left — 42°
       { type: 'straight', length: 150                                                  },
+      { type: 'corner',   length: 40,   radius: 40,  direction: 'right', label: 'Hans Ernst chicane T1' },  // right — 57° (added 2021 F1 spec)
+      { type: 'straight', length: 25                                                   },
+      { type: 'corner',   length: 40,   radius: 40,  direction: 'left',  label: 'Hans Ernst chicane T2' },  // left — 57°
       { type: 'corner',   length: 79,   radius: 25,  direction: 'right', label: 'Marlboro hairpin'      },  // tight right — 181°
-      { type: 'straight', length: 309,  label: 'Return to S/F'                        },  // filler
+      { type: 'straight', length: 761,  label: 'Return to S/F'                        },  // S/F straight to make total 4259m
     ],
   },
 
@@ -791,23 +797,23 @@ export const TRACK_PRESETS: Record<string, TrackLayout> = {
       { type: 'corner',   length: 37,   radius: 25,  direction: 'left',  label: 'Senna S T1'           },  // tight left — 85°
       { type: 'straight', length: 25                                                   },
       { type: 'corner',   length: 35,   radius: 25,  direction: 'right', label: 'Senna S T2'           },  // right — 80°
-      { type: 'straight', length: 80                                                   },
+      { type: 'straight', length: 300                                                  },  // descent to Curva do Sol (~300m)
       { type: 'corner',   length: 161,  radius: 130, direction: 'left',  label: 'Curva do Sol'         },  // fast left sweeper — 71°
       { type: 'straight', length: 250                                                  },
       { type: 'corner',   length: 140,  radius: 100, direction: 'left',  label: 'Descida do Lago'      },  // left — 80°
-      { type: 'straight', length: 300                                                  },
+      { type: 'straight', length: 400                                                  },  // down to Ferradura (~400m)
       { type: 'corner',   length: 75,   radius: 16,  direction: 'left',  label: 'Ferradura hairpin'    },  // tight left hairpin — 270°
       { type: 'straight', length: 200                                                  },
       { type: 'corner',   length: 70,   radius: 40,  direction: 'left',  label: 'Mergulho'             },  // left — 100°
-      { type: 'straight', length: 300                                                  },
+      { type: 'straight', length: 500                                                  },  // Mergulho → Laranjinha (~500m)
       { type: 'corner',   length: 84,   radius: 48,  direction: 'left',  label: 'Laranjinha'           },  // left — 100°
-      { type: 'straight', length: 100                                                  },
+      { type: 'straight', length: 250                                                  },  // Laranjinha → Pinheirinho (~250m)
       { type: 'corner',   length: 50,   radius: 40,  direction: 'left',  label: 'Pinheirinho'          },  // left — 72°
-      { type: 'straight', length: 200                                                  },
+      { type: 'straight', length: 300                                                  },  // Pinheirinho → Cotovelo (~300m)
       { type: 'corner',   length: 40,   radius: 40,  direction: 'right', label: 'Cotovelo'             },  // right — 57°
-      { type: 'straight', length: 100                                                  },
+      { type: 'straight', length: 230                                                  },  // Cotovelo → Subida (~230m)
       { type: 'corner',   length: 63,   radius: 50,  direction: 'left',  label: 'Subida dos Boxes'     },  // left — 72°
-      { type: 'straight', length: 499,  label: 'Return to S/F'                        },  // filler
+      { type: 'straight', length: 499,  label: 'Return to S/F'                        },  // pit straight return to make total 4309m
     ],
   },
 
