@@ -4,6 +4,38 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
+## Session 44 — 2026-05-27  |  branch: `main` (COMPLETE ✅)
+
+### Theme consistency + v1.1.0 versioning + waitlist email
+
+- [x] `src/utils/theme.ts` — single localStorage-based theme source of truth (`racephysix_theme`)
+- [x] LandingPage, ProWaitlistPage, App.tsx all use `getStoredTheme()` / `setStoredTheme()` — theme persists across navigation
+- [x] App.tsx: `← Home` button in canvas overlay top-left (same style as Docs / ?)
+- [x] DocsPage.css: `color: #f87171` → `var(--color-error)` — docs light mode fully tokenised
+- [x] index.css: `--color-error`, `--color-success`, `--color-warn` added to both dark and light token blocks
+- [x] Version bumped `1.0.0 → 1.1.0` — displayed in landing footer, WelcomeModal, README badge, docs FAQ
+- [x] Landing nav logo: 28px → 38px (was too small)
+- [x] Landing footer logo: `align-self: flex-start` fix (was skewed by column-flex stretch)
+- [x] Waitlist Worker: confirmation email via Resend after every new signup
+  - Dark-themed HTML email + plain-text fallback
+  - From: `noreply@racephysix.srikarbuddhiraju.com`
+  - Contact section mentions `racephysix@srikarbuddhiraju.com`
+  - Graceful: skipped silently if `RESEND_API_KEY` not yet set
+  - Idempotent: already-signed-up emails don't get re-sent
+- [x] All commits pushed to main, live on Cloudflare Pages
+
+### Open items (your tasks)
+- [ ] **Task #3** — Resend setup: create account → verify domain → `wrangler secret put RESEND_API_KEY`
+- [ ] **Task #2** — Re-deploy Worker (do after Task #3): `cd workers/waitlist && git pull && npx wrangler deploy`
+- [ ] Community posts: r/simracing → r/FormulaStudent → r/formula1
+
+### State
+- Branch: `main`, all commits pushed, live on Cloudflare Pages
+- Physics: 37/37 checks | 424/424 extended tests — unchanged
+- 0 TypeScript errors, build clean (racephysix@1.1.0)
+
+---
+
 ## Session 43 — 2026-05-27  |  branch: `main` (COMPLETE ✅)
 
 ### Marketing Phase 1 — README, Screenshot, GitHub Sponsors, Pro Waitlist
