@@ -172,8 +172,16 @@ licensed under the [Open Database Licence (ODbL)](https://opendatacommons.org/li
 
 ---
 
-## License
+## Licence
 
-RacePhysiX application code: [MIT](LICENSE)
+RacePhysiX uses a **dual-licence** model:
 
-Circuit GPS data licences: LGPL-3.0 (TUMFTM) · ODbL (OSM)
+**[AGPL-3.0](LICENSE)** — free for non-commercial use (students, researchers, hobbyists,
+Formula Student teams, open-source projects). If you run a modified version as a
+network service, you must make the source code available to users.
+
+**[Commercial licence](COMMERCIAL_LICENSE.md)** — required for closed-source products,
+white-label deployments, or commercial SaaS without source disclosure.
+Contact: srikarbuddhiraju@gmail.com
+
+Circuit GPS data: LGPL-3.0 (TUMFTM) · ODbL (OSM)

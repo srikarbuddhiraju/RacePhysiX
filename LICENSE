@@ -1,21 +1,78 @@
-MIT License
+RacePhysiX — Dual Licence
 
-Copyright (c) 2026 srikarbuddhiraju
+Copyright (C) 2026 Srikar Buddhiraju
+All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+This software is available under two licences. Choose the one that applies to
+your use case.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+OPTION 1 — GNU Affero General Public License v3 (AGPL-3.0-or-later)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Free to use for non-commercial purposes. You may use, study, modify, and
+distribute this software under the terms of the GNU Affero General Public
+License, version 3 or any later version published by the Free Software
+Foundation.
+
+The full AGPL-3.0 text is available at:
+https://www.gnu.org/licenses/agpl-3.0.txt
+
+It is incorporated by reference and applies in full.
+
+Key obligations under AGPL-3.0:
+
+  1. Source disclosure: If you distribute modified versions of this software,
+     you must release those modifications under AGPL-3.0 and make the source
+     code available.
+
+  2. Network use = distribution: If you run a modified version of this
+     software as a network service (SaaS, hosted API, web application), you
+     must make the complete corresponding source code available to users of
+     that service. This is the key difference from GPL-3.0.
+
+  3. Attribution: You must retain this copyright notice and all licence
+     notices in all copies or substantial portions of the software.
+
+  4. No additional restrictions: You may not impose further restrictions on
+     the rights granted by AGPL-3.0.
+
+This option applies to: students, researchers, hobbyists, Formula Student
+teams, open-source projects, and any non-commercial use.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+OPTION 2 — Commercial Licence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+If AGPL-3.0 obligations are not acceptable for your use case — for example,
+you are building a closed-source product, white-labelling this software,
+embedding it in a commercial service without releasing your source code, or
+reselling it — you must obtain a separate commercial licence.
+
+Contact:  srikarbuddhiraju@gmail.com
+Subject:  RacePhysiX Commercial Licence Enquiry
+
+See COMMERCIAL_LICENSE.md for full terms.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+DISCLAIMER
+
+THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM,
+OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Third-party data licences (circuit GPS data):
+
+  TUMFTM circuits (10): LGPL-3.0 — see LICENSES/TUMFTM-LGPL-3.0.txt
+  OSM circuits (4):     ODbL    — https://opendatacommons.org/licenses/odbl/
