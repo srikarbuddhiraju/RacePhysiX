@@ -981,11 +981,13 @@ export function computeLapTime(layout: TrackLayout, inp: LapSimInput): LapResult
   const segResults: SegmentResult[] = [];
   let totalTime = 0;
   let vPrev = vCorner.find(v => isFinite(v)) ?? 20;  // start at first corner speed
+  let cornerCount = 0;
 
   for (let i = 0; i < n; i++) {
     const seg = segments[i];
 
     if (seg.type === 'corner' && seg.radius) {
+      cornerCount++;
       const vC = vCorner[i];
 
       // Stage 13C — Yaw transient time penalty (Gillespie Ch.6 first-order yaw time constant)
@@ -1007,7 +1009,7 @@ export function computeLapTime(layout: TrackLayout, inp: LapSimInput): LapResult
         type: 'corner', length: seg.length, timeSec: t,
         entrySpeedKph: vC * 3.6, exitSpeedKph: vC * 3.6,
         minSpeedKph: vC * 3.6, maxSpeedKph: vC * 3.6,
-        label: seg.label ?? `R${seg.radius}m`,
+        label: seg.label ?? `T${cornerCount} · R${seg.radius}m`,
         radius: seg.radius,
       });
       vPrev = vC;

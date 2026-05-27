@@ -730,8 +730,8 @@ export function TopDownView({ params, result, pacejka, coeffs, darkMode = true }
         aria-label="Vehicle dynamics visualisation — top-down and chase views" />
 
       {/* View labels */}
-      <ViewLabel text="Top View"   left="46px"  top="6px" />
-      <ViewLabel text="Chase View" left="62%"  top="6px" />
+      <ViewLabel text="Top View"   left="115px" top="6px" />
+      <ViewLabel text="Chase View" left="62%"   top="6px" />
 
       {/* ── Top-down panel overlays (confined to left 60% so Chase View stays clear) ── */}
       <div style={{ position: 'absolute', top: 0, left: 0, width: '60%', height: '100%', pointerEvents: 'none' }}>
