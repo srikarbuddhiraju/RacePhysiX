@@ -29,17 +29,10 @@
   text-decoration: none;
 }
 
-.pro-nav-brand {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  letter-spacing: -0.02em;
-}
-
-.pro-nav-x {
-  font-size: 1.1rem;
-  font-weight: 900;
-  color: var(--accent-hover);
+.pro-nav-logo-img {
+  height: 32px;
+  width: auto;
+  display: block;
 }
 
 .pro-nav-right {

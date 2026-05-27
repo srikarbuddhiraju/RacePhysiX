@@ -91,8 +91,11 @@ export function ProWaitlistPage() {
       {/* ── Nav ───────────────────────────────────────────────────── */}
       <nav className="pro-nav">
         <a href="/" className="pro-nav-logo">
-          <span className="pro-nav-brand">RacePhysiX</span>
-          <span className="pro-nav-x">X</span>
+          <img
+            src={dark ? '/logo-dark.png' : '/logo-light.png'}
+            alt="RacePhysiX"
+            className="pro-nav-logo-img"
+          />
         </a>
         <div className="pro-nav-right">
           <button
