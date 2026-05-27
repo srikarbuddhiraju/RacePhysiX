@@ -1,6 +1,6 @@
 # RacePhysiX — Commercial Licence
 
-**Contact:** srikarbuddhiraju@gmail.com  
+**Contact:** racephysix@srikarbuddhiraju.com  
 **Subject line:** RacePhysiX Commercial Licence Enquiry
 
 ---
@@ -35,7 +35,7 @@ A commercial licence is required if any of the following apply:
 
 ## How to enquire
 
-Email: **srikarbuddhiraju@gmail.com**  
+Email: **racephysix@srikarbuddhiraju.com**  
 Subject: **RacePhysiX Commercial Licence Enquiry**
 
 Include:

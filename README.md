@@ -182,6 +182,6 @@ network service, you must make the source code available to users.
 
 **[Commercial licence](COMMERCIAL_LICENSE.md)** — required for closed-source products,
 white-label deployments, or commercial SaaS without source disclosure.
-Contact: srikarbuddhiraju@gmail.com
+Contact: racephysix@srikarbuddhiraju.com
 
 Circuit GPS data: LGPL-3.0 (TUMFTM) · ODbL (OSM)
