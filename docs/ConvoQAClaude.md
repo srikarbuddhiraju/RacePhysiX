@@ -15,9 +15,9 @@ Running log. Most recent session at top.
 - **Race UI**: Race Simulation section in LapTimePanel. Num-laps slider, start-temp slider, "Simulate Race" button, results table. Fastest lap marked with ★.
 
 ### Open Questions
-- [ ] Browser verify: race sim tyre warmup visible in first 3 laps; degradation after ~10 laps
-- [ ] Track editor: user-editable segment table with live SVG preview (next feature)
-- [ ] Deploy to Cloudflare Pages — pending browser verify
+- [x] Browser verify: race sim tyre warmup visible in first 3 laps; degradation after ~10 laps — confirmed Session 39
+- [x] Track editor: user-editable segment table with live SVG preview — Stage 15 ✅
+- [x] Deploy to Cloudflare Pages — live since Session 25
 
 ---
 
@@ -36,10 +36,10 @@ Running log. Most recent session at top.
 - **v1 scope expanded**: Stages 9–13 added to v1, all must ship before public launch. Roadmap updated in `CLAUDE.md`.
 
 ### Open Questions
-- [ ] Browser verify: Chase View visible, overlays in top-down panel only
-- [ ] Browser verify: track maps for all 5 circuits (janky — next session priority)
-- [ ] Remaining open UX items (see `docs/test-reports/ux-test-report.md`)
-- [ ] Deploy to Cloudflare Pages — after Stages 9–13 complete
+- [x] Browser verify: Chase View visible, overlays in top-down panel only — confirmed Session 39
+- [x] Browser verify: track maps for all 5 circuits — confirmed
+- [x] Remaining open UX items — resolved Session 39 (no open UX items)
+- [x] Deploy to Cloudflare Pages — live since Session 25
 
 ---
 
@@ -54,10 +54,10 @@ Running log. Most recent session at top.
 - **V_ch formula**: Characteristic speed is `sqrt(L / K_rad)` NOT `sqrt(g×L / K_rad)`. Derivation: set δ = 2×L/R in the handling equation → K_rad×V² = L.
 
 ### Open Questions
-- [ ] Deploy to Cloudflare Pages — Srikar to complete
-- [ ] Browser verify: track maps for all 5 circuits look geographically correct after arc/direction fixes
-- [ ] Stage 8 browser test: all 3 scenarios render charts without crash
-- [ ] Run `/test` and `/test-ux` skills to get first full test report
+- [x] Deploy to Cloudflare Pages — live since Session 25
+- [x] Browser verify: track maps for all 5 circuits — confirmed
+- [x] Stage 8 browser test: all 3 scenarios render charts without crash — Stage 8 ✅
+- [x] Run `/test` and `/test-ux` skills — 424/424 tests pass
 
 ### Resolved Bugs
 - [x] Bug 1: Corner arc lengths > 2π — fixed all 5 circuits
@@ -77,14 +77,14 @@ Running log. Most recent session at top.
 - **SVG direction convention**: `direction: 'left'` (default) = heading increases = **clockwise on screen** (y-down flip). `direction: 'right'` = counter-clockwise on screen.
 
 ### Open Bugs (must fix next session — see LatestTask.md)
-- [ ] Bug 1: Circuit corner arc lengths are wrong (sweep > 2π for tight corners)
-- [ ] Bug 2: Direction tags wrong on real circuits (need to match clockwise/CCW per circuit)
-- [ ] Bug 3: Theme toggle button overlaps tyre badge overlay
+- [x] Bug 1: Circuit corner arc lengths are wrong — fixed Session 5
+- [x] Bug 2: Direction tags wrong on real circuits — fixed Session 5
+- [x] Bug 3: Theme toggle button overlaps tyre badge — fixed Session 5
 
 ### Open Questions
-- [ ] Deploy to Cloudflare Pages — Srikar to complete
-- [ ] Stage 8 validation: run browser test for all 3 scenarios (no crash, charts render)
-- [ ] After circuit fix: verify track maps look plausible for all 5 circuits
+- [x] Deploy to Cloudflare Pages — live since Session 25
+- [x] Stage 8 validation: run browser test for all 3 scenarios — Stage 8 ✅
+- [x] After circuit fix: verify track maps look plausible — confirmed
 
 ---
 

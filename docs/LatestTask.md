@@ -4,6 +4,24 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
+## Session 40 — 2026-05-27  |  branch: `main` (COMPLETE ✅)
+
+### Canvas button layout fix
+
+- [x] Canvas top-left buttons (🌙, ?, Docs) grouped into a single `position:absolute` flex container — eliminates scattered absolute coordinates
+- [x] `.theme-toggle` CSS: removed `position/top/left/z-index` (now participates in flex group)
+- [x] `ViewLabel` in TopDownView: replaced hardcoded `left:115px` with `panelLeft + panelWidth + textAlign:center` — "Top View" and "Chase View" labels always centred in their panels regardless of canvas width
+- [x] `tsc --noEmit` clean, `npm run build` clean — merged to `main`
+- [x] ConvoQAClaude.md: all stale session 4–11 `[ ]` items marked `[x]` (work was done in subsequent sessions)
+
+### State
+- Branch: `main`, live on Cloudflare Pages
+- Physics: 37/37 checks | 424/424 extended tests — unchanged
+- 0 TypeScript errors, 0 npm vulnerabilities, build clean
+- One deferred item: M5b (3D brake glow / body roll) — explicitly deferred, needs Three.js work
+
+---
+
 ## Session 39 — 2026-05-27  |  branch: `main` (COMPLETE ✅)
 
 ### Security audit + UX fixes
