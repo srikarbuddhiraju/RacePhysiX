@@ -102,10 +102,7 @@
 /* ── Theme toggle button ─────────────────────────────────────────────────── */
 
 .theme-toggle {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  z-index: 10;
+  flex-shrink: 0;
   width: 30px;
   height: 30px;
   border-radius: 50%;

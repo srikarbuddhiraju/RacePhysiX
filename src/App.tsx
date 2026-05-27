@@ -367,44 +367,49 @@ export function App() {
         <ParameterPanel params={params} onChange={setParams} powerUnit={powerUnit} onPowerUnitChange={setPowerUnit} />
         <div className="canvas-area">
           <TopDownView params={params} result={bicycle} pacejka={pacejka} coeffs={coeffs} darkMode={darkMode} />
-          <button
-            className="theme-toggle"
-            onClick={() => setDarkMode(d => !d)}
-            title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            {darkMode ? '☀' : '🌙'}
-          </button>
-          {/* Help button — reopens welcome modal */}
-          <button
-            onClick={() => setModalVisible(true)}
-            title="Help / Welcome"
-            style={{
-              position: 'absolute', top: 8, left: 40,
-              padding: '4px 8px', fontSize: 11, fontWeight: 700,
-              background: 'rgba(99,102,241,0.15)',
-              border: '1px solid #6466f1',
-              borderRadius: 5, color: '#a0a0ff',
-              cursor: 'pointer', zIndex: 10, lineHeight: 1,
-            }}
-          >
-            ?
-          </button>
-          {/* Docs button */}
-          <button
-            onClick={() => openDocs()}
-            title="Open documentation"
-            style={{
-              position: 'absolute', top: 8, left: 72,
-              padding: '4px 8px', fontSize: 9, fontWeight: 700,
-              background: 'rgba(99,102,241,0.15)',
-              border: '1px solid #6466f1',
-              borderRadius: 5, color: '#a0a0ff',
-              cursor: 'pointer', zIndex: 10, whiteSpace: 'nowrap',
-            }}
-          >
-            Docs
-          </button>
-          {/* Circuit Map toggle — below theme-toggle */}
+
+          {/* ── Canvas overlay controls — two tidy rows in the top-left ─── */}
+          {/* Row 1: theme + help + docs */}
+          <div style={{
+            position: 'absolute', top: 8, left: 8, zIndex: 10,
+            display: 'flex', gap: 6, alignItems: 'center',
+          }}>
+            <button
+              className="theme-toggle"
+              onClick={() => setDarkMode(d => !d)}
+              title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {darkMode ? '☀' : '🌙'}
+            </button>
+            <button
+              onClick={() => setModalVisible(true)}
+              title="Help / Welcome"
+              style={{
+                padding: '4px 8px', fontSize: 11, fontWeight: 700,
+                background: 'rgba(99,102,241,0.15)',
+                border: '1px solid #6466f1',
+                borderRadius: 5, color: '#a0a0ff',
+                cursor: 'pointer', lineHeight: 1,
+              }}
+            >
+              ?
+            </button>
+            <button
+              onClick={() => openDocs()}
+              title="Open documentation"
+              style={{
+                padding: '4px 8px', fontSize: 9, fontWeight: 700,
+                background: 'rgba(99,102,241,0.15)',
+                border: '1px solid #6466f1',
+                borderRadius: 5, color: '#a0a0ff',
+                cursor: 'pointer', whiteSpace: 'nowrap',
+              }}
+            >
+              Docs
+            </button>
+          </div>
+
+          {/* Row 2: circuit animation toggle */}
           <button
             onClick={() => setShowTrackViz(v => !v)}
             title={showTrackViz ? 'Close circuit animation' : 'Open circuit animation'}
@@ -412,8 +417,8 @@ export function App() {
               position: 'absolute', top: 46, left: 8,
               padding: '4px 10px', fontSize: 9, fontWeight: 700,
               background: showTrackViz ? 'rgba(100,100,255,0.25)' : 'rgba(99,102,241,0.15)',
-              border: `1px solid ${showTrackViz ? '#6466f1' : '#6466f1'}`,
-              borderRadius: 5, color: showTrackViz ? '#a0a0ff' : '#a0a0ff',
+              border: '1px solid #6466f1',
+              borderRadius: 5, color: '#a0a0ff',
               cursor: 'pointer', zIndex: 10, whiteSpace: 'nowrap',
               animation: showTrackViz ? 'none' : 'pulse-border 2s ease-in-out infinite',
             }}
