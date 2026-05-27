@@ -126,7 +126,7 @@
 }
 
 .docs-error {
-  color: #f87171;
+  color: var(--color-error);
   font-size: 12px;
   padding: 16px 0;
 }

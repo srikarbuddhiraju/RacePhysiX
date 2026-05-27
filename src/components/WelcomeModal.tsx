@@ -75,9 +75,12 @@ export function WelcomeModal({ visible, onClose, onOpenDocs }: WelcomeModalProps
         />
 
         {/* Tagline */}
-        <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 24 }}>
+        <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 8 }}>
           Physics-accurate vehicle dynamics simulation — in your browser.
           No install. No account. Just open and simulate.
+        </div>
+        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 20 }}>
+          v1.1.0 · 46 physics stages · 22 circuits · AGPL-3.0
         </div>
 
         {/* Quick-start steps */}

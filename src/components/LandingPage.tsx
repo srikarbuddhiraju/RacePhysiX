@@ -1,10 +1,6 @@
 import { useState, useEffect } from 'react';
 import './LandingPage.css';
-
-function getInitialDark(): boolean {
-  try { return window.matchMedia('(prefers-color-scheme: dark)').matches; }
-  catch { return true; }
-}
+import { getStoredTheme, setStoredTheme } from '../utils/theme';
 
 const FEATURES = [
   {
@@ -56,10 +52,10 @@ const VALIDATION = [
 ];
 
 export function LandingPage() {
-  const [dark, setDark] = useState(getInitialDark);
+  const [dark, setDark] = useState(getStoredTheme);
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    setStoredTheme(dark);
   }, [dark]);
 
   return (
@@ -208,7 +204,7 @@ export function LandingPage() {
           </div>
         </div>
         <div className="land-footer-legal">
-          AGPL-3.0 · Circuit GPS data: LGPL-3.0 (TUMFTM) · ODbL (OpenStreetMap)
+          v1.1.0 · AGPL-3.0 · Circuit GPS data: LGPL-3.0 (TUMFTM) · ODbL (OpenStreetMap)
         </div>
       </footer>
 

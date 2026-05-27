@@ -204,7 +204,7 @@ Use the strategy optimiser for the baseline plan, then adjust for race condition
 
 ### What technology is this built on?
 
-TypeScript, React, Vite, Three.js (3D visualiser), Recharts (charts). Pure TypeScript physics engine with no game physics library. Hosted on Cloudflare Pages. Open source under AGPL-3.0.
+TypeScript, React, Vite, Three.js (3D visualiser), Recharts (charts). Pure TypeScript physics engine with no game physics library. Hosted on Cloudflare Pages. Open source under AGPL-3.0. Current version: **v1.1.0**.
 
 ### How does the lap time calculation work?
 
