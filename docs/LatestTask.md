@@ -4,52 +4,56 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
-## Session 42 — 2026-05-27  |  branch: `fix/circuit-segment-lengths` (IN PROGRESS)
+## Session 42 — 2026-05-27  |  branch: `fix/corner-radii` (COMPLETE ✅)
 
-### Fix broken circuit segment lengths
+### Part A — Fix broken circuit segment lengths (merged)
+Hockenheim/Spielberg/Zandvoort/São Paulo had segment totals 480–1200m shorter than claimed — produced wildly wrong lap times. All four now exact:
+- [x] Hockenheim 4574m ✓ | Spielberg 4318m ✓ | Zandvoort 4259m ✓ | São Paulo 4309m ✓
 
-**Problem found in Session 41:** 4 circuits had incorrect segment totals — circuits were 480–1200m shorter than their claimed length, producing wildly wrong lap times.
+### Part B — Fix circuit corner radii
+**Problem:** Several hand-designed circuits had hairpin/chicane radii that were unrealistically tight, making affected circuits run seconds too slow (São Paulo) or too fast (Zandvoort).
 
-| Circuit | Was | Target | Missing |
-|---|---|---|---|
-| Hockenheim | 4094m | 4574m | 480m |
-| Red Bull Ring (Spielberg) | 3318m | 4318m | 1000m |
-| Zandvoort | 3059m | 4259m | 1200m |
-| São Paulo / Interlagos | 3409m | 4309m | 900m |
+**11 radius corrections across 4 circuits:**
 
-**Fixes applied:**
-- [x] **Hockenheim**: Return-to-S/F filler straight 1006→1486m (+480m). All lengths now sum to 4574m ✓
-- [x] **Spielberg**: T2→T3 uphill 250→600m (+350m); added T9 right + 80m straight + T10 right; filler 550→980m. Total 4318m ✓
-- [x] **Zandvoort**: S/F 550→650m; post-Tarzan straight 200→450m; Panoramabocht 157→450m (long banked sweeper); added Hans Ernst chicane (T1+T2, F1 2021 spec); filler 309→761m. Total 4259m ✓
-- [x] **São Paulo**: 6 connecting straights extended (Senna S→Curva 80→300m; Descida→Ferradura 300→400m; Mergulho→Laranjinha 300→500m; Laranjinha→Pinheirinho 100→250m; Pinheirinho→Cotovelo 200→300m; Cotovelo→Subida 100→230m). Total 4309m ✓
+| Corner | Old R | New R | Old speed | New speed | Note |
+|---|---|---|---|---|---|
+| São Paulo: Senna S T1 | 25m | 65m | 74 km/h | 119 km/h | Chicane, not hairpin |
+| São Paulo: Senna S T2 | 25m | 60m | 74 km/h | 114 km/h | |
+| São Paulo: Ferradura | 16m | 28m | 59 km/h | 78 km/h | Real R≈25-30m |
+| São Paulo: Mergulho | 40m | 65m | 93 km/h | 119 km/h | Medium-speed left |
+| São Paulo: Pinheirinho | 40m | 55m | 93 km/h | 109 km/h | |
+| São Paulo: Cotovelo | 40m | 50m | 93 km/h | 104 km/h | |
+| São Paulo: Subida dos Boxes | 50m | 80m | 104 km/h | 132 km/h | Final corner, too tight |
+| Zandvoort: Tarzan hairpin | 25m | 20m | 74 km/h | 66 km/h | Real min ~60-70 km/h |
+| Zandvoort: Marlboro hairpin | 25m | 20m | 74 km/h | 66 km/h | Same |
+| Hockenheim: Spitzkehre | 16m | 22m | 59 km/h | 69 km/h | Real ~70-80 km/h |
+| Brands Hatch: Druids | 14m | 19m | 55 km/h | 64 km/h | Real ~60-70 km/h |
+
+**GT3 lap time results — before → after (BMW M4 GT3 2023 qualifying):**
+
+| Circuit | Before (Sess 41) | After (now) | Est. range | OK? |
+|---|---|---|---|---|
+| São Paulo | 1:44.179 (10s slow) | **1:33.863** | 1:32–1:40 | ✓ |
+| Zandvoort | 1:29.599 (2s fast) | **1:31.306** | 1:31–1:39 | ✓ |
+| Hockenheim | 1:35.660 | **1:34.845** | 1:33–1:41 | ✓ |
+| Spa | 2:13.782 | 2:13.782 | 2:14–2:20 | ~✓ |
+| Monza | 1:50.233 | 1:50.233 | 1:47–1:50 | ~✓ |
+| Silverstone | 2:00.782 | 2:00.782 | 1:58–2:03 | ✓ |
+| Spielberg | 1:25.236 | 1:25.236 | 1:21–1:29 | ✓ |
+
 - [x] `npx tsc --noEmit` → 0 errors
-- [x] `npx tsx src/physics/validate.ts` → all 37 checks pass, 424/424 extended
-
-**GT3 lap time results after fix** (BMW M4 GT3 2023, qualifying spec, calibrated ratio F1→GT3=1.338x):
-
-| Circuit | Sim | Estimated GT3 range | Result |
-|---|---|---|---|
-| Hockenheim | 1:35.660 | 1:33–1:41 | ✓ within range |
-| Spielberg | 1:25.236 | 1:21–1:29 | ✓ within range |
-| Zandvoort | 1:29.599 | 1:31–1:39 | ~2s fast (model tolerance) |
-| São Paulo | 1:44.179 | 1:32–1:40 | ~4s slow (pre-existing tight corner radii in back section: Senna S R=25, Ferradura R=16) |
-
-**Known residual issue (Sao Paulo):** The Senna S (R=25) and Ferradura (R=16) corner radii are too tight vs real geometry (~R=60 and ~R=25 respectively). This makes the model run 4–6s slow for São Paulo. This is a **separate pre-existing issue** from the length fix, worth a targeted radius correction in a future session.
-
-**Previously validated circuits (unchanged):**
-- Spa: 2:13.782 vs real 2:14–2:20 ✓  |  Monza: 1:50.233 ✓  |  Silverstone: 2:00.782 ✓  |  Imola: 1:53.001 ✓
+- [x] `npx tsx src/physics/validate.ts` → 37/37 checks, 424/424 extended
 
 ### State
-- Branch: `fix/circuit-segment-lengths` (ready to merge)
+- Branch: `fix/corner-radii` (ready to merge)
 - Physics: 37/37 checks | 424/424 extended tests — unchanged
 - 0 TypeScript errors
 
 ### Next session priorities (in order)
-1. **Fix São Paulo corner radii** — Senna S R=25→60, Ferradura R=16→25 (separate PR)
-2. **GitHub Sponsors** — Set up page (deferred from Session 40)
-3. **Marketing Phase 1** — README improvements, screenshots, community post
-4. **Pro waitlist landing page** — Simple "notify me" form
-5. **M5b** — 3D brake glow + body roll/pitch (deferred)
+1. **GitHub Sponsors** — Set up page (deferred from Session 40)
+2. **Marketing Phase 1** — README improvements, screenshots, community post
+3. **Pro waitlist landing page** — Simple "notify me" form
+4. **M5b** — 3D brake glow + body roll/pitch (deferred)
 
 ---
 
