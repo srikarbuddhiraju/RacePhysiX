@@ -75,6 +75,7 @@ export function LandingPage() {
           />
         </a>
         <div className="land-nav-links">
+          <a href="/app#docs" className="land-nav-link">Docs</a>
           <a href="/pro" className="land-nav-link">Pro</a>
           <a href="https://github.com/srikarbuddhiraju/RacePhysiX" target="_blank" rel="noopener noreferrer" className="land-nav-link">GitHub</a>
           <button className="land-theme-toggle" onClick={() => setDark(d => !d)} title={dark ? 'Light mode' : 'Dark mode'} aria-label="Toggle theme">

@@ -7,6 +7,9 @@ const VERSION = '0.1.0';
 const NAV_ITEMS = [
   { id: 'getting-started',     label: 'Getting Started',        file: 'getting-started.md' },
   { id: 'user-guide',          label: 'User Guide',             file: 'user-guide.md' },
+  { id: 'setup-guide',         label: 'Setup Guide',            file: 'setup-guide.md' },
+  { id: 'formula-student',     label: 'Formula Student',        file: 'formula-student.md' },
+  { id: 'sim-racing',          label: 'Sim Racing',             file: 'sim-racing.md' },
   { id: 'physics-foundations', label: 'Physics — Foundations',  file: 'physics-foundations.md' },
   { id: 'physics-advanced',    label: 'Physics — Advanced',     file: 'physics-advanced.md' },
   { id: 'circuits',            label: 'Circuit Reference',      file: 'circuits.md' },

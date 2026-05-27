@@ -10,7 +10,7 @@ No install. No login. No account.
 
 ---
 
-![RacePhysiX Screenshot](docs/assets/screenshot-main.png)
+![RacePhysiX Screenshot](public/docs/screenshot-main.png)
 
 ---
 
