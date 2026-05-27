@@ -159,6 +159,18 @@ Do not use outputs for professional motorsport engineering decisions.
 
 ---
 
+## Sponsorship
+
+RacePhysiX is free and open-source. If it's saved you time or money — on a race weekend,
+a Formula Student project, or an engineering coursework — a GitHub Sponsor contribution
+keeps the server running and the physics improving.
+
+[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-pink?logo=github-sponsors)](https://github.com/sponsors/srikarbuddhiraju)
+
+All sponsors are listed in [SPONSORS.md](SPONSORS.md).
+
+---
+
 ## Attribution
 
 **TUMFTM circuits (10):** GPS data from the
