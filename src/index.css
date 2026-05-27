@@ -31,6 +31,10 @@
   --slider-track:  #2a2a3a;
 
   --scene-bg:      #0a0a12;
+
+  --color-error:   #f87171;
+  --color-success: #4ade80;
+  --color-warn:    #fbbf24;
 }
 
 /* ── Design tokens — light ───────────────────────────────────────────────── */
@@ -60,6 +64,10 @@
   --slider-track:  #d8d8e8;
 
   --scene-bg:      #f2f2fa;
+
+  --color-error:   #dc2626;
+  --color-success: #16a34a;
+  --color-warn:    #d97706;
 }
 
 body {

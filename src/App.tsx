@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { getStoredTheme, setStoredTheme } from './utils/theme';
 import { computeBicycleModel } from './physics/bicycleModel';
 import { computePacejkaModel, DEFAULT_PACEJKA_COEFFS } from './physics/pacejkaModel';
 import { ParameterPanel }   from './components/ParameterPanel';
@@ -270,7 +271,7 @@ function loadInitialParams(): VehicleParams {
 export function App() {
   const [params, setParamsRaw] = useState<VehicleParams>(loadInitialParams);
   const [coeffs, setCoeffs]    = useState<PacejkaCoeffs>(DEFAULT_PACEJKA_COEFFS);
-  const [darkMode, setDarkMode]     = useState(true);
+  const [darkMode, setDarkMode]     = useState(getStoredTheme);
   const [powerUnit, setPowerUnit]   = useState<PowerUnit>('kW');
 
   // ── Hash-based routing (#docs, #docs/<section>) ───────────────────────────
@@ -328,7 +329,7 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
+    setStoredTheme(darkMode);
   }, [darkMode]);
 
   const bicycle      = useMemo(() => computeBicycleModel(params),            [params]);
@@ -369,11 +370,25 @@ export function App() {
           <TopDownView params={params} result={bicycle} pacejka={pacejka} coeffs={coeffs} darkMode={darkMode} />
 
           {/* ── Canvas overlay controls — two tidy rows in the top-left ─── */}
-          {/* Row 1: theme + help + docs */}
+          {/* Row 1: home + theme + help + docs */}
           <div style={{
             position: 'absolute', top: 8, left: 8, zIndex: 10,
             display: 'flex', gap: 6, alignItems: 'center',
           }}>
+            <a
+              href="/"
+              title="Back to home"
+              style={{
+                padding: '4px 8px', fontSize: 11, fontWeight: 700,
+                background: 'rgba(99,102,241,0.15)',
+                border: '1px solid #6466f1',
+                borderRadius: 5, color: '#a0a0ff',
+                cursor: 'pointer', lineHeight: 1,
+                textDecoration: 'none', display: 'inline-block',
+              }}
+            >
+              ← Home
+            </a>
             <button
               className="theme-toggle"
               onClick={() => setDarkMode(d => !d)}

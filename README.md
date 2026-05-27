@@ -2,6 +2,7 @@
 
 > **Adjust any setup parameter. See the physics change in real time. Predict lap times across 22 real-world circuits — entirely in your browser.**
 
+[![Version](https://img.shields.io/badge/version-1.1.0-purple?style=for-the-badge)](CHANGELOG.md)
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-racephysix.srikarbuddhiraju.com-blue?style=for-the-badge)](https://racephysix.srikarbuddhiraju.com)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-green?style=for-the-badge)](LICENSE)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-pink?logo=github-sponsors&style=for-the-badge)](https://github.com/sponsors/srikarbuddhiraju)

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import './ProWaitlistPage.css';
+import { getStoredTheme, setStoredTheme } from '../utils/theme';
 
 const WAITLIST_URL = import.meta.env.PROD
   ? 'https://racephysix-waitlist.srikarbuddhiraju.workers.dev/waitlist'
@@ -40,22 +41,14 @@ const PRO_FEATURES = [
 
 type FormState = 'idle' | 'submitting' | 'success' | 'error';
 
-function getInitialDark(): boolean {
-  try {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
-  } catch {
-    return true;
-  }
-}
-
 export function ProWaitlistPage() {
   const [email, setEmail] = useState('');
   const [formState, setFormState] = useState<FormState>('idle');
   const [errorMsg, setErrorMsg] = useState('');
-  const [dark, setDark] = useState(getInitialDark);
+  const [dark, setDark] = useState(getStoredTheme);
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    setStoredTheme(dark);
   }, [dark]);
 
   async function handleSubmit(e: React.FormEvent) {
