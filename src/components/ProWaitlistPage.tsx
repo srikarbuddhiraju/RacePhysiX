@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './ProWaitlistPage.css';
 
 const WAITLIST_URL = import.meta.env.PROD
@@ -40,10 +40,23 @@ const PRO_FEATURES = [
 
 type FormState = 'idle' | 'submitting' | 'success' | 'error';
 
+function getInitialDark(): boolean {
+  try {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  } catch {
+    return true;
+  }
+}
+
 export function ProWaitlistPage() {
   const [email, setEmail] = useState('');
   const [formState, setFormState] = useState<FormState>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const [dark, setDark] = useState(getInitialDark);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  }, [dark]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -81,7 +94,17 @@ export function ProWaitlistPage() {
           <span className="pro-nav-brand">RacePhysiX</span>
           <span className="pro-nav-x">X</span>
         </a>
-        <a href="/" className="pro-nav-link">← Back to Simulator</a>
+        <div className="pro-nav-right">
+          <button
+            className="pro-theme-toggle"
+            onClick={() => setDark(d => !d)}
+            title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+            aria-label="Toggle theme"
+          >
+            {dark ? '☀' : '🌙'}
+          </button>
+          <a href="/" className="pro-nav-link">← Back to Simulator</a>
+        </div>
       </nav>
 
       {/* ── Hero ──────────────────────────────────────────────────── */}
