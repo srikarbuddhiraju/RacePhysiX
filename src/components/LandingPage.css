@@ -39,7 +39,7 @@
 .land-nav-logo { display: flex; align-items: center; text-decoration: none; }
 
 .land-nav-logo-img {
-  height: 28px;
+  height: 38px;
   width: auto;
   display: block;
 }
@@ -443,8 +443,9 @@
 }
 
 .land-footer-logo {
-  height: 24px;
+  height: 28px;
   width: auto;
+  align-self: flex-start; /* prevent column-flex stretch from skewing aspect ratio */
 }
 
 .land-footer-copy {
