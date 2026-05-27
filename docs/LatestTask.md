@@ -4,7 +4,31 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 
 ---
 
-## Session 38 — 2026-04-23  |  branch: `feature/documentation` (IN PROGRESS)
+## Session 39 — 2026-05-27  |  branch: `main` (COMPLETE ✅)
+
+### Security audit + UX fixes
+
+- [x] npm audit: found vite 6.4.1 (HIGH — GHSA-p9ff-h696-f583 dev WebSocket file read) + postcss (moderate XSS)
+- [x] react-markdown missing from node_modules (lock file had it, node_modules did not — broken build)
+- [x] `npm install` + `npm audit fix` → vite 6.4.2, postcss 8.5.15, react-markdown 10.1.0 installed
+- [x] 0 npm vulnerabilities, build clean — committed `88c26a7`
+- [x] All Session 38 + Session 36 browser verify items marked complete (Srikar confirmed clean)
+- [x] Obsidian notebook updated to match actual project state (all 48 stages, full task/notes/bugs)
+- [x] Button overlap fix: "Top View" label moved left:46px → left:115px (clears theme/? /Docs buttons)
+- [x] Corner numbering: segment breakdown now shows T1·R60m, T2·R20m etc. instead of bare R60m
+- [x] Confirmed ViewLegend already has strut + downforce arrow entries — no change needed
+- [x] Build + 37/37 physics checks pass — merged `8f4d453`
+
+### State
+- Branch: `main`, live on Cloudflare Pages (commit `8f4d453`)
+- Physics: 37/37 checks | 424/424 extended tests — unchanged
+- 0 TypeScript errors, 0 npm vulnerabilities, build clean
+- Obsidian: `/home/srikarbuddhiraju/Srikar/Notebook/Projects/RacePhysiX/` — fully up to date
+- No open UX items, no open bugs
+
+---
+
+## Session 38 — 2026-04-23  |  branch: `feature/documentation` (COMPLETE ✅)
 
 ### Documentation — in-app popup + /docs page
 
@@ -20,15 +44,15 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 - [x] `src/App.tsx` — hash routing (#docs), WelcomeModal wired, Help (?) + Docs buttons added
 - [x] `tsc --noEmit` clean, `npm run build` clean
 
-### Pending verification
-- [ ] Browser verify: modal appears on load, "Don't show again" persists, "Start Exploring" dismisses
-- [ ] Browser verify: ? button re-opens modal, Docs button navigates to /docs
-- [ ] Browser verify: all 5 docs sections load and render markdown correctly
-- [ ] Browser verify: internal doc links (e.g. [Physics Models](physics-overview)) navigate correctly
-- [ ] Browser verify: "Back to Simulator" returns to simulator state
+### Verification — browser verified 2026-05-27 ✅
+- [x] Browser verify: modal appears on load, "Don't show again" persists, "Start Exploring" dismisses
+- [x] Browser verify: ? button re-opens modal, Docs button navigates to /docs
+- [x] Browser verify: all 5 docs sections load and render markdown correctly
+- [x] Browser verify: internal doc links (e.g. [Physics Models](physics-overview)) navigate correctly
+- [x] Browser verify: "Back to Simulator" returns to simulator state
 
 ### State
-- Branch: `feature/documentation`
+- Merged to `main`, live on Cloudflare Pages
 - Physics: 37/37 checks | 424/424 extended tests — unchanged
 - 0 TypeScript errors, build clean
 
@@ -66,11 +90,11 @@ Rolling log. 200-line limit — trim oldest entries when exceeded.
 - [x] `VehiclePresetSelector`: ↓ Export + ↑ Import buttons after Reset separator; inline banner for errors/warnings; "Apply anyway" for hard-error state
 - [x] `App.tsx`: passes `params` + `coeffs` to selector
 
-### Pending verification
-- [ ] Browser verify: Export downloads valid JSON → re-import → Δ = 0 on lap time
-- [ ] Browser verify: Import with out-of-range field → yellow warning banner shown, setup applied
-- [ ] Browser verify: Import with missing field → red error banner, "Apply anyway" visible
-- [ ] Advanced tab: labels visible in both light and dark themes
+### Verification — browser verified 2026-05-27 ✅
+- [x] Browser verify: Export downloads valid JSON → re-import → Δ = 0 on lap time
+- [x] Browser verify: Import with out-of-range field → yellow warning banner shown, setup applied
+- [x] Browser verify: Import with missing field → red error banner, "Apply anyway" visible
+- [x] Advanced tab: labels visible in both light and dark themes
 
 ### State
 - Branch: `main`, merged commit `4c6d678`, live on Cloudflare Pages
